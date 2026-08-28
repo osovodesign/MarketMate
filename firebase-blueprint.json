@@ -1,0 +1,279 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Authenticated store owner or merchant profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "fullName": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "email", "fullName"]
+    },
+    "Business": {
+      "title": "Business",
+      "description": "Store or enterprise profile owned by a merchant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "businessName": { "type": "string", "maxLength": 128 },
+        "businessType": { "type": "string", "maxLength": 64 },
+        "currency": { "type": "string", "maxLength": 8 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "ownerName": { "type": "string", "maxLength": 128 },
+        "address": { "type": "string", "maxLength": 256 },
+        "invoiceTerms": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "ownerId", "businessName", "businessType", "currency"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Inventory product item for sale in store",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "description": { "type": "string", "maxLength": 512 },
+        "sku": { "type": "string", "maxLength": 64 },
+        "barcode": { "type": "string", "maxLength": 64 },
+        "defaultCostPrice": { "type": "number" },
+        "defaultSellingPrice": { "type": "number" },
+        "foreignCurrency": { "type": "string", "maxLength": 8 },
+        "foreignCostPrice": { "type": "number" },
+        "foreignSellingPrice": { "type": "number" },
+        "category": { "type": "string", "maxLength": 64 },
+        "stockQuantity": { "type": "number" },
+        "lowStockThreshold": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "businessId", "name", "defaultCostPrice", "defaultSellingPrice"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "Recorded transaction receipt or itemized sale",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "productId": { "type": "string", "maxLength": 128 },
+        "productName": { "type": "string", "maxLength": 128 },
+        "barcode": { "type": "string", "maxLength": 64 },
+        "quantity": { "type": "number" },
+        "sellingPrice": { "type": "number" },
+        "costPrice": { "type": "number" },
+        "revenue": { "type": "number" },
+        "cost": { "type": "number" },
+        "profit": { "type": "number" },
+        "paymentMethod": { "type": "string", "maxLength": 32 },
+        "customerName": { "type": "string", "maxLength": 128 },
+        "notes": { "type": "string", "maxLength": 512 },
+        "saleDate": { "type": "string", "maxLength": 32 },
+        "staffId": { "type": "string", "maxLength": 128 },
+        "staffName": { "type": "string", "maxLength": 128 },
+        "currency": { "type": "string", "maxLength": 8 },
+        "foreignAmount": { "type": "number" },
+        "exchangeRate": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "businessId", "productName", "quantity", "sellingPrice", "revenue", "saleDate"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Store operational expense record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "description": { "type": "string", "maxLength": 256 },
+        "amount": { "type": "number" },
+        "category": { "type": "string", "maxLength": 64 },
+        "paymentMethod": { "type": "string", "maxLength": 32 },
+        "expenseDate": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "businessId", "description", "amount", "category", "expenseDate"]
+    },
+    "Debt": {
+      "title": "Debt",
+      "description": "Customer credit / receivables record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 128 },
+        "customerPhone": { "type": "string", "maxLength": 32 },
+        "description": { "type": "string", "maxLength": 256 },
+        "totalAmount": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "remainingBalance": { "type": "number" },
+        "status": { "type": "string", "maxLength": 32 },
+        "dueDate": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "businessId", "customerName", "totalAmount", "status"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Professional customer billing invoice or quotation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "invoiceNumber": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "maxLength": 32 },
+        "customerName": { "type": "string", "maxLength": 128 },
+        "customerPhone": { "type": "string", "maxLength": 32 },
+        "customerEmail": { "type": "string", "maxLength": 128 },
+        "customerAddress": { "type": "string", "maxLength": 256 },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "taxRate": { "type": "number" },
+        "taxAmount": { "type": "number" },
+        "total": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "balanceDue": { "type": "number" },
+        "status": { "type": "string", "maxLength": 32 },
+        "issueDate": { "type": "string", "maxLength": 32 },
+        "dueDate": { "type": "string", "maxLength": 32 },
+        "notes": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "businessId", "invoiceNumber", "customerName", "total", "status", "issueDate", "dueDate"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Store customer contact directory entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "email": { "type": "string", "maxLength": 128 },
+        "address": { "type": "string", "maxLength": 256 },
+        "notes": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "businessId", "name"]
+    },
+    "Supplier": {
+      "title": "Supplier",
+      "description": "Store vendor and wholesaler directory entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "contactPerson": { "type": "string", "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "email": { "type": "string", "maxLength": 128 },
+        "marketLocation": { "type": "string", "maxLength": 128 },
+        "supplyCategory": { "type": "string", "maxLength": 128 },
+        "notes": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "businessId", "name"]
+    },
+    "Staff": {
+      "title": "Staff",
+      "description": "Shop attendant or cashier authorized on the store",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "maxLength": 32 },
+        "pin": { "type": "string", "maxLength": 8 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "businessId", "name", "role", "pin", "isActive"]
+    },
+    "BusinessTarget": {
+      "title": "BusinessTarget",
+      "description": "Monthly revenue and profit milestones",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "monthlyRevenueTarget": { "type": "number" },
+        "monthlyProfitTarget": { "type": "number" },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "businessId", "monthlyRevenueTarget", "monthlyProfitTarget"]
+    },
+    "ExchangeRateConfig": {
+      "title": "ExchangeRateConfig",
+      "description": "Exchange rates and market type settings for cross-border pricing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "businessId": { "type": "string", "maxLength": 128 },
+        "baseCurrency": { "type": "string", "maxLength": 8 },
+        "marketType": { "type": "string", "maxLength": 32 },
+        "lastUpdated": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "businessId", "baseCurrency", "marketType"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles storing merchant identity"
+    },
+    "/businesses/{businessId}": {
+      "schema": "Business",
+      "description": "Business documents storing business profile"
+    },
+    "/businesses/{businessId}/products/{productId}": {
+      "schema": "Product",
+      "description": "Products in inventory for a business"
+    },
+    "/businesses/{businessId}/sales/{saleId}": {
+      "schema": "Sale",
+      "description": "Sales records logged for a business"
+    },
+    "/businesses/{businessId}/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Operating expenses logged for a business"
+    },
+    "/businesses/{businessId}/debts/{debtId}": {
+      "schema": "Debt",
+      "description": "Customer debts / credits for a business"
+    },
+    "/businesses/{businessId}/invoices/{invoiceId}": {
+      "schema": "Invoice",
+      "description": "Invoices and quotes for a business"
+    },
+    "/businesses/{businessId}/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Customer address book for a business"
+    },
+    "/businesses/{businessId}/suppliers/{supplierId}": {
+      "schema": "Supplier",
+      "description": "Supplier directory for a business"
+    },
+    "/businesses/{businessId}/staff/{staffId}": {
+      "schema": "Staff",
+      "description": "Staff and cashiers registered for a business"
+    },
+    "/businesses/{businessId}/targets/{targetId}": {
+      "schema": "BusinessTarget",
+      "description": "Monthly targets for a business"
+    },
+    "/businesses/{businessId}/fx/{fxId}": {
+      "schema": "ExchangeRateConfig",
+      "description": "Exchange rate preferences for a business"
+    }
+  }
+}

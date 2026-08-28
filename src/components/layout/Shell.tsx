@@ -1,0 +1,87 @@
+import React from 'react';
+import { Sidebar } from './Sidebar';
+import { Header } from './Header';
+import { MobileBottomNav } from './MobileBottomNav';
+import { AppView } from '../../types';
+
+interface ShellProps {
+  children: React.ReactNode;
+  currentView: AppView;
+  onNavigate: (view: AppView) => void;
+  onOpenAddSale: () => void;
+  onOpenAddExpense: () => void;
+  onOpenPricingCalculator?: () => void;
+  onOpenProfitSimulator?: () => void;
+  onOpenGoalsModal?: () => void;
+  onOpenBackupModal?: () => void;
+  onOpenFxModal?: () => void;
+  onOpenStaffModal?: () => void;
+  businessName?: string;
+  businessType?: string;
+  currency?: string;
+  onLogout?: () => void;
+}
+
+export const Shell: React.FC<ShellProps> = ({
+  children,
+  currentView,
+  onNavigate,
+  onOpenAddSale,
+  onOpenAddExpense,
+  onOpenPricingCalculator,
+  onOpenProfitSimulator,
+  onOpenGoalsModal,
+  onOpenBackupModal,
+  onOpenFxModal,
+  onOpenStaffModal,
+  businessName,
+  businessType,
+  currency,
+  onLogout,
+}) => {
+  return (
+    <div className="min-h-screen bg-slate-50/60 flex text-slate-900 font-sans antialiased selection:bg-emerald-100 selection:text-emerald-900">
+      {/* Desktop Persistent Sidebar */}
+      <Sidebar
+        currentView={currentView}
+        onNavigate={onNavigate}
+        onOpenAddSale={onOpenAddSale}
+        onOpenAddExpense={onOpenAddExpense}
+        onOpenPricingCalculator={onOpenPricingCalculator}
+        onOpenProfitSimulator={onOpenProfitSimulator}
+        onOpenGoalsModal={onOpenGoalsModal}
+        onOpenBackupModal={onOpenBackupModal}
+        onOpenFxModal={onOpenFxModal}
+        onOpenStaffModal={onOpenStaffModal}
+        businessName={businessName}
+        businessType={businessType}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-8">
+        {/* Global App Header */}
+        <Header
+          currentView={currentView}
+          onNavigate={onNavigate}
+          businessName={businessName}
+          currency={currency}
+          onLogout={onLogout}
+          onOpenStaffModal={onOpenStaffModal}
+        />
+
+        {/* Viewport Content Container (bounded at max-w-7xl to prevent unbounded stretching on ultra-wide screens) */}
+        <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+          {children}
+        </main>
+      </div>
+
+      {/* Mobile Sticky Bottom Navigation */}
+      <MobileBottomNav
+        currentView={currentView}
+        onNavigate={onNavigate}
+        onOpenAddSale={onOpenAddSale}
+        onOpenAddExpense={onOpenAddExpense}
+      />
+    </div>
+  );
+};

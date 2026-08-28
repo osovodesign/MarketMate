@@ -1,0 +1,6 @@
+{
+  "name": "MarketMate",
+  "description": "AI-assisted business management and financial intelligence application for Nigerian micro and small-business owners.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

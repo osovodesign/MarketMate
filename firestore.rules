@@ -1,0 +1,145 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwnerOfBusiness(businessId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/businesses/$(businessId)) &&
+        get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+    }
+
+    function isValidUser(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.email is string && data.email.size() <= 256 &&
+             data.fullName is string && data.fullName.size() <= 128;
+    }
+
+    function isValidBusiness(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.ownerId is string && data.ownerId.size() <= 128 &&
+             data.businessName is string && data.businessName.size() <= 128 &&
+             data.businessType is string && data.businessType.size() <= 64 &&
+             data.currency is string && data.currency.size() <= 8;
+    }
+
+    // 2. Users Collection
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow list: if false; // Strict PII protection
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && incoming().id == existing().id;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // 3. Businesses Collection (Master Root)
+    match /businesses/{businessId} {
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(businessId) && incoming().ownerId == request.auth.uid && isValidBusiness(incoming());
+      allow update: if isSignedIn() && isValidId(businessId) && resource.data.ownerId == request.auth.uid && incoming().ownerId == existing().ownerId && isValidBusiness(incoming());
+      allow delete: if isSignedIn() && isValidId(businessId) && resource.data.ownerId == request.auth.uid;
+
+      // 4. Products Subcollection
+      match /products/{productId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId) && isValidId(productId) && incoming().businessId == businessId;
+        allow update: if isOwnerOfBusiness(businessId) && isValidId(productId) && incoming().businessId == existing().businessId;
+        allow delete: if isOwnerOfBusiness(businessId) && isValidId(productId);
+      }
+
+      // 5. Sales Subcollection
+      match /sales/{saleId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId) && isValidId(saleId) && incoming().businessId == businessId;
+        allow update: if isOwnerOfBusiness(businessId) && isValidId(saleId) && incoming().businessId == existing().businessId;
+        allow delete: if isOwnerOfBusiness(businessId) && isValidId(saleId);
+      }
+
+      // 6. Expenses Subcollection
+      match /expenses/{expenseId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId) && isValidId(expenseId) && incoming().businessId == businessId;
+        allow update: if isOwnerOfBusiness(businessId) && isValidId(expenseId) && incoming().businessId == existing().businessId;
+        allow delete: if isOwnerOfBusiness(businessId) && isValidId(expenseId);
+      }
+
+      // 7. Debts Subcollection
+      match /debts/{debtId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId) && isValidId(debtId) && incoming().businessId == businessId;
+        allow update: if isOwnerOfBusiness(businessId) && isValidId(debtId) && incoming().businessId == existing().businessId;
+        allow delete: if isOwnerOfBusiness(businessId) && isValidId(debtId);
+      }
+
+      // 8. Invoices Subcollection
+      match /invoices/{invoiceId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId) && isValidId(invoiceId) && incoming().businessId == businessId;
+        allow update: if isOwnerOfBusiness(businessId) && isValidId(invoiceId) && incoming().businessId == existing().businessId;
+        allow delete: if isOwnerOfBusiness(businessId) && isValidId(invoiceId);
+      }
+
+      // 9. Customers Subcollection
+      match /customers/{customerId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId) && isValidId(customerId) && incoming().businessId == businessId;
+        allow update: if isOwnerOfBusiness(businessId) && isValidId(customerId) && incoming().businessId == existing().businessId;
+        allow delete: if isOwnerOfBusiness(businessId) && isValidId(customerId);
+      }
+
+      // 10. Suppliers Subcollection
+      match /suppliers/{supplierId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId) && isValidId(supplierId) && incoming().businessId == businessId;
+        allow update: if isOwnerOfBusiness(businessId) && isValidId(supplierId) && incoming().businessId == existing().businessId;
+        allow delete: if isOwnerOfBusiness(businessId) && isValidId(supplierId);
+      }
+
+      // 11. Staff Subcollection
+      match /staff/{staffId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId) && isValidId(staffId) && incoming().businessId == businessId;
+        allow update: if isOwnerOfBusiness(businessId) && isValidId(staffId) && incoming().businessId == existing().businessId;
+        allow delete: if isOwnerOfBusiness(businessId) && isValidId(staffId);
+      }
+
+      // 12. Targets Subcollection
+      match /targets/{targetId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId) && isValidId(targetId) && incoming().businessId == businessId;
+        allow update: if isOwnerOfBusiness(businessId) && isValidId(targetId) && incoming().businessId == existing().businessId;
+        allow delete: if isOwnerOfBusiness(businessId) && isValidId(targetId);
+      }
+
+      // 13. FX Subcollection
+      match /fx/{fxId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId) && isValidId(fxId) && incoming().businessId == businessId;
+        allow update: if isOwnerOfBusiness(businessId) && isValidId(fxId) && incoming().businessId == existing().businessId;
+        allow delete: if isOwnerOfBusiness(businessId) && isValidId(fxId);
+      }
+    }
+  }
+}

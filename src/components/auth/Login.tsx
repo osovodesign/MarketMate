@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useAuth } from '../../context/AuthContext';
 import { MarketMateLogo } from '../common/MarketMateLogo';
+import { AuthErrorNotice } from './AuthErrorNotice';
 
 interface LoginProps {
   onSuccess: () => void;
@@ -92,11 +93,7 @@ export const Login: React.FC<LoginProps> = ({
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white dark:bg-slate-900 py-8 px-6 shadow-sm border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:px-10 transition-colors">
           <form className="space-y-4" onSubmit={handleSubmit}>
-            {error && (
-              <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium">
-                {error}
-              </div>
-            )}
+            {error && <AuthErrorNotice error={error} onClear={() => setError(null)} />}
 
             <Input
               label="Email Address"

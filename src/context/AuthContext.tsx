@@ -208,11 +208,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       setIsLoading(false);
       console.error('Google sign-in error:', error);
+      let errMsg = 'Google Sign-in failed.';
+      if (error.code === 'auth/unauthorized-domain' || error.message?.includes('unauthorized-domain')) {
+        errMsg = 'auth/unauthorized-domain';
+      } else if (error.code === 'auth/popup-closed-by-user' || error.message?.includes('popup-closed')) {
+        errMsg = 'Sign-in window was closed before completing.';
+      } else if (error.code === 'auth/popup-blocked') {
+        errMsg = 'Sign-in popup was blocked by your browser. Please allow popups for this site.';
+      } else if (error.message) {
+        errMsg = error.message;
+      }
       return {
         success: false,
-        error: error.message?.includes('popup-closed')
-          ? 'Sign-in window closed. Please try again.'
-          : error.message || 'Google Sign-in failed.',
+        error: errMsg,
       };
     }
   };

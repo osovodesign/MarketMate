@@ -274,6 +274,10 @@
     "/businesses/{businessId}/fx/{fxId}": {
       "schema": "ExchangeRateConfig",
       "description": "Exchange rate preferences for a business"
+    },
+    "/test/{testId}": {
+      "schema": "BusinessTarget",
+      "description": "Health check connection test document"
     }
   }
 }

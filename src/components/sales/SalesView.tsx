@@ -71,8 +71,8 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Sales Records</h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Sales Records</h2>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Manage your daily transactions, product margins, and customer sales.
           </p>
         </div>
@@ -89,43 +89,43 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
 
       {/* Metric Summary Cards for Filtered Results */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <Card padding="sm" className="bg-white">
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Sales</p>
-          <p className="text-lg sm:text-2xl font-extrabold text-slate-900 mt-1">
+        <Card padding="sm">
+          <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Sales</p>
+          <p className="text-lg sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
             {formatCurrency(totalRevenue, currency)}
           </p>
-          <p className="text-[10px] text-slate-500 mt-0.5">{filteredSales.length} records</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{filteredSales.length} records</p>
         </Card>
 
-        <Card padding="sm" className="bg-white">
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Product Costs</p>
-          <p className="text-lg sm:text-2xl font-extrabold text-slate-600 mt-1">
+        <Card padding="sm">
+          <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Product Costs</p>
+          <p className="text-lg sm:text-2xl font-extrabold text-slate-600 dark:text-slate-300 mt-1">
             {formatCurrency(totalCost, currency)}
           </p>
-          <p className="text-[10px] text-slate-500 mt-0.5">{totalUnits} units sold</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{totalUnits} units sold</p>
         </Card>
 
-        <Card padding="sm" className="bg-emerald-50/60 border-emerald-200">
-          <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Total Gross Profit</p>
-          <p className="text-lg sm:text-2xl font-extrabold text-emerald-800 mt-1">
+        <Card padding="sm" className="bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60">
+          <p className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Total Gross Profit</p>
+          <p className="text-lg sm:text-2xl font-extrabold text-emerald-800 dark:text-emerald-300 mt-1">
             {formatCurrency(totalProfit, currency)}
           </p>
-          <p className="text-[10px] text-emerald-700 font-semibold mt-0.5">
+          <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5">
             Margin: {totalRevenue > 0 ? formatPercent((totalProfit / totalRevenue) * 100) : '0%'}
           </p>
         </Card>
 
-        <Card padding="sm" className="bg-white">
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Avg. Sale Value</p>
-          <p className="text-lg sm:text-2xl font-extrabold text-slate-900 mt-1">
+        <Card padding="sm">
+          <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Avg. Sale Value</p>
+          <p className="text-lg sm:text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
             {formatCurrency(filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0, currency)}
           </p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Per receipt</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Per receipt</p>
         </Card>
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="w-full sm:w-80 relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -133,20 +133,20 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
             placeholder="Search by product or customer..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9.5 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
+            className="w-full pl-9.5 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-          <span className="text-xs font-semibold text-slate-500 shrink-0">Payment:</span>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Payment:</span>
           {['all', 'Transfer', 'Cash', 'POS', 'Other'].map((method) => (
             <button
               key={method}
               onClick={() => setPaymentFilter(method)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                 paymentFilter === method
-                  ? 'bg-slate-900 text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-slate-900 dark:bg-emerald-600 text-white shadow-2xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               {method === 'all' ? 'All Channels' : method}
@@ -161,7 +161,7 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4">Product / Item</th>
                   <th className="py-3 px-4 text-center">Qty</th>
@@ -173,35 +173,35 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                 {filteredSales.map((sale) => (
-                  <tr key={sale.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3 px-4 font-medium text-slate-700 whitespace-nowrap">
+                  <tr key={sale.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
                       {formatDateFriendly(sale.saleDate)}
                     </td>
                     <td className="py-3 px-4">
-                      <p className="font-bold text-slate-900">{sale.productName}</p>
+                      <p className="font-bold text-slate-900 dark:text-white">{sale.productName}</p>
                       {sale.customerName && (
-                        <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
                           <User className="w-3 h-3 text-slate-400" />
                           <span>{sale.customerName}</span>
                         </p>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-center font-bold text-slate-800">
+                    <td className="py-3 px-4 text-center font-bold text-slate-800 dark:text-slate-200">
                       {sale.quantity}
                     </td>
-                    <td className="py-3 px-4 text-right text-slate-600">
+                    <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">
                       {formatCurrency(sale.sellingPrice, currency)}
                     </td>
-                    <td className="py-3 px-4 text-right font-bold text-slate-900 whitespace-nowrap">
+                    <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-white whitespace-nowrap">
                       {formatCurrency(sale.revenue, currency)}
                     </td>
-                    <td className="py-3 px-4 text-right text-slate-500 whitespace-nowrap">
+                    <td className="py-3 px-4 text-right text-slate-500 dark:text-slate-400 whitespace-nowrap">
                       {formatCurrency(sale.cost, currency)}
                     </td>
                     <td className="py-3 px-4 text-right whitespace-nowrap">
-                      <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                      <span className="font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
                         +{formatCurrency(sale.profit, currency)}
                       </span>
                     </td>
@@ -223,7 +223,7 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
                       <div className="inline-flex items-center gap-1">
                         <button
                           onClick={() => setSelectedSaleForReceipt(sale)}
-                          className="p-1.5 text-slate-500 hover:text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors"
+                          className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/60 transition-colors"
                           title="View & Share Customer Receipt / Invoice"
                         >
                           <FileText className="w-4 h-4" />
@@ -238,7 +238,7 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
                             </button>
                             <button
                               onClick={() => setConfirmDeleteId(null)}
-                              className="px-2 py-1 bg-slate-200 text-slate-700 rounded text-[10px] hover:bg-slate-300"
+                              className="px-2 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-[10px] hover:bg-slate-300 dark:hover:bg-slate-600"
                             >
                               Cancel
                             </button>
@@ -246,7 +246,7 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
                         ) : (
                           <button
                             onClick={() => setConfirmDeleteId(sale.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
                             title="Delete record"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -261,12 +261,12 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
           </div>
         ) : (
           <div className="py-14 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
               <TrendingUp className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-800">No sales records found</p>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">No sales records found</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
                 {search || paymentFilter !== 'all'
                   ? 'Try changing your search query or payment filters.'
                   : 'Start recording your first customer sale to automatically track income and profits.'}

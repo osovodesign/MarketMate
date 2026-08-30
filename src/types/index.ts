@@ -85,6 +85,8 @@ export interface BusinessProfile {
   phone?: string;
   ownerName?: string;
   address?: string;
+  logoUrl?: string;
+  logoDarkUrl?: string;
   bankDetails?: BankDetails;
   invoiceTerms?: string;
   createdAt: string;

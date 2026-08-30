@@ -20,9 +20,11 @@ import {
   BookUser,
   Ship,
   Shield,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { AppView } from '../../types';
 import { useBusinessData } from '../../context/BusinessDataContext';
+import { MarketMateLogo } from '../common/MarketMateLogo';
 
 interface SidebarProps {
   currentView: AppView;
@@ -35,6 +37,7 @@ interface SidebarProps {
   onOpenBackupModal?: () => void;
   onOpenFxModal?: () => void;
   onOpenStaffModal?: () => void;
+  onOpenLogoExportModal?: () => void;
   businessName?: string;
   businessType?: string;
 }
@@ -50,6 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenBackupModal,
   onOpenFxModal,
   onOpenStaffModal,
+  onOpenLogoExportModal,
   businessName = 'My Business',
   businessType = 'Micro Enterprise',
 }) => {
@@ -77,126 +81,118 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 border-r border-slate-200 bg-white min-h-screen shrink-0 sticky top-0 h-screen z-30">
+    <aside className="hidden lg:flex flex-col w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 min-h-screen shrink-0 sticky top-0 h-screen z-30 transition-colors">
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+      <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
         <button
           onClick={() => onNavigate('dashboard')}
-          className="flex items-center gap-2.5 text-left focus:outline-none group"
+          className="flex items-center text-left focus:outline-none group cursor-pointer"
         >
-          <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold text-lg shadow-sm group-hover:bg-emerald-800 transition-colors">
-            M
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-slate-900 text-base tracking-tight leading-none">MarketMate</span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 leading-none">
-                V1
-              </span>
-            </div>
-            <span className="text-xs text-slate-500 font-normal leading-tight block mt-0.5">Know Your Numbers</span>
-          </div>
+          <MarketMateLogo size="md" showSubtitle={true} />
         </button>
       </div>
 
       {/* Business Switcher / Profile Badge */}
-      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 font-semibold text-xs flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-semibold text-xs flex items-center justify-center shrink-0 border border-emerald-200/60 dark:border-emerald-800/60">
             {businessName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <p className="text-xs font-semibold text-slate-900 truncate leading-tight">{businessName}</p>
+              <p className="text-xs font-semibold text-slate-900 dark:text-white truncate leading-tight">{businessName}</p>
               {isCashier && (
-                <span className="text-[9px] font-bold px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded">
+                <span className="text-[9px] font-bold px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 rounded border border-amber-200/60 dark:border-amber-800/60">
                   Cashier
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-500 truncate leading-tight">{businessType}</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate leading-tight">{businessType}</p>
           </div>
         </div>
       </div>
 
       {/* Quick Action Buttons */}
-      <div className="p-3.5 space-y-2 border-b border-slate-100">
+      <div className="p-3.5 space-y-2 border-b border-slate-100 dark:border-slate-800">
         <button
           onClick={() => onNavigate('pos')}
-          className="w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold py-2.5 px-3 rounded-lg shadow-2xs transition-colors"
+          className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-bold py-2.5 px-3 rounded-lg shadow-2xs transition-colors cursor-pointer"
         >
           <ShoppingCart className="w-4 h-4" />
           <span>Launch POS Register</span>
         </button>
-        <button
-          onClick={onOpenAddSale}
-          className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-        >
-          <PlusCircle className="w-3.5 h-3.5 text-emerald-700" />
-          <span>+ Quick Sale Entry</span>
-        </button>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={onOpenAddSale}
+            className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-semibold py-2 px-2.5 rounded-lg transition-colors cursor-pointer"
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            <span>Add Sale</span>
+          </button>
+          {!isCashier && (
+            <button
+              onClick={onOpenAddExpense}
+              className="flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-800 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/80 text-xs font-semibold py-2 px-2.5 rounded-lg transition-colors cursor-pointer"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Expense</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Navigation List */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      {/* Navigation Links */}
+      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+        <div className="px-3 pb-1.5 pt-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          Main Menu
+        </div>
         {navItems
           .filter((item) => !item.hideForCashier)
           .map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
-            const isAI = item.id === 'ai';
-            const isPOS = item.id === 'pos';
-
             return (
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-50 text-emerald-800 font-semibold shadow-2xs'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-semibold border-l-3 border-emerald-600 dark:border-emerald-500 shadow-2xs'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-700' : 'text-slate-400'}`} />
+                <div className="flex items-center gap-2.5">
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`} />
                   <span>{item.label}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  {isPOS && (
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
-                      Scan
-                    </span>
-                  )}
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span className="text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded-full font-bold">
-                      {item.badge}
-                    </span>
-                  )}
-                  {isAI && (
-                    <span className="flex items-center gap-1 text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-semibold">
-                      <Sparkles className="w-2.5 h-2.5 text-amber-600" />
-                      AI
-                    </span>
-                  )}
-                </div>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      item.id === 'debts'
+                        ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                        : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}
 
-        {/* Smart Calculators & Tools */}
-        <div className="pt-4 pb-2 px-3">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
-            Smart Financial Tools
-          </p>
+        {/* Business Tools Section */}
+        <div className="px-3 pb-1 pt-4 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          Smart Tools
         </div>
 
         {onOpenFxModal && (
           <button
             onClick={onOpenFxModal}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <Ship className="w-4 h-4 text-emerald-600" />
+              <Ship className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>FX & Landed Cost Import</span>
             </div>
           </button>
@@ -205,10 +201,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenStaffModal && (
           <button
             onClick={onOpenStaffModal}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <Shield className="w-4 h-4 text-purple-600" />
+              <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <span>Staff & Cashier PINs</span>
             </div>
           </button>
@@ -217,10 +213,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenGoalsModal && (
           <button
             onClick={onOpenGoalsModal}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <Target className="w-4 h-4 text-emerald-600" />
+              <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Financial Goals & Targets</span>
             </div>
           </button>
@@ -229,10 +225,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenPricingCalculator && (
           <button
             onClick={onOpenPricingCalculator}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <Calculator className="w-4 h-4 text-emerald-600" />
+              <Calculator className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Pricing Calculator</span>
             </div>
           </button>
@@ -241,10 +237,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenProfitSimulator && (
           <button
             onClick={onOpenProfitSimulator}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <Sliders className="w-4 h-4 text-amber-600" />
+              <Sliders className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               <span>Profit Simulator</span>
             </div>
           </button>
@@ -253,20 +249,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenBackupModal && (
           <button
             onClick={onOpenBackupModal}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <Database className="w-4 h-4 text-slate-500" />
+              <Database className="w-4 h-4 text-slate-500 dark:text-slate-400" />
               <span>Backup & Restore Vault</span>
             </div>
           </button>
         )}
       </nav>
 
-      {/* Footer Support Tagline */}
-      <div className="p-4 border-t border-slate-100 text-xs text-slate-400 text-center">
-        <p className="font-medium text-slate-500">MarketMate for Nigeria</p>
-        <p className="text-[11px] text-slate-400">Sales • Expenses • Profit</p>
+      {/* Footer Support & Brand Tray */}
+      <div className="p-3 border-t border-slate-100 bg-slate-50/50 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          {/* Export Brand Logo Trigger */}
+          {onOpenLogoExportModal && (
+            <button
+              onClick={onOpenLogoExportModal}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:text-emerald-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              title="Export & Download MarketMate Official Logos"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="text-[11px]">Brand Assets</span>
+            </button>
+          )}
+        </div>
+
+        <div className="text-center text-[10px] text-slate-400">
+          <p className="font-medium text-slate-500">MarketMate • Financial OS</p>
+        </div>
       </div>
     </aside>
   );

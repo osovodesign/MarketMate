@@ -53,6 +53,11 @@ service cloud.firestore {
       allow delete: if isSignedIn() && request.auth.uid == userId;
     }
 
+    // Health check endpoint
+    match /test/{testId} {
+      allow get: if true;
+    }
+
     // 3. Businesses Collection (Master Root)
     match /businesses/{businessId} {
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;

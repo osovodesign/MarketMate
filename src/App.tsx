@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { BusinessDataProvider, useBusinessData } from './context/BusinessDataContext';
 import { Shell } from './components/layout/Shell';
@@ -27,6 +28,7 @@ import { FinancialGoalsModal } from './components/goals/FinancialGoalsModal';
 import { BackupDataModal } from './components/backup/BackupDataModal';
 import { MultiCurrencyCalculatorModal } from './components/currency/MultiCurrencyCalculatorModal';
 import { StaffManagementModal } from './components/staff/StaffManagementModal';
+import { LogoExportModal } from './components/common/LogoExportModal';
 import { AppView } from './types';
 import { Sparkles } from 'lucide-react';
 
@@ -41,6 +43,7 @@ function AppContent() {
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isFxModalOpen, setIsFxModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  const [isLogoExportOpen, setIsLogoExportOpen] = useState(false);
 
   // If unauthenticated or navigating public auth views
   if (!isAuthenticated && currentView === 'landing') {
@@ -62,6 +65,7 @@ function AppContent() {
         onSuccess={() => setCurrentView('dashboard')}
         onNavigateToSignup={() => setCurrentView('signup')}
         onNavigateToForgotPassword={() => setCurrentView('forgot-password' as any)}
+        onExit={() => setCurrentView('landing')}
         onExploreDemo={() => {
           activateDemoMode();
           setCurrentView('dashboard');
@@ -75,6 +79,7 @@ function AppContent() {
       <Signup
         onSuccess={() => setCurrentView('onboarding')}
         onNavigateToLogin={() => setCurrentView('login')}
+        onExit={() => setCurrentView('landing')}
         onExploreDemo={() => {
           activateDemoMode();
           setCurrentView('dashboard');
@@ -87,6 +92,7 @@ function AppContent() {
     return (
       <ForgotPassword
         onBackToLogin={() => setCurrentView('login')}
+        onExit={() => setCurrentView('landing')}
       />
     );
   }
@@ -151,6 +157,7 @@ function AppContent() {
           <SettingsView
             onResetData={() => setCurrentView('dashboard')}
             onLoadDemo={() => setCurrentView('dashboard')}
+            onOpenLogoExport={() => setIsLogoExportOpen(true)}
           />
         );
       default:
@@ -179,6 +186,7 @@ function AppContent() {
       onOpenBackupModal={() => setIsBackupModalOpen(true)}
       onOpenFxModal={() => setIsFxModalOpen(true)}
       onOpenStaffModal={() => setIsStaffModalOpen(true)}
+      onOpenLogoExportModal={() => setIsLogoExportOpen(true)}
       businessName={business?.businessName}
       businessType={business?.businessType}
       currency={currency}
@@ -189,9 +197,9 @@ function AppContent() {
     >
       {/* Demo Mode Notice Banner */}
       {isDemoMode && (
-        <div className="mb-5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between shadow-2xs">
+        <div className="mb-5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between shadow-2xs">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+            <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <span>
               <strong>Demo Mode:</strong> Exploring with sample data for <em>{business?.businessName}</em>.
             </span>
@@ -201,7 +209,7 @@ function AppContent() {
               logout();
               setCurrentView('signup');
             }}
-            className="text-amber-800 underline font-bold text-xs ml-2 hover:text-amber-950"
+            className="text-amber-800 dark:text-amber-300 underline font-bold text-xs ml-2 hover:text-amber-950 dark:hover:text-amber-100 cursor-pointer"
           >
             Create Your Real Business
           </button>
@@ -244,16 +252,23 @@ function AppContent() {
         isOpen={isStaffModalOpen}
         onClose={() => setIsStaffModalOpen(false)}
       />
+      <LogoExportModal
+        isOpen={isLogoExportOpen}
+        onClose={() => setIsLogoExportOpen(false)}
+      />
     </Shell>
   );
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BusinessDataProvider>
-        <AppContent />
-      </BusinessDataProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BusinessDataProvider>
+          <AppContent />
+        </BusinessDataProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
+

@@ -104,11 +104,13 @@ export async function testFirestoreConnection(): Promise<boolean> {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     return true;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firestore notice: Client is offline or establishing connection.');
+  } catch (error: any) {
+    if (
+      error?.code === 'unavailable' ||
+      (error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('unavailable')))
+    ) {
+      console.info('Firestore: Background client initialized in offline-first mode.');
     }
-    // Expected during initial boot if test doc doesn't exist
     return false;
   }
 }

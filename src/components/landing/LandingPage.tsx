@@ -12,6 +12,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { MarketMateLogo } from '../common/MarketMateLogo';
 
 interface LandingPageProps {
   onStartFree: () => void;
@@ -29,17 +30,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* Navigation Header */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold text-lg shadow-xs">
-              M
-            </div>
-            <span className="font-bold text-slate-900 text-lg tracking-tight">MarketMate</span>
+          <div className="flex items-center">
+            <MarketMateLogo size="md" showSubtitle={true} />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={onLogin}
-              className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-3 py-2 transition-colors"
+              className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-3 py-2 transition-colors cursor-pointer"
             >
               Log In
             </button>
@@ -310,13 +308,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* Footer */}
-      <footer className="py-8 bg-white border-t border-slate-100 text-xs text-slate-500">
+      <footer className="py-8 bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-emerald-700 text-white font-bold text-xs flex items-center justify-center">
-              M
-            </div>
-            <span className="font-bold text-slate-800">MarketMate</span>
+          <div className="flex items-center gap-3">
+            <MarketMateLogo size="sm" />
             <span>— Know Your Numbers. Grow Your Business.</span>
           </div>
           <p>© 2026 MarketMate. Built for Nigerian Micro and Small Businesses.</p>
@@ -325,3 +320,4 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     </div>
   );
 };
+

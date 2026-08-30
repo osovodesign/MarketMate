@@ -34,6 +34,21 @@ const PROMPT_CHIPS = [
   { label: '💬 WhatsApp Follow-up Message', prompt: 'Draft a polite WhatsApp message to send to a customer who asked for a price quote but has not paid yet.' },
 ];
 
+// Helper to render bold text and bullet points cleanly
+const renderFormattedLine = (line: string, isUser: boolean) => {
+  const parts = line.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={i} className={isUser ? 'font-bold text-white' : 'font-bold text-slate-900'}>
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
+
 export const AIAssistantView: React.FC = () => {
   const { business } = useAuth();
   const { metrics, sales, expenses } = useBusinessData();
@@ -101,6 +116,7 @@ export const AIAssistantView: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: query,
+          history: messages.slice(-6).map((m) => ({ sender: m.sender, text: m.text })),
           businessContext,
         }),
       });
@@ -212,14 +228,14 @@ export const AIAssistantView: React.FC = () => {
                   }`}
                 >
                   {/* Formatted Text rendering with basic markdown bold & bullet points */}
-                  <div className="whitespace-pre-line space-y-2">
+                  <div className="space-y-2">
                     {msg.text.split('\n\n').map((paragraph, pIdx) => (
-                      <p key={pIdx}>
+                      <p key={pIdx} className="leading-relaxed">
                         {paragraph.split('\n').map((line, lIdx) => {
-                          const isBullet = line.trim().startsWith('-') || line.trim().startsWith('•') || /^\d+\./.test(line.trim());
+                          const isBullet = line.trim().startsWith('-') || line.trim().startsWith('•') || line.trim().startsWith('*') || /^\d+\./.test(line.trim());
                           return (
-                            <span key={lIdx} className={isBullet ? 'block pl-2 py-0.5' : 'block'}>
-                              {line}
+                            <span key={lIdx} className={isBullet ? 'block pl-2.5 py-0.5' : 'block'}>
+                              {renderFormattedLine(line, isUser)}
                             </span>
                           );
                         })}

@@ -16,6 +16,7 @@ interface ShellProps {
   onOpenBackupModal?: () => void;
   onOpenFxModal?: () => void;
   onOpenStaffModal?: () => void;
+  onOpenLogoExportModal?: () => void;
   businessName?: string;
   businessType?: string;
   currency?: string;
@@ -34,13 +35,14 @@ export const Shell: React.FC<ShellProps> = ({
   onOpenBackupModal,
   onOpenFxModal,
   onOpenStaffModal,
+  onOpenLogoExportModal,
   businessName,
   businessType,
   currency,
   onLogout,
 }) => {
   return (
-    <div className="min-h-screen bg-slate-50/60 flex text-slate-900 font-sans antialiased selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f17] flex text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-emerald-100 selection:text-emerald-900 transition-colors">
       {/* Desktop Persistent Sidebar */}
       <Sidebar
         currentView={currentView}
@@ -53,6 +55,7 @@ export const Shell: React.FC<ShellProps> = ({
         onOpenBackupModal={onOpenBackupModal}
         onOpenFxModal={onOpenFxModal}
         onOpenStaffModal={onOpenStaffModal}
+        onOpenLogoExportModal={onOpenLogoExportModal}
         businessName={businessName}
         businessType={businessType}
       />
@@ -67,9 +70,10 @@ export const Shell: React.FC<ShellProps> = ({
           currency={currency}
           onLogout={onLogout}
           onOpenStaffModal={onOpenStaffModal}
+          onOpenLogoExportModal={onOpenLogoExportModal}
         />
 
-        {/* Viewport Content Container (bounded at max-w-7xl to prevent unbounded stretching on ultra-wide screens) */}
+        {/* Viewport Content Container */}
         <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           {children}
         </main>

@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -188,13 +188,25 @@ Current Business Profile & Grounded Financial Summary:
 - Operating Expense Categories: ${JSON.stringify(businessContext?.metrics?.expenseCategoryBreakdown || [])}
 `;
 
-      const promptContent = `User query: ${message}\n\nPlease respond based on my actual store metrics above.`;
+      let historyContext = '';
+      if (Array.isArray(history) && history.length > 0) {
+        historyContext = 'Recent conversation context:\n' +
+          history.slice(-4).map((h: any) => `${h.sender === 'user' ? 'Merchant' : 'MarketMate AI'}: ${h.text}`).join('\n') + '\n\n';
+      }
 
-      // Try primary model: gemini-3.7-flash
+      const promptContent = `${historyContext}User query: ${message}\n\nPlease respond based on my actual store metrics and guidelines above.`;
+
+      // Resilient model cascade:
+      // 1. gemini-2.5-flash (ultra-fast, highly responsive, ~1s latency)
+      // 2. gemini-3.7-flash (with ThinkingLevel.LOW)
+      // 3. gemini-3.1-flash-lite
+      // 4. Grounded fallback advisor
       let generatedText: string | undefined;
+
+      // Tier 1: gemini-2.5-flash
       try {
         const response = await ai.models.generateContent({
-          model: 'gemini-3.7-flash',
+          model: 'gemini-2.5-flash',
           contents: promptContent,
           config: {
             systemInstruction,
@@ -202,22 +214,37 @@ Current Business Profile & Grounded Financial Summary:
           },
         });
         generatedText = response.text;
-      } catch (primaryErr: any) {
-        console.warn('Gemini 3.7 Flash temporary issue, attempting fallback model (gemini-3.1-flash-lite):', primaryErr?.message || primaryErr);
-        // Attempt secondary fast model if primary encounters high demand (503/429)
+      } catch (err25: any) {
+        console.warn('Gemini 2.5 Flash temporary issue, falling back to gemini-3.7-flash:', err25?.message || err25);
+        // Tier 2: gemini-3.7-flash
         try {
-          const fallbackResponse = await ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite',
+          const response37 = await ai.models.generateContent({
+            model: 'gemini-3.7-flash',
             contents: promptContent,
             config: {
               systemInstruction,
               temperature: 0.7,
+              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
             },
           });
-          generatedText = fallbackResponse.text;
-        } catch (secondaryErr: any) {
-          console.warn('Both Gemini models temporarily busy or unavailable. Generating grounded business intelligence response:', secondaryErr?.message || secondaryErr);
-          generatedText = generateGroundedFallbackAdvice(message, businessContext);
+          generatedText = response37.text;
+        } catch (err37: any) {
+          console.warn('Gemini 3.7 Flash temporary issue, falling back to gemini-3.1-flash-lite:', err37?.message || err37);
+          // Tier 3: gemini-3.1-flash-lite
+          try {
+            const responseLite = await ai.models.generateContent({
+              model: 'gemini-3.1-flash-lite',
+              contents: promptContent,
+              config: {
+                systemInstruction,
+                temperature: 0.7,
+              },
+            });
+            generatedText = responseLite.text;
+          } catch (errLite: any) {
+            console.warn('All Gemini models encountered high demand. Using grounded business intelligence response:', errLite?.message || errLite);
+            generatedText = generateGroundedFallbackAdvice(message, businessContext);
+          }
         }
       }
 
@@ -228,7 +255,6 @@ Current Business Profile & Grounded Financial Summary:
       res.json({ reply: generatedText });
     } catch (err: any) {
       console.error('Unhandled AI chat route error:', err);
-      // Even in unhandled errors, never fail the client: deliver grounded analysis
       const fallback = generateGroundedFallbackAdvice(req.body?.message || '', req.body?.businessContext);
       res.json({ reply: fallback });
     }

@@ -24,10 +24,19 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwnerOfBusiness(businessId) {
+    function isSuperAdmin() {
       return isSignedIn() &&
-        exists(/databases/$(database)/documents/businesses/$(businessId)) &&
-        get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid;
+        request.auth.token.email != null &&
+        request.auth.token.email.lower() == 'osovoyoronogheneovo@gmail.com';
+    }
+
+    function isOwnerOfBusiness(businessId) {
+      return isSignedIn() && (
+        isSuperAdmin() || (
+          exists(/databases/$(database)/documents/businesses/$(businessId)) &&
+          get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid
+        )
+      );
     }
 
     function isValidUser(data) {
@@ -58,13 +67,20 @@ service cloud.firestore {
       allow get: if true;
     }
 
+    // Platform Announcements & Broadcast Messages
+    match /platform_announcements/{messageId} {
+      allow get, list: if isSignedIn();
+      allow create, delete: if isSuperAdmin();
+      allow update: if isSuperAdmin() || isSignedIn();
+    }
+
     // 3. Businesses Collection (Master Root)
     match /businesses/{businessId} {
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && (isSuperAdmin() || resource.data.ownerId == request.auth.uid);
+      allow list: if isSignedIn() && (isSuperAdmin() || resource.data.ownerId == request.auth.uid);
       allow create: if isSignedIn() && isValidId(businessId) && incoming().ownerId == request.auth.uid && isValidBusiness(incoming());
-      allow update: if isSignedIn() && isValidId(businessId) && resource.data.ownerId == request.auth.uid && incoming().ownerId == existing().ownerId && isValidBusiness(incoming());
-      allow delete: if isSignedIn() && isValidId(businessId) && resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(businessId) && (isSuperAdmin() || resource.data.ownerId == request.auth.uid) && incoming().ownerId == existing().ownerId && isValidBusiness(incoming());
+      allow delete: if isSignedIn() && isValidId(businessId) && (isSuperAdmin() || resource.data.ownerId == request.auth.uid);
 
       // 4. Products Subcollection
       match /products/{productId} {

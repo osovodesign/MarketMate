@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { AppView } from '../../types';
 import { useBusinessData } from '../../context/BusinessDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 
 interface SidebarProps {
@@ -58,6 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   businessType = 'Micro Enterprise',
 }) => {
   const { debts, invoices, currentSession, staffList } = useBusinessData();
+  const { user, isSuperAdmin } = useAuth();
   const activeDebtorsCount = debts.filter((d) => d.status !== 'settled').length;
   const unpaidInvoicesCount = invoices.filter(
     (i) => i.type === 'invoice' && i.status !== 'paid' && i.status !== 'draft'
@@ -256,6 +258,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>Backup & Restore Vault</span>
             </div>
           </button>
+        )}
+
+        {/* Super Admin Owner Link */}
+        {(isSuperAdmin || user?.email === 'osovoyoronogheneovo@gmail.com') && (
+          <div className="pt-2">
+            <button
+              onClick={() => onNavigate('admin')}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                currentView === 'admin'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Owner Admin Portal</span>
+              </div>
+              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100">
+                Owner
+              </span>
+            </button>
+          </div>
         )}
       </nav>
 

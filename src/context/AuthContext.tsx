@@ -23,12 +23,15 @@ import {
   OperationType,
 } from '../lib/firebase';
 
+import { isSuperAdminEmail, SUPER_ADMIN_CONFIG } from '../lib/adminConfig';
+
 export interface UserSession {
   id: string;
   email: string;
   fullName: string;
   photoURL?: string;
   isAnonymous?: boolean;
+  isSuperAdmin?: boolean;
 }
 
 interface AuthContextType {
@@ -39,8 +42,9 @@ interface AuthContextType {
   isDemoMode: boolean;
   isLoading: boolean;
   isCloudConnected: boolean;
+  isSuperAdmin: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
   signup: (fullName: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   createBusiness: (data: {
@@ -98,11 +102,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        const isSuper = isSuperAdminEmail(firebaseUser.email);
         const userObj: UserSession = {
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
-          fullName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Merchant',
+          fullName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || (isSuper ? 'App Owner (Admin)' : 'Merchant'),
           photoURL: firebaseUser.photoURL || undefined,
+          isSuperAdmin: isSuper,
         };
 
         setUser(userObj);
@@ -172,16 +178,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
-  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
+  const loginWithGoogle = async (): Promise<{ success: boolean; cancelled?: boolean; error?: string }> => {
     setIsLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const fbUser = result.user;
+      const isSuper = isSuperAdminEmail(fbUser.email);
       const userObj: UserSession = {
         id: fbUser.uid,
         email: fbUser.email || '',
-        fullName: fbUser.displayName || 'Merchant',
+        fullName: fbUser.displayName || (isSuper ? 'App Owner (Admin)' : 'Merchant'),
         photoURL: fbUser.photoURL || undefined,
+        isSuperAdmin: isSuper,
       };
 
       // Save user doc in Firestore
@@ -207,12 +215,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true };
     } catch (error: any) {
       setIsLoading(false);
-      console.error('Google sign-in error:', error);
+      
+      // User closed the popup window voluntarily or clicked outside
+      if (
+        error.code === 'auth/popup-closed-by-user' ||
+        error.code === 'auth/cancelled-popup-request' ||
+        error.message?.includes('popup-closed')
+      ) {
+        return {
+          success: false,
+          cancelled: true,
+        };
+      }
+
+      console.warn('Google sign-in exception:', error.code || error.message);
       let errMsg = 'Google Sign-in failed.';
       if (error.code === 'auth/unauthorized-domain' || error.message?.includes('unauthorized-domain')) {
         errMsg = 'auth/unauthorized-domain';
-      } else if (error.code === 'auth/popup-closed-by-user' || error.message?.includes('popup-closed')) {
-        errMsg = 'Sign-in window was closed before completing.';
       } else if (error.code === 'auth/popup-blocked') {
         errMsg = 'Sign-in popup was blocked by your browser. Please allow popups for this site.';
       } else if (error.message) {
@@ -230,10 +249,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       const fbUser = cred.user;
+      const isSuper = isSuperAdminEmail(fbUser.email || email);
       const userObj: UserSession = {
         id: fbUser.uid,
         email: fbUser.email || email,
         fullName: fbUser.displayName || email.split('@')[0],
+        isSuperAdmin: isSuper,
       };
       setUser(userObj);
       setIsDemoMode(false);
@@ -420,6 +441,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isAuthenticated = !!user;
   const isOnboarded = !!business;
+  const isSuperAdmin = !!user?.isSuperAdmin || isSuperAdminEmail(user?.email);
 
   return (
     <AuthContext.Provider
@@ -431,6 +453,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isDemoMode,
         isLoading,
         isCloudConnected,
+        isSuperAdmin,
         login,
         loginWithGoogle,
         signup,

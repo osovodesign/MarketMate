@@ -18,6 +18,7 @@ import { AppView } from '../../types';
 import { useBusinessData } from '../../context/BusinessDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { MarketMateLogo } from '../common/MarketMateLogo';
+import { useNotifications } from '../../context/NotificationContext';
 
 interface HeaderProps {
   currentView: AppView;
@@ -27,6 +28,7 @@ interface HeaderProps {
   onLogout?: () => void;
   onOpenStaffModal?: () => void;
   onOpenLogoExportModal?: () => void;
+  onOpenNotificationDrawer?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,9 +39,11 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenStaffModal,
   onOpenLogoExportModal,
+  onOpenNotificationDrawer,
 }) => {
   const { currentSession, isCloudSyncing } = useBusinessData();
   const { isDemoMode, user } = useAuth();
+  const { unreadCount } = useNotifications();
   const isCashier = currentSession?.currentRole === 'cashier';
 
   const titles: Record<AppView, { title: string; subtitle: string }> = {
@@ -59,6 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
     reports: { title: 'Financial Reports', subtitle: 'Detailed breakdown, profit trends & margins' },
     ai: { title: 'MarketMate AI Advisor', subtitle: 'Ask questions about your business numbers' },
     settings: { title: 'Settings & Profile', subtitle: 'Manage business details and preferences' },
+    admin: { title: 'Super Admin Portal', subtitle: 'Owner command center, registered merchants & platform health' },
   };
 
   const viewMeta = titles[currentView] || { title: 'Dashboard', subtitle: '' };
@@ -134,6 +139,37 @@ export const Header: React.FC<HeaderProps> = ({
             <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
             <span className="hidden sm:inline">Ask AI</span>
             <span className="sm:hidden">AI</span>
+          </button>
+        )}
+
+        {/* Super Admin Owner Quick Access */}
+        {(user?.isSuperAdmin || user?.email === 'osovoyoronogheneovo@gmail.com') && (
+          <button
+            onClick={() => onNavigate('admin')}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              currentView === 'admin'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/10'
+            }`}
+            title="Owner & Super Admin Portal"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Admin</span>
+          </button>
+        )}
+
+        {/* Notifications & Announcements Bell */}
+        {onOpenNotificationDrawer && (
+          <button
+            onClick={onOpenNotificationDrawer}
+            className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer relative"
+            title="Notifications & Announcements"
+            aria-label="Notifications"
+          >
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-600 ring-2 ring-white dark:ring-slate-900" />
+            )}
           </button>
         )}
 

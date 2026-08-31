@@ -224,9 +224,35 @@
         "lastUpdated": { "type": "string", "maxLength": 64 }
       },
       "required": ["id", "businessId", "baseCurrency", "marketType"]
+    },
+    "PlatformAnnouncement": {
+      "title": "PlatformAnnouncement",
+      "description": "Broadcast and direct messages sent by the platform admin to merchants",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "content": { "type": "string", "maxLength": 5000 },
+        "type": { "type": "string", "maxLength": 32 },
+        "targetBusinessId": { "type": "string", "maxLength": 128 },
+        "targetBusinessName": { "type": "string", "maxLength": 128 },
+        "targetEmail": { "type": "string", "maxLength": 256 },
+        "channel": { "type": "string", "maxLength": 32 },
+        "priority": { "type": "string", "maxLength": 32 },
+        "senderEmail": { "type": "string", "maxLength": 256 },
+        "senderName": { "type": "string", "maxLength": 128 },
+        "actionUrl": { "type": "string", "maxLength": 512 },
+        "actionLabel": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "title", "content", "type", "channel", "priority", "senderEmail", "createdAt"]
     }
   },
   "firestore": {
+    "/platform_announcements/{messageId}": {
+      "schema": "PlatformAnnouncement",
+      "description": "Broadcasts and direct messages from platform owner to merchants"
+    },
     "/users/{userId}": {
       "schema": "User",
       "description": "User profiles storing merchant identity"

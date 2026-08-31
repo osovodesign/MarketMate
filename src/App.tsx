@@ -17,6 +17,7 @@ import { ReportsView } from './components/reports/ReportsView';
 import { ProductsView } from './components/products/ProductsView';
 import { AIAssistantView } from './components/ai/AIAssistantView';
 import { SettingsView } from './components/settings/SettingsView';
+import { AdminPortalView } from './components/admin/AdminPortalView';
 import { InvoicesView } from './components/invoices/InvoicesView';
 import { ContactsView } from './components/contacts/ContactsView';
 import { RecordSaleModal } from './components/sales/RecordSaleModal';
@@ -29,6 +30,8 @@ import { BackupDataModal } from './components/backup/BackupDataModal';
 import { MultiCurrencyCalculatorModal } from './components/currency/MultiCurrencyCalculatorModal';
 import { StaffManagementModal } from './components/staff/StaffManagementModal';
 import { LogoExportModal } from './components/common/LogoExportModal';
+import { NotificationDrawer } from './components/notifications/NotificationDrawer';
+import { NotificationProvider } from './context/NotificationContext';
 import { AppView } from './types';
 import { Sparkles } from 'lucide-react';
 
@@ -44,6 +47,7 @@ function AppContent() {
   const [isFxModalOpen, setIsFxModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [isLogoExportOpen, setIsLogoExportOpen] = useState(false);
+  const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
 
   // If unauthenticated or navigating public auth views
   if (!isAuthenticated && currentView === 'landing') {
@@ -160,6 +164,8 @@ function AppContent() {
             onOpenLogoExport={() => setIsLogoExportOpen(true)}
           />
         );
+      case 'admin':
+        return <AdminPortalView />;
       default:
         return (
           <DashboardView
@@ -187,6 +193,7 @@ function AppContent() {
       onOpenFxModal={() => setIsFxModalOpen(true)}
       onOpenStaffModal={() => setIsStaffModalOpen(true)}
       onOpenLogoExportModal={() => setIsLogoExportOpen(true)}
+      onOpenNotificationDrawer={() => setIsNotificationDrawerOpen(true)}
       businessName={business?.businessName}
       businessType={business?.businessType}
       currency={currency}
@@ -219,7 +226,12 @@ function AppContent() {
       {/* Render Current View */}
       {renderActiveView()}
 
-      {/* Persistent Global Modals */}
+      {/* Persistent Global Modals & Drawers */}
+      <NotificationDrawer
+        isOpen={isNotificationDrawerOpen}
+        onClose={() => setIsNotificationDrawerOpen(false)}
+        onNavigate={(view) => setCurrentView(view)}
+      />
       <RecordSaleModal
         isOpen={isAddSaleOpen}
         onClose={() => setIsAddSaleOpen(false)}
@@ -265,10 +277,13 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BusinessDataProvider>
-          <AppContent />
+          <NotificationProvider>
+            <AppContent />
+          </NotificationProvider>
         </BusinessDataProvider>
       </AuthProvider>
     </ThemeProvider>
   );
 }
+
 

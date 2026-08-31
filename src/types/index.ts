@@ -304,6 +304,29 @@ export interface Supplier {
   createdAt: string;
 }
 
+export type MessageTargetType = 'broadcast' | 'direct';
+export type MessageChannel = 'in_app' | 'email' | 'both';
+export type MessagePriority = 'normal' | 'important' | 'urgent';
+
+export interface PlatformAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  type: MessageTargetType; // 'broadcast' for all, 'direct' for single merchant
+  targetBusinessId?: string; // specific business ID if direct
+  targetBusinessName?: string;
+  targetEmail?: string;
+  channel: MessageChannel;
+  priority: MessagePriority;
+  senderEmail: string;
+  senderName: string;
+  actionUrl?: string;
+  actionLabel?: string;
+  createdAt: string;
+  readBy?: string[]; // Array of business IDs or user IDs that have read it
+  emailSentCount?: number;
+}
+
 export type AppView =
   | 'landing'
   | 'login'
@@ -320,5 +343,7 @@ export type AppView =
   | 'transactions'
   | 'reports'
   | 'ai'
-  | 'settings';
+  | 'settings'
+  | 'admin';
+
 

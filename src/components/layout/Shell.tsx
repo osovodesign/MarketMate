@@ -2,6 +2,7 @@ import React from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { MobileBottomNav } from './MobileBottomNav';
+import { AnnouncementBanner } from '../notifications/AnnouncementBanner';
 import { AppView } from '../../types';
 
 interface ShellProps {
@@ -17,6 +18,7 @@ interface ShellProps {
   onOpenFxModal?: () => void;
   onOpenStaffModal?: () => void;
   onOpenLogoExportModal?: () => void;
+  onOpenNotificationDrawer?: () => void;
   businessName?: string;
   businessType?: string;
   currency?: string;
@@ -36,6 +38,7 @@ export const Shell: React.FC<ShellProps> = ({
   onOpenFxModal,
   onOpenStaffModal,
   onOpenLogoExportModal,
+  onOpenNotificationDrawer,
   businessName,
   businessType,
   currency,
@@ -62,6 +65,9 @@ export const Shell: React.FC<ShellProps> = ({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-8">
+        {/* Urgent/Important Announcement Banner */}
+        <AnnouncementBanner onNavigate={onNavigate} />
+
         {/* Global App Header */}
         <Header
           currentView={currentView}
@@ -71,6 +77,7 @@ export const Shell: React.FC<ShellProps> = ({
           onLogout={onLogout}
           onOpenStaffModal={onOpenStaffModal}
           onOpenLogoExportModal={onOpenLogoExportModal}
+          onOpenNotificationDrawer={onOpenNotificationDrawer}
         />
 
         {/* Viewport Content Container */}
@@ -89,3 +96,4 @@ export const Shell: React.FC<ShellProps> = ({
     </div>
   );
 };
+

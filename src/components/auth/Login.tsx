@@ -43,7 +43,7 @@ export const Login: React.FC<LoginProps> = ({
     const res = await loginWithGoogle();
     if (res.success) {
       onSuccess();
-    } else {
+    } else if (!res.cancelled) {
       setError(res.error || 'Google sign-in failed.');
     }
   };

@@ -92,6 +92,7 @@ export const Shell: React.FC<ShellProps> = ({
         onNavigate={onNavigate}
         onOpenAddSale={onOpenAddSale}
         onOpenAddExpense={onOpenAddExpense}
+        onLogout={onLogout}
       />
     </div>
   );

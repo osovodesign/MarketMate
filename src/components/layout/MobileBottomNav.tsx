@@ -10,6 +10,8 @@ import {
   ArrowLeftRight,
   FileText,
   BookUser,
+  Settings,
+  LogOut,
 } from 'lucide-react';
 import { AppView } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -19,6 +21,7 @@ interface MobileBottomNavProps {
   onNavigate: (view: AppView) => void;
   onOpenAddSale: () => void;
   onOpenAddExpense: () => void;
+  onLogout?: () => void;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
@@ -26,6 +29,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onNavigate,
   onOpenAddSale,
   onOpenAddExpense,
+  onLogout,
 }) => {
   const [showQuickMenu, setShowQuickMenu] = useState(false);
 
@@ -65,7 +69,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   setShowQuickMenu(false);
                   onNavigate('pos');
                 }}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 transition-colors shadow-xs"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 transition-colors shadow-xs cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-emerald-800 text-white flex items-center justify-center">
@@ -84,7 +88,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   setShowQuickMenu(false);
                   onOpenAddSale();
                 }}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200/60 dark:border-emerald-800/60 transition-colors"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200/60 dark:border-emerald-800/60 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center">
@@ -103,7 +107,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   setShowQuickMenu(false);
                   onOpenAddExpense();
                 }}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200/60 dark:border-rose-800/60 transition-colors"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200/60 dark:border-rose-800/60 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-rose-700 text-white flex items-center justify-center">
@@ -116,6 +120,33 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 </div>
                 <span className="text-xs font-semibold text-rose-800 dark:text-rose-300 bg-white dark:bg-slate-800 px-2 py-1 rounded shadow-2xs">+ Cost</span>
               </button>
+
+              {/* Settings & Sign Out in Quick Menu */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 mt-1">
+                <button
+                  onClick={() => {
+                    setShowQuickMenu(false);
+                    onNavigate('settings');
+                  }}
+                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>Settings</span>
+                </button>
+
+                {onLogout && (
+                  <button
+                    onClick={() => {
+                      setShowQuickMenu(false);
+                      onLogout();
+                    }}
+                    className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/70 dark:hover:bg-rose-900/70 text-rose-700 dark:text-rose-300 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                )}
+              </div>
             </motion.div>
           </div>
         )}
@@ -185,3 +216,4 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     </>
   );
 };
+

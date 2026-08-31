@@ -117,6 +117,24 @@ export async function testFirestoreConnection(): Promise<boolean> {
   }
 }
 
+/**
+ * Recursively removes any undefined keys so Firestore doesn't reject write payloads
+ */
+export function cleanFirestoreData<T extends Record<string, any>>(obj: T): Partial<T> {
+  const result: any = Array.isArray(obj) ? [] : {};
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (val !== undefined) {
+      if (val !== null && typeof val === 'object' && !(val instanceof Date) && !(val instanceof Timestamp)) {
+        result[key] = cleanFirestoreData(val);
+      } else {
+        result[key] = val;
+      }
+    }
+  }
+  return result;
+}
+
 export {
   signInWithPopup,
   signInWithEmailAndPassword,

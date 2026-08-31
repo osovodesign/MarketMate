@@ -12,6 +12,7 @@ import {
   query,
   orderBy,
   arrayUnion,
+  cleanFirestoreData,
   handleFirestoreError,
   OperationType,
 } from '../lib/firebase';
@@ -231,29 +232,63 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   }): Promise<{ success: boolean; id?: string; error?: string }> => {
     try {
       const id = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-      const newDoc: PlatformAnnouncement = {
+      
+      const payload: Record<string, any> = {
         id,
         title: data.title.trim(),
         content: data.content.trim(),
         type: data.type,
-        targetBusinessId: data.targetBusinessId || undefined,
-        targetBusinessName: data.targetBusinessName || undefined,
-        targetEmail: data.targetEmail ? data.targetEmail.trim() : undefined,
         channel: data.channel,
         priority: data.priority,
         senderEmail: user?.email || SUPER_ADMIN_CONFIG.email,
         senderName: user?.fullName || 'MarketMate Admin',
-        actionUrl: data.actionUrl?.trim() || undefined,
-        actionLabel: data.actionLabel?.trim() || undefined,
         createdAt: new Date().toISOString(),
         readBy: [],
         emailSentCount: data.channel === 'email' || data.channel === 'both' ? 1 : 0,
       };
 
+      if (data.targetBusinessId?.trim()) {
+        payload.targetBusinessId = data.targetBusinessId.trim();
+      }
+      if (data.targetBusinessName?.trim()) {
+        payload.targetBusinessName = data.targetBusinessName.trim();
+      }
+      if (data.targetEmail?.trim()) {
+        payload.targetEmail = data.targetEmail.trim();
+      }
+      if (data.actionUrl?.trim()) {
+        payload.actionUrl = data.actionUrl.trim();
+      }
+      if (data.actionLabel?.trim()) {
+        payload.actionLabel = data.actionLabel.trim();
+      }
+
+      // Ensure no undefined or invalid fields are passed to Firestore
+      const firestoreData = cleanFirestoreData(payload);
+
       const docRef = doc(db, 'platform_announcements', id);
-      await setDoc(docRef, newDoc);
+      await setDoc(docRef, firestoreData);
 
       // Local state update
+      const newDoc: PlatformAnnouncement = {
+        id,
+        title: payload.title,
+        content: payload.content,
+        type: payload.type,
+        targetBusinessId: payload.targetBusinessId,
+        targetBusinessName: payload.targetBusinessName,
+        targetEmail: payload.targetEmail,
+        channel: payload.channel,
+        priority: payload.priority,
+        senderEmail: payload.senderEmail,
+        senderName: payload.senderName,
+        actionUrl: payload.actionUrl,
+        actionLabel: payload.actionLabel,
+        createdAt: payload.createdAt,
+        readBy: [],
+        emailSentCount: payload.emailSentCount,
+      };
+
       setAllAnnouncements((prev) => [newDoc, ...prev]);
 
       return { success: true, id };

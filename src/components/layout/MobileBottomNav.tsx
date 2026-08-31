@@ -42,7 +42,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {/* Quick Action Floating Menu Backdrop */}
       <AnimatePresence>
         {showQuickMenu && (
-          <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="fixed inset-0 z-50 lg:hidden">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -54,7 +54,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="absolute bottom-20 left-4 right-4 bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-xl border border-slate-200 dark:border-slate-800 z-50 flex flex-col gap-2 max-h-[80vh] overflow-y-auto"
+              className="absolute bottom-22 left-4 right-4 bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-xl border border-slate-200 dark:border-slate-800 z-50 flex flex-col gap-2 max-h-[80vh] overflow-y-auto"
             >
               <div className="text-center pb-1">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Quick Actions & Hub</span>

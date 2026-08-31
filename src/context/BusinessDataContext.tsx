@@ -48,6 +48,7 @@ import {
   deleteDoc,
   onSnapshot,
   writeBatch,
+  cleanFirestoreData,
   handleFirestoreError,
   OperationType,
 } from '../lib/firebase';
@@ -941,13 +942,13 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
     saveLocal(storageKeyTargets, newTargets);
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'targets', 'monthly'), {
+        await setDoc(doc(db, 'businesses', business.id, 'targets', 'monthly'), cleanFirestoreData({
           id: 'monthly',
           businessId: business.id,
           monthlyRevenueTarget: newTargets.monthlyRevenueTarget,
           monthlyProfitTarget: newTargets.monthlyProfitTarget,
           updatedAt: new Date().toISOString(),
-        });
+        }));
       } catch (e) {
         console.warn('Target cloud write fallback:', e);
       }
@@ -964,14 +965,14 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
     saveLocal(storageKeyFx, newFx);
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'fx', 'config'), {
+        await setDoc(doc(db, 'businesses', business.id, 'fx', 'config'), cleanFirestoreData({
           id: 'config',
           businessId: business.id,
           baseCurrency: newFx.baseCurrency,
           marketType: newFx.marketType,
           rates: newFx.rates,
           lastUpdated: newFx.lastUpdated,
-        });
+        }));
       } catch (e) {
         console.warn('FX cloud write fallback:', e);
       }
@@ -1019,7 +1020,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'staff', staffId), newStaff);
+        await setDoc(doc(db, 'businesses', business.id, 'staff', staffId), cleanFirestoreData(newStaff));
       } catch (err) {
         console.warn('Cloud staff save notice:', err);
       }
@@ -1041,7 +1042,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'staff', staffId), updatedMember, { merge: true });
+        await setDoc(doc(db, 'businesses', business.id, 'staff', staffId), cleanFirestoreData(updatedMember), { merge: true });
       } catch (err) {
         console.warn('Cloud staff update notice:', err);
       }
@@ -1175,7 +1176,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Write to cloud
       if (user?.id && business?.id && !isDemoMode) {
         try {
-          await setDoc(doc(db, 'businesses', business.id, 'sales', saleId), newSale);
+          await setDoc(doc(db, 'businesses', business.id, 'sales', saleId), cleanFirestoreData(newSale));
         } catch (e) {
           console.warn('POS sale cloud save fallback:', e);
         }
@@ -1192,7 +1193,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const prod = updatedProducts.find((p) => p.id === item.product.id);
         if (prod) {
           try {
-            await setDoc(doc(db, 'businesses', business.id, 'products', prod.id), prod, { merge: true });
+            await setDoc(doc(db, 'businesses', business.id, 'products', prod.id), cleanFirestoreData(prod), { merge: true });
           } catch (e) {
             console.warn('Product stock cloud update notice:', e);
           }
@@ -1281,7 +1282,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'sales', saleId), newSale);
+        await setDoc(doc(db, 'businesses', business.id, 'sales', saleId), cleanFirestoreData(newSale));
       } catch (err) {
         console.warn('Cloud sale write notice:', err);
       }
@@ -1329,7 +1330,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'expenses', expenseId), newExpense);
+        await setDoc(doc(db, 'businesses', business.id, 'expenses', expenseId), cleanFirestoreData(newExpense));
       } catch (err) {
         console.warn('Cloud expense write notice:', err);
       }
@@ -1387,7 +1388,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'products', productId), newProduct);
+        await setDoc(doc(db, 'businesses', business.id, 'products', productId), cleanFirestoreData(newProduct));
       } catch (err) {
         console.warn('Cloud product write notice:', err);
       }
@@ -1416,7 +1417,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'products', productId), updatedProd, { merge: true });
+        await setDoc(doc(db, 'businesses', business.id, 'products', productId), cleanFirestoreData(updatedProd), { merge: true });
       } catch (err) {
         console.warn('Cloud product update notice:', err);
       }
@@ -1486,7 +1487,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'debts', debtId), newDebt);
+        await setDoc(doc(db, 'businesses', business.id, 'debts', debtId), cleanFirestoreData(newDebt));
       } catch (err) {
         console.warn('Cloud debt write notice:', err);
       }
@@ -1534,7 +1535,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode && updatedDebt) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'debts', debtId), updatedDebt, { merge: true });
+        await setDoc(doc(db, 'businesses', business.id, 'debts', debtId), cleanFirestoreData(updatedDebt), { merge: true });
       } catch (err) {
         console.warn('Cloud debt update notice:', err);
       }
@@ -1572,7 +1573,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'invoices', invoiceId), newInvoice);
+        await setDoc(doc(db, 'businesses', business.id, 'invoices', invoiceId), cleanFirestoreData(newInvoice));
       } catch (err) {
         console.warn('Cloud invoice write notice:', err);
       }
@@ -1599,7 +1600,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'invoices', invoiceId), updatedInv, { merge: true });
+        await setDoc(doc(db, 'businesses', business.id, 'invoices', invoiceId), cleanFirestoreData(updatedInv), { merge: true });
       } catch (err) {
         console.warn('Cloud invoice update notice:', err);
       }
@@ -1673,7 +1674,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'customers', customerId), newCustomer);
+        await setDoc(doc(db, 'businesses', business.id, 'customers', customerId), cleanFirestoreData(newCustomer));
       } catch (err) {
         console.warn('Cloud customer write notice:', err);
       }
@@ -1696,7 +1697,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'customers', customerId), updatedCust, { merge: true });
+        await setDoc(doc(db, 'businesses', business.id, 'customers', customerId), cleanFirestoreData(updatedCust), { merge: true });
       } catch (err) {
         console.warn('Cloud customer update notice:', err);
       }
@@ -1734,7 +1735,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'suppliers', supplierId), newSupplier);
+        await setDoc(doc(db, 'businesses', business.id, 'suppliers', supplierId), cleanFirestoreData(newSupplier));
       } catch (err) {
         console.warn('Cloud supplier write notice:', err);
       }
@@ -1757,7 +1758,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'suppliers', supplierId), updatedSup, { merge: true });
+        await setDoc(doc(db, 'businesses', business.id, 'suppliers', supplierId), cleanFirestoreData(updatedSup), { merge: true });
       } catch (err) {
         console.warn('Cloud supplier update notice:', err);
       }

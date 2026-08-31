@@ -121,24 +121,64 @@ export const AIAssistantView: React.FC = () => {
         }),
       });
 
-      const data = await res.json();
+      let replyText = '';
+      if (res.ok) {
+        const data = await res.json();
+        replyText = data.reply || data.error || 'Sorry, I could not generate a response. Please try again.';
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        replyText = errData.reply || errData.error || `Could not connect to AI service (Status ${res.status}).`;
+      }
 
       const aiMsg: Message = {
         id: `msg_ai_${Date.now()}`,
         sender: 'ai',
-        text: data.reply || data.error || 'Sorry, I could not generate a response. Please try again.',
+        text: replyText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
       console.error('AI chat failed:', err);
+      
+      // Calculate local answer if query was a calculation or formula
+      const numbersInQuery = query.match(/\d+([.,]\d+)?/g)?.map((n) => parseFloat(n.replace(/,/g, ''))) || [];
+      let smartFallback = '';
+      
+      if (numbersInQuery.length >= 2) {
+        const [n1, n2] = numbersInQuery;
+        const sum = n1 + n2;
+        const diff = Math.abs(n1 - n2);
+        const prod = n1 * n2;
+        const ratio = n2 !== 0 ? (n1 / n2).toFixed(2) : 'N/A';
+        const pct = n2 !== 0 ? ((n1 / n2) * 100).toFixed(1) : 'N/A';
+        
+        smartFallback = `🧮 **Calculation Result for ${formatCurrency(n1, currency)} & ${formatCurrency(n2, currency)}:**\n\n` +
+          `• **Sum / Total:** ${formatCurrency(sum, currency)}\n` +
+          `• **Difference / Margin Spread:** ${formatCurrency(diff, currency)}\n` +
+          `• **Multiplication / Batch Total:** ${formatCurrency(prod, currency)}\n` +
+          `• **Unit Ratio:** ${ratio}\n` +
+          `• **Percentage Ratio:** ${pct}%\n\n` +
+          `💡 If calculating pricing: on a cost of ${formatCurrency(Math.min(n1, n2), currency)} sold at ${formatCurrency(Math.max(n1, n2), currency)}, your profit is **${formatCurrency(diff, currency)}** (${((diff / Math.max(n1, n2)) * 100).toFixed(1)}% margin).`;
+      } else if (numbersInQuery.length === 1 && (query.toLowerCase().includes('margin') || query.toLowerCase().includes('%') || query.toLowerCase().includes('markup'))) {
+        const cost = numbersInQuery[0];
+        const p30 = cost / 0.70;
+        const p40 = cost / 0.60;
+        const p50 = cost / 0.50;
+        smartFallback = `🏷️ **Target Pricing on Cost ${formatCurrency(cost, currency)}:**\n\n` +
+          `• **30% Margin Price:** ${formatCurrency(Math.round(p30), currency)} (Profit: ${formatCurrency(Math.round(p30 - cost), currency)})\n` +
+          `• **40% Margin Price:** ${formatCurrency(Math.round(p40), currency)} (Profit: ${formatCurrency(Math.round(p40 - cost), currency)})\n` +
+          `• **50% Margin Price:** ${formatCurrency(Math.round(p50), currency)} (Profit: ${formatCurrency(Math.round(p50 - cost), currency)})`;
+      } else {
+        smartFallback = `📊 **Store Snapshot:** Your current month recorded sales are ${formatCurrency(metrics.thisMonth.revenue, currency)} (${metrics.thisMonth.salesCount} orders) with a net operating profit of ${formatCurrency(metrics.thisMonth.operatingProfit, currency)}.`;
+      }
+
       setMessages((prev) => [
         ...prev,
         {
           id: `msg_err_${Date.now()}`,
           sender: 'ai',
-          text: `⚠️ **Offline Note:** Could not reach the AI server. However, based on your local metrics: your current month revenue is ${formatCurrency(metrics.thisMonth.revenue, currency)} with a net profit of ${formatCurrency(metrics.thisMonth.operatingProfit, currency)}.`,
+          text: smartFallback,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);

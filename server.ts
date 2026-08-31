@@ -26,7 +26,7 @@ function getGeminiClient(): GoogleGenAI | null {
   return geminiClient;
 }
 
-// Generate grounded fallback advice for Nigerian SMEs when Gemini API is under heavy traffic (503/429)
+// Generate grounded fallback advice for Nigerian SMEs when Gemini API is under heavy traffic or offline
 function generateGroundedFallbackAdvice(message: string, businessContext: any): string {
   const name = businessContext?.businessName || 'your business';
   const currencySymbol = businessContext?.currency === 'USD' ? '$' : '₦';
@@ -39,7 +39,46 @@ function generateGroundedFallbackAdvice(message: string, businessContext: any): 
 
   const lowerMsg = message.toLowerCase();
 
-  // 1. Profit & Margin Audit
+  // 1. Math / Calculation queries (e.g. "calculate 5000 + 2000", "what is 20% of 50000", "15000 * 4", markup calculations)
+  const numbersInPrompt = message.match(/\d+([.,]\d+)?/g)?.map((n) => parseFloat(n.replace(/,/g, ''))) || [];
+  
+  if (lowerMsg.includes('calculate') || lowerMsg.includes('compute') || lowerMsg.includes('math') || lowerMsg.includes('%') || lowerMsg.includes('multiply') || lowerMsg.includes('divide') || lowerMsg.includes('+') || lowerMsg.includes('-') || lowerMsg.includes('*') || lowerMsg.includes('/')) {
+    if (numbersInPrompt.length >= 2) {
+      const [num1, num2] = numbersInPrompt;
+      const sum = num1 + num2;
+      const diff = Math.abs(num1 - num2);
+      const prod = num1 * num2;
+      const div = num2 !== 0 ? (num1 / num2).toFixed(2) : 'undefined';
+      const pct = ((num1 / num2) * 100).toFixed(1);
+
+      return (
+        `🧮 **Calculation Breakdown for ${name}:**\n\n` +
+        `Here is the mathematical analysis for your numbers (**${currencySymbol}${num1.toLocaleString()}** and **${currencySymbol}${num2.toLocaleString()}**):\n\n` +
+        `• **Sum / Total Combined:** ${currencySymbol}${sum.toLocaleString()}\n` +
+        `• **Difference / Spread:** ${currencySymbol}${diff.toLocaleString()}\n` +
+        `• **Multiplication / Volume Total:** ${currencySymbol}${prod.toLocaleString()}\n` +
+        `• **Division / Unit Cost Ratio:** ${div}\n` +
+        `• **Percentage Ratio:** ${pct}%\n\n` +
+        `💡 **Merchant Advice:** If this is a cost price vs. selling price calculation, your Gross Profit is **${currencySymbol}${diff.toLocaleString()}** and your Gross Margin is **${num2 > 0 ? ((diff / Math.max(num1, num2)) * 100).toFixed(1) : 0}%**.`
+      );
+    } else if (numbersInPrompt.length === 1 && (lowerMsg.includes('%') || lowerMsg.includes('margin') || lowerMsg.includes('percent'))) {
+      const baseNum = numbersInPrompt[0];
+      const margin30 = baseNum / 0.70;
+      const margin40 = baseNum / 0.60;
+      const margin50 = baseNum / 0.50;
+
+      return (
+        `🏷️ **Pricing & Margin Calculations for ${currencySymbol}${baseNum.toLocaleString()}:**\n\n` +
+        `To achieve target profit margins on a cost of **${currencySymbol}${baseNum.toLocaleString()}**:\n\n` +
+        `• **30% Profit Margin:** Sell at **${currencySymbol}${Math.round(margin30).toLocaleString()}** (Profit: ${currencySymbol}${Math.round(margin30 - baseNum).toLocaleString()})\n` +
+        `• **40% Profit Margin (Recommended):** Sell at **${currencySymbol}${Math.round(margin40).toLocaleString()}** (Profit: ${currencySymbol}${Math.round(margin40 - baseNum).toLocaleString()})\n` +
+        `• **50% Profit Margin (Premium/Bespoke):** Sell at **${currencySymbol}${Math.round(margin50).toLocaleString()}** (Profit: ${currencySymbol}${Math.round(margin50 - baseNum).toLocaleString()})\n\n` +
+        `💡 **Formula Used:** \`Selling Price = Cost Price ÷ (1 - Margin%)\``
+      );
+    }
+  }
+
+  // 2. Profit & Margin Audit
   if (lowerMsg.includes('profit') || lowerMsg.includes('margin') || lowerMsg.includes('audit') || lowerMsg.includes('how much') || lowerMsg.includes('take-home')) {
     return (
       `📊 **Financial Audit for ${name} (This Month):**\n\n` +
@@ -49,17 +88,17 @@ function generateGroundedFallbackAdvice(message: string, businessContext: any): 
       `• **Net Take-Home Profit:** ${currencySymbol}${profitMonth.toLocaleString()}\n` +
       `• **Operating Profit Margin:** **${marginMonth}%**\n\n` +
       `💡 **Financial Consultant Insights:**\n` +
-      `1. **Health Check:** A ${marginMonth}% net margin is ${marginMonth >= 35 ? 'very healthy and above average for retail SMEs! 🎉' : 'moderate. Focus on increasing your high-margin catalog lines.'}\n` +
+      `1. **Health Check:** A ${marginMonth}% net margin is ${marginMonth >= 35 ? 'very healthy and above average for retail SMEs! 🎉' : revMonth === 0 ? 'awaiting your first recorded sales for the month.' : 'moderate. Focus on increasing your high-margin catalog lines.'}\n` +
       `2. **Retained Earnings:** Set aside at least 15%–20% of your weekly take-home profit (${currencySymbol}${Math.round(profitMonth * 0.2).toLocaleString()}) for inventory reinvestment and working capital.\n` +
       `3. **Expense Guardrails:** Ensure monthly overhead expenses stay below 30% of total gross sales.`
     );
   }
 
-  // 2. Restocking & Top Selling Products
+  // 3. Restocking & Top Selling Products
   if (lowerMsg.includes('restock') || lowerMsg.includes('product') || lowerMsg.includes('item') || lowerMsg.includes('inventory') || lowerMsg.includes('catalog')) {
     const topListStr = topProducts.length > 0
       ? topProducts.map((p: any, idx: number) => `${idx + 1}. **${p.name}** — ${p.unitsSold} units sold (${currencySymbol}${(p.totalRevenue || 0).toLocaleString()} revenue)`).join('\n')
-      : `No sales recorded yet this period.`;
+      : `No sales recorded yet this period. Record sales in POS or Sales Ledger to activate top sellers rank.`;
 
     return (
       `📦 **Restocking & Catalog Optimization for ${name}:**\n\n` +
@@ -67,12 +106,12 @@ function generateGroundedFallbackAdvice(message: string, businessContext: any): 
       `${topListStr}\n\n` +
       `💡 **Actionable Restocking Strategy:**\n` +
       `• **Fast Movers First:** Restock your top 20% bestsellers before secondary items.\n` +
-      `• **Supplier Volume Discount:** Group your restock orders into bulk purchases with your suppliers in Lagos/Onitsha/Kano markets to negotiate 5%–10% lower cost-per-unit.\n` +
+      `• **Supplier Volume Discount:** Group your restock orders into bulk purchases with your suppliers in Lagos/Onitsha/Kano/Aba markets to negotiate 5%–10% lower cost-per-unit.\n` +
       `• **Dead Stock Prevention:** Any item that hasn't sold in 30 days should be bundled with high-demand goods or offered at a 10% promo discount to free up tied-down capital.`
     );
   }
 
-  // 3. Fuel, Dispatch, Delivery, Logistics & Expense Reduction
+  // 4. Fuel, Dispatch, Delivery, Logistics & Expense Reduction
   if (lowerMsg.includes('fuel') || lowerMsg.includes('delivery') || lowerMsg.includes('dispatch') || lowerMsg.includes('transport') || lowerMsg.includes('cost') || lowerMsg.includes('expense') || lowerMsg.includes('generator')) {
     const topExpStr = expenseCats.length > 0
       ? expenseCats.map((c: any) => `• **${c.category}:** ${currencySymbol}${(c.totalAmount || 0).toLocaleString()} (${c.percentage}%)`).join('\n')
@@ -89,7 +128,7 @@ function generateGroundedFallbackAdvice(message: string, businessContext: any): 
     );
   }
 
-  // 4. Pricing Suggestion & Markup
+  // 5. Pricing Suggestion & Markup
   if (lowerMsg.includes('price') || lowerMsg.includes('pricing') || lowerMsg.includes('markup') || lowerMsg.includes('cost price') || lowerMsg.includes('wholesale')) {
     return (
       `🏷️ **Smart Pricing & Markup Framework for Nigerian Merchants:**\n\n` +
@@ -105,7 +144,7 @@ function generateGroundedFallbackAdvice(message: string, businessContext: any): 
     );
   }
 
-  // 5. WhatsApp Follow-up & Customer Messages
+  // 6. WhatsApp Follow-up & Customer Messages
   if (lowerMsg.includes('whatsapp') || lowerMsg.includes('message') || lowerMsg.includes('follow-up') || lowerMsg.includes('customer') || lowerMsg.includes('draft') || lowerMsg.includes('remind')) {
     return (
       `💬 **High-Converting WhatsApp Templates for Your Customers:**\n\n` +
@@ -196,53 +235,53 @@ Current Business Profile & Grounded Financial Summary:
 
       const promptContent = `${historyContext}User query: ${message}\n\nPlease respond based on my actual store metrics and guidelines above.`;
 
-      // Resilient model cascade:
-      // 1. gemini-2.5-flash (ultra-fast, highly responsive, ~1s latency)
-      // 2. gemini-3.7-flash (with ThinkingLevel.LOW)
-      // 3. gemini-3.1-flash-lite
+      // Resilient model cascade using supported Gemini models:
+      // 1. gemini-3.7-flash (with ThinkingLevel.LOW for optimal speed and depth)
+      // 2. gemini-3.1-flash-lite (high efficiency, fast response)
+      // 3. gemini-flash-latest
       // 4. Grounded fallback advisor
       let generatedText: string | undefined;
 
-      // Tier 1: gemini-2.5-flash
+      // Tier 1: gemini-3.7-flash
       try {
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+        const response37 = await ai.models.generateContent({
+          model: 'gemini-3.7-flash',
           contents: promptContent,
           config: {
             systemInstruction,
             temperature: 0.7,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           },
         });
-        generatedText = response.text;
-      } catch (err25: any) {
-        console.warn('Gemini 2.5 Flash temporary issue, falling back to gemini-3.7-flash:', err25?.message || err25);
-        // Tier 2: gemini-3.7-flash
+        generatedText = response37.text;
+      } catch (err37: any) {
+        console.warn('Gemini 3.7 Flash temporary issue, falling back to gemini-3.1-flash-lite:', err37?.message || err37);
+        // Tier 2: gemini-3.1-flash-lite
         try {
-          const response37 = await ai.models.generateContent({
-            model: 'gemini-3.7-flash',
+          const responseLite = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite',
             contents: promptContent,
             config: {
               systemInstruction,
               temperature: 0.7,
-              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
             },
           });
-          generatedText = response37.text;
-        } catch (err37: any) {
-          console.warn('Gemini 3.7 Flash temporary issue, falling back to gemini-3.1-flash-lite:', err37?.message || err37);
-          // Tier 3: gemini-3.1-flash-lite
+          generatedText = responseLite.text;
+        } catch (errLite: any) {
+          console.warn('Gemini 3.1 Flash Lite temporary issue, falling back to gemini-flash-latest:', errLite?.message || errLite);
+          // Tier 3: gemini-flash-latest
           try {
-            const responseLite = await ai.models.generateContent({
-              model: 'gemini-3.1-flash-lite',
+            const responseLatest = await ai.models.generateContent({
+              model: 'gemini-flash-latest',
               contents: promptContent,
               config: {
                 systemInstruction,
                 temperature: 0.7,
               },
             });
-            generatedText = responseLite.text;
-          } catch (errLite: any) {
-            console.warn('All Gemini models encountered high demand. Using grounded business intelligence response:', errLite?.message || errLite);
+            generatedText = responseLatest.text;
+          } catch (errLatest: any) {
+            console.warn('All Gemini models encountered high demand. Using grounded business intelligence response:', errLatest?.message || errLatest);
             generatedText = generateGroundedFallbackAdvice(message, businessContext);
           }
         }

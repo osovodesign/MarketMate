@@ -18,6 +18,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { formatCurrency, formatPercent } from '../../lib/formatters';
+import { CurrencyCode } from '../../types';
 
 interface Message {
   id: string;
@@ -49,10 +50,155 @@ const renderFormattedLine = (line: string, isUser: boolean) => {
   });
 };
 
+function generateClientBusinessAdvice(
+  query: string,
+  businessName: string,
+  currency: CurrencyCode,
+  metrics: any
+): string {
+  const lower = query.toLowerCase();
+  const revMonth = metrics?.thisMonth?.revenue || 0;
+  const expMonth = metrics?.thisMonth?.operatingExpenses || 0;
+  const profitMonth = metrics?.thisMonth?.operatingProfit || 0;
+  const marginMonth = metrics?.thisMonth?.profitMargin || 0;
+  const topProducts = metrics?.topSellingProducts || [];
+  const expenseCats = metrics?.expenseCategoryBreakdown || [];
+
+  const numbersInQuery = query.match(/\d+([.,]\d+)?/g)?.map((n) => parseFloat(n.replace(/,/g, ''))) || [];
+
+  // Math & Calculations
+  if (lower.includes('calculate') || lower.includes('compute') || lower.includes('math') || lower.includes('%') || lower.includes('multiply') || lower.includes('divide') || lower.includes('+') || lower.includes('-') || lower.includes('*') || lower.includes('/')) {
+    if (numbersInQuery.length >= 2) {
+      const [n1, n2] = numbersInQuery;
+      const sum = n1 + n2;
+      const diff = Math.abs(n1 - n2);
+      const prod = n1 * n2;
+      const ratio = n2 !== 0 ? (n1 / n2).toFixed(2) : 'N/A';
+      const pct = n2 !== 0 ? ((n1 / n2) * 100).toFixed(1) : 'N/A';
+
+      return (
+        `🧮 **Calculation Breakdown for ${businessName}:**\n\n` +
+        `Here is the mathematical analysis for your numbers (**${formatCurrency(n1, currency)}** and **${formatCurrency(n2, currency)}**):\n\n` +
+        `• **Sum / Total Combined:** ${formatCurrency(sum, currency)}\n` +
+        `• **Difference / Margin Spread:** ${formatCurrency(diff, currency)}\n` +
+        `• **Multiplication / Volume Total:** ${formatCurrency(prod, currency)}\n` +
+        `• **Unit Ratio:** ${ratio}\n` +
+        `• **Percentage Ratio:** ${pct}%\n\n` +
+        `💡 **Merchant Advice:** If this is a cost price vs. selling price calculation, your Gross Profit is **${formatCurrency(diff, currency)}** and your Gross Margin is **${Math.max(n1, n2) > 0 ? ((diff / Math.max(n1, n2)) * 100).toFixed(1) : 0}%**.`
+      );
+    } else if (numbersInQuery.length === 1 && (lower.includes('margin') || lower.includes('%') || lower.includes('markup') || lower.includes('price'))) {
+      const cost = numbersInQuery[0];
+      const p30 = cost / 0.70;
+      const p40 = cost / 0.60;
+      const p50 = cost / 0.50;
+
+      return (
+        `🏷️ **Pricing & Margin Calculations for Cost ${formatCurrency(cost, currency)}:**\n\n` +
+        `To achieve target profit margins on a cost of **${formatCurrency(cost, currency)}**:\n\n` +
+        `• **30% Profit Margin:** Sell at **${formatCurrency(Math.round(p30), currency)}** (Profit: ${formatCurrency(Math.round(p30 - cost), currency)})\n` +
+        `• **40% Profit Margin (Recommended):** Sell at **${formatCurrency(Math.round(p40), currency)}** (Profit: ${formatCurrency(Math.round(p40 - cost), currency)})\n` +
+        `• **50% Profit Margin (Premium/Bespoke):** Sell at **${formatCurrency(Math.round(p50), currency)}** (Profit: ${formatCurrency(Math.round(p50 - cost), currency)})\n\n` +
+        `💡 **Formula Used:** \`Selling Price = Cost Price ÷ (1 - Target Margin%)\``
+      );
+    }
+  }
+
+  // Profit & Margin Audit
+  if (lower.includes('profit') || lower.includes('margin') || lower.includes('audit') || lower.includes('how much') || lower.includes('take-home')) {
+    return (
+      `📊 **Financial Audit for ${businessName} (This Month):**\n\n` +
+      `Here is your exact financial breakdown based on your recorded ledger:\n` +
+      `• **Gross Sales Revenue:** ${formatCurrency(revMonth, currency)}\n` +
+      `• **Operating Expenses:** ${formatCurrency(expMonth, currency)}\n` +
+      `• **Net Take-Home Profit:** ${formatCurrency(profitMonth, currency)}\n` +
+      `• **Operating Profit Margin:** **${marginMonth}%**\n\n` +
+      `💡 **Financial Consultant Insights:**\n` +
+      `1. **Health Check:** A ${marginMonth}% net margin is ${marginMonth >= 35 ? 'very healthy and above average for retail SMEs! 🎉' : revMonth === 0 ? 'awaiting your first recorded sales for the month.' : 'moderate. Focus on increasing your high-margin catalog lines.'}\n` +
+      `2. **Retained Earnings:** Set aside at least 15%–20% of your weekly take-home profit (${formatCurrency(Math.round(profitMonth * 0.2), currency)}) for inventory reinvestment and working capital.\n` +
+      `3. **Expense Guardrails:** Ensure monthly overhead expenses stay below 30% of total gross sales.`
+    );
+  }
+
+  // Restocking & Top Selling Products
+  if (lower.includes('restock') || lower.includes('product') || lower.includes('item') || lower.includes('inventory') || lower.includes('catalog')) {
+    const topListStr = topProducts.length > 0
+      ? topProducts.map((p: any, idx: number) => `${idx + 1}. **${p.name}** — ${p.unitsSold} units sold (${formatCurrency(p.totalRevenue || 0, currency)} revenue)`).join('\n')
+      : `No sales recorded yet this period. Record sales in POS or Sales Ledger to activate top sellers rank.`;
+
+    return (
+      `📦 **Restocking & Catalog Optimization for ${businessName}:**\n\n` +
+      `**Top Revenue-Generating Products:**\n` +
+      `${topListStr}\n\n` +
+      `💡 **Actionable Restocking Strategy:**\n` +
+      `• **Fast Movers First:** Restock your top 20% bestsellers before secondary items.\n` +
+      `• **Supplier Volume Discount:** Group your restock orders into bulk purchases with your suppliers in Lagos/Onitsha/Kano/Aba markets to negotiate 5%–10% lower cost-per-unit.\n` +
+      `• **Dead Stock Prevention:** Any item that hasn't sold in 30 days should be bundled with high-demand goods or offered at a 10% promo discount to free up tied-down capital.`
+    );
+  }
+
+  // Expenses, Delivery, Fuel
+  if (lower.includes('fuel') || lower.includes('delivery') || lower.includes('dispatch') || lower.includes('transport') || lower.includes('cost') || lower.includes('expense') || lower.includes('generator')) {
+    const topExpStr = expenseCats.length > 0
+      ? expenseCats.map((c: any) => `• **${c.category}:** ${formatCurrency(c.totalAmount || 0, currency)} (${c.percentage}%)`).join('\n')
+      : `• Recorded monthly expenses: ${formatCurrency(expMonth, currency)}`;
+
+    return (
+      `⚡ **Expense Reduction & Cost Control Plan for ${businessName}:**\n\n` +
+      `**Current Monthly Expense Distribution:**\n` +
+      `${topExpStr}\n\n` +
+      `💡 **Practical Ways to Cut Operating Overheads:**\n` +
+      `1. **Batch Dispatch Runs:** Avoid sending single ad-hoc waybills. Cluster deliveries into two scheduled dispatch pickup windows (11 AM & 4 PM) or use regional aggregate riders.\n` +
+      `2. **Power & Generator Efficiency:** Group energy-intensive tasks (ironing, processing, refrigeration, equipment runs) during specific peak hours to minimize generator fuel consumption.\n` +
+      `3. **Packaging Procurement:** Source packaging nylon, custom paper bags, and bubble wrap in wholesale cartons directly from packaging distributors rather than buying retail pieces weekly.`
+    );
+  }
+
+  // Pricing & Markup
+  if (lower.includes('price') || lower.includes('pricing') || lower.includes('markup') || lower.includes('cost price') || lower.includes('wholesale')) {
+    return (
+      `🏷️ **Smart Pricing & Markup Framework for Nigerian Merchants:**\n\n` +
+      `To protect your business against inflation and ensure reliable take-home profit, follow this 4-step formula:\n\n` +
+      `**The True-Cost Formula:**\n` +
+      `1. **Base Cost:** Wholesale Purchase Price + Waybill/Freight Allocation per unit.\n` +
+      `2. **Overhead Buffer (10%):** Add 10% for packaging, POS transfer charges (0.5%–1%), and utility.\n` +
+      `3. **Target Profit Margin (35%–50%):**\n` +
+      `   • For a 40% margin: \`Selling Price = True Cost ÷ 0.60\`\n` +
+      `   • *Example:* If wholesale cost is ${formatCurrency(15000, currency)} + ${formatCurrency(1000, currency)} waybill = ${formatCurrency(16000, currency)} True Cost.\n` +
+      `   • *Recommended Retail Price:* **${formatCurrency(26500, currency)}** (giving you ~${formatCurrency(10500, currency)} gross profit per piece).\n\n` +
+      `💡 **Pro-Tip:** Always test higher price tiers for unique/premium designs and use bundle deals to accelerate cash flow.`
+    );
+  }
+
+  // WhatsApp Messages
+  if (lower.includes('whatsapp') || lower.includes('message') || lower.includes('follow-up') || lower.includes('customer') || lower.includes('draft') || lower.includes('remind')) {
+    return (
+      `💬 **High-Converting WhatsApp Templates for Your Customers:**\n\n` +
+      `**Option 1: Polite Quote Follow-up (Pending Order)**\n` +
+      `"Hello [Customer Name] 👋! Trust your day is going smoothly. Just checking in on your order inquiry from earlier today. We currently have your reserved item ready in stock and can dispatch with our morning delivery batch. Kindly let me know if you would like me to process your waybill! ✨"\n\n` +
+      `**Option 2: Friendly Payment / Credit Reminder**\n` +
+      `"Good day [Customer Name]! Hope you are well. This is a gentle reminder from *${businessName}* regarding the remaining balance of [Amount] for your purchase. Please let us know once convenient for transfer. Thank you so much for your continuous patronage! 🛍️"\n\n` +
+      `**Option 3: VIP Customer Restock Alert**\n` +
+      `"Hi [Customer Name]! We just received fresh restock of our most requested items at *${businessName}*. Because you love this collection, we wanted to give you first access before we announce on status. Let me know if you'd like photos of the new arrivals! 🔥"`
+    );
+  }
+
+  return (
+    `👋 **MarketMate AI Business Advisor for ${businessName}:**\n\n` +
+    `**Month-to-Date Store Summary:**\n` +
+    `• **Gross Sales Revenue:** ${formatCurrency(revMonth, currency)}\n` +
+    `• **Operating Expenses:** ${formatCurrency(expMonth, currency)}\n` +
+    `• **Take-Home Profit:** ${formatCurrency(profitMonth, currency)} (**${marginMonth}%** margin)\n\n` +
+    `💡 **Key Recommendations for Your Store:**\n` +
+    `1. **Cash Flow & Inventory:** Prioritize quick-turnaround inventory items that sell within 7–14 days to keep working capital liquid.\n` +
+    `2. **Protect Against Leakages:** Log all small daily expenses (airtime, ice, dispatch, fuel) immediately into MarketMate to maintain accurate real profit calculations.\n` +
+    `3. **Customer Credit Management:** Keep customer receivables below 10% of monthly sales to avoid capital lockups.`
+  );
+}
+
 export const AIAssistantView: React.FC = () => {
   const { business } = useAuth();
   const { metrics, sales, expenses } = useBusinessData();
-  const currency = business?.currency || 'NGN';
+  const currency: CurrencyCode = (business?.currency as CurrencyCode) || 'NGN';
 
   const [input, setInput] = useState('');
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
@@ -124,10 +270,11 @@ export const AIAssistantView: React.FC = () => {
       let replyText = '';
       if (res.ok) {
         const data = await res.json();
-        replyText = data.reply || data.error || 'Sorry, I could not generate a response. Please try again.';
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        replyText = errData.reply || errData.error || `Could not connect to AI service (Status ${res.status}).`;
+        replyText = data.reply || data.error || '';
+      }
+      
+      if (!replyText || !res.ok) {
+        replyText = generateClientBusinessAdvice(query, business?.businessName || 'your store', currency, metrics);
       }
 
       const aiMsg: Message = {
@@ -139,44 +286,13 @@ export const AIAssistantView: React.FC = () => {
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
-      console.error('AI chat failed:', err);
-      
-      // Calculate local answer if query was a calculation or formula
-      const numbersInQuery = query.match(/\d+([.,]\d+)?/g)?.map((n) => parseFloat(n.replace(/,/g, ''))) || [];
-      let smartFallback = '';
-      
-      if (numbersInQuery.length >= 2) {
-        const [n1, n2] = numbersInQuery;
-        const sum = n1 + n2;
-        const diff = Math.abs(n1 - n2);
-        const prod = n1 * n2;
-        const ratio = n2 !== 0 ? (n1 / n2).toFixed(2) : 'N/A';
-        const pct = n2 !== 0 ? ((n1 / n2) * 100).toFixed(1) : 'N/A';
-        
-        smartFallback = `🧮 **Calculation Result for ${formatCurrency(n1, currency)} & ${formatCurrency(n2, currency)}:**\n\n` +
-          `• **Sum / Total:** ${formatCurrency(sum, currency)}\n` +
-          `• **Difference / Margin Spread:** ${formatCurrency(diff, currency)}\n` +
-          `• **Multiplication / Batch Total:** ${formatCurrency(prod, currency)}\n` +
-          `• **Unit Ratio:** ${ratio}\n` +
-          `• **Percentage Ratio:** ${pct}%\n\n` +
-          `💡 If calculating pricing: on a cost of ${formatCurrency(Math.min(n1, n2), currency)} sold at ${formatCurrency(Math.max(n1, n2), currency)}, your profit is **${formatCurrency(diff, currency)}** (${((diff / Math.max(n1, n2)) * 100).toFixed(1)}% margin).`;
-      } else if (numbersInQuery.length === 1 && (query.toLowerCase().includes('margin') || query.toLowerCase().includes('%') || query.toLowerCase().includes('markup'))) {
-        const cost = numbersInQuery[0];
-        const p30 = cost / 0.70;
-        const p40 = cost / 0.60;
-        const p50 = cost / 0.50;
-        smartFallback = `🏷️ **Target Pricing on Cost ${formatCurrency(cost, currency)}:**\n\n` +
-          `• **30% Margin Price:** ${formatCurrency(Math.round(p30), currency)} (Profit: ${formatCurrency(Math.round(p30 - cost), currency)})\n` +
-          `• **40% Margin Price:** ${formatCurrency(Math.round(p40), currency)} (Profit: ${formatCurrency(Math.round(p40 - cost), currency)})\n` +
-          `• **50% Margin Price:** ${formatCurrency(Math.round(p50), currency)} (Profit: ${formatCurrency(Math.round(p50 - cost), currency)})`;
-      } else {
-        smartFallback = `📊 **Store Snapshot:** Your current month recorded sales are ${formatCurrency(metrics.thisMonth.revenue, currency)} (${metrics.thisMonth.salesCount} orders) with a net operating profit of ${formatCurrency(metrics.thisMonth.operatingProfit, currency)}.`;
-      }
+      console.error('AI chat network notice, switching to instant offline business engine:', err);
+      const smartFallback = generateClientBusinessAdvice(query, business?.businessName || 'your store', currency, metrics);
 
       setMessages((prev) => [
         ...prev,
         {
-          id: `msg_err_${Date.now()}`,
+          id: `msg_ai_${Date.now()}`,
           sender: 'ai',
           text: smartFallback,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),

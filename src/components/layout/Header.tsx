@@ -18,6 +18,8 @@ import {
   UserCheck,
   Store,
   ShoppingCart,
+  Compass,
+  HelpCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppView } from '../../types';
@@ -35,6 +37,7 @@ interface HeaderProps {
   onOpenStaffModal?: () => void;
   onOpenLogoExportModal?: () => void;
   onOpenNotificationDrawer?: () => void;
+  onOpenTourModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -46,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenStaffModal,
   onOpenLogoExportModal,
   onOpenNotificationDrawer,
+  onOpenTourModal,
 }) => {
   const { currentSession, isCloudSyncing } = useBusinessData();
   const { isDemoMode, user, isSuperAdmin } = useAuth();
@@ -346,6 +350,22 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="text-left">
                         <p className="font-bold text-slate-900 dark:text-white">Super Admin Portal</p>
                         <p className="text-[10px] text-emerald-700 dark:text-emerald-400">Merchant control & broadcast alerts</p>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Interactive App Tour / Guide */}
+                  {onOpenTourModal && (
+                    <button
+                      onClick={() => handleAction(onOpenTourModal)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
+                        <Compass className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-slate-900 dark:text-white">App Tour & User Guide</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Step-by-step walkthrough</p>
                       </div>
                     </button>
                   )}

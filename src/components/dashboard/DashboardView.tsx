@@ -27,6 +27,7 @@ import { Badge } from '../ui/Badge';
 import { ReceiptModal } from '../sales/ReceiptModal';
 import { formatCurrency, formatPercent, formatDateFriendly } from '../../lib/formatters';
 import { AppView, Sale } from '../../types';
+import { QuickStartGuide } from '../onboarding/QuickStartGuide';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -47,6 +48,7 @@ interface DashboardViewProps {
   onOpenPricingCalculator?: () => void;
   onOpenProfitSimulator?: () => void;
   onOpenGoalsModal?: () => void;
+  onOpenTourModal?: () => void;
 }
 
 type PeriodTab = 'today' | 'thisWeek' | 'thisMonth';
@@ -68,6 +70,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenPricingCalculator,
   onOpenProfitSimulator,
   onOpenGoalsModal,
+  onOpenTourModal,
 }) => {
   const { metrics, sales, expenses, debts, totalOutstandingReceivables, totalUnpaidInvoices, invoices } = useBusinessData();
   const { business, user } = useAuth();
@@ -114,6 +117,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Interactive Getting Started / Quick-Start Checklist */}
+      <QuickStartGuide
+        onNavigate={onNavigate}
+        onOpenAddSale={onOpenAddSale}
+        onOpenAddExpense={onOpenAddExpense}
+        onOpenTourModal={onOpenTourModal || (() => {})}
+      />
+
       {/* Top Greeting & Action Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

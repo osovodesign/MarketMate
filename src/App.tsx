@@ -30,6 +30,7 @@ import { BackupDataModal } from './components/backup/BackupDataModal';
 import { MultiCurrencyCalculatorModal } from './components/currency/MultiCurrencyCalculatorModal';
 import { StaffManagementModal } from './components/staff/StaffManagementModal';
 import { LogoExportModal } from './components/common/LogoExportModal';
+import { AppTourModal } from './components/onboarding/AppTourModal';
 import { NotificationDrawer } from './components/notifications/NotificationDrawer';
 import { NotificationProvider } from './context/NotificationContext';
 import { AppView } from './types';
@@ -48,6 +49,7 @@ function AppContent() {
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [isLogoExportOpen, setIsLogoExportOpen] = useState(false);
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
+  const [isTourModalOpen, setIsTourModalOpen] = useState(false);
 
   // If unauthenticated or navigating public auth views
   if (!isAuthenticated && currentView === 'landing') {
@@ -124,6 +126,7 @@ function AppContent() {
             onOpenPricingCalculator={() => setIsPricingCalcOpen(true)}
             onOpenProfitSimulator={() => setIsProfitSimOpen(true)}
             onOpenGoalsModal={() => setIsGoalsModalOpen(true)}
+            onOpenTourModal={() => setIsTourModalOpen(true)}
           />
         );
       case 'pos':
@@ -162,6 +165,7 @@ function AppContent() {
             onResetData={() => setCurrentView('dashboard')}
             onLoadDemo={() => setCurrentView('dashboard')}
             onOpenLogoExport={() => setIsLogoExportOpen(true)}
+            onOpenTour={() => setIsTourModalOpen(true)}
           />
         );
       case 'admin':
@@ -175,6 +179,7 @@ function AppContent() {
             onOpenPricingCalculator={() => setIsPricingCalcOpen(true)}
             onOpenProfitSimulator={() => setIsProfitSimOpen(true)}
             onOpenGoalsModal={() => setIsGoalsModalOpen(true)}
+            onOpenTourModal={() => setIsTourModalOpen(true)}
           />
         );
     }
@@ -194,6 +199,7 @@ function AppContent() {
       onOpenStaffModal={() => setIsStaffModalOpen(true)}
       onOpenLogoExportModal={() => setIsLogoExportOpen(true)}
       onOpenNotificationDrawer={() => setIsNotificationDrawerOpen(true)}
+      onOpenTourModal={() => setIsTourModalOpen(true)}
       businessName={business?.businessName}
       businessType={business?.businessType}
       currency={currency}
@@ -227,6 +233,14 @@ function AppContent() {
       {renderActiveView()}
 
       {/* Persistent Global Modals & Drawers */}
+      <AppTourModal
+        isOpen={isTourModalOpen}
+        onClose={() => setIsTourModalOpen(false)}
+        onNavigate={(view) => setCurrentView(view)}
+        onOpenAddSale={() => setIsAddSaleOpen(true)}
+        onOpenAddExpense={() => setIsAddExpenseOpen(true)}
+        businessName={business?.businessName}
+      />
       <NotificationDrawer
         isOpen={isNotificationDrawerOpen}
         onClose={() => setIsNotificationDrawerOpen(false)}

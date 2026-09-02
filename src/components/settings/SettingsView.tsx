@@ -19,6 +19,8 @@ import {
   Trash2,
   RefreshCw,
   FileImage,
+  Compass,
+  HelpCircle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useBusinessData } from '../../context/BusinessDataContext';
@@ -37,6 +39,7 @@ interface SettingsViewProps {
   onResetData: () => void;
   onLoadDemo: () => void;
   onOpenLogoExport?: () => void;
+  onOpenTour?: () => void;
 }
 
 const BUSINESS_CATEGORIES: { value: BusinessCategory; label: string }[] = [
@@ -61,7 +64,7 @@ const CURRENCIES: { value: CurrencyCode; label: string }[] = [
   { value: 'GHS', label: 'GH₵ Ghanaian Cedi (GHS)' },
 ];
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ onResetData, onLoadDemo, onOpenLogoExport }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ onResetData, onLoadDemo, onOpenLogoExport, onOpenTour }) => {
   const { user, business, updateBusiness } = useAuth();
   const { resetData, loadDemoData, staffList, fxConfig, currentSession } = useBusinessData();
   const {
@@ -465,6 +468,51 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onResetData, onLoadD
         isOpen={isLogoExportModalOpen}
         onClose={() => setIsLogoExportModalOpen(false)}
       />
+
+      {/* User Guide & Walkthrough Card */}
+      <Card padding="lg">
+        <CardHeader>
+          <div>
+            <CardTitle className="text-slate-900 dark:text-white">Help & User Flow Guide</CardTitle>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Learn how to record sales, track expenses, and use cashier permissions.
+            </p>
+          </div>
+          {onOpenTour && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onOpenTour}
+              leftIcon={<Compass className="w-3.5 h-3.5 text-emerald-600" />}
+            >
+              Start Interactive Tour
+            </Button>
+          )}
+        </CardHeader>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center justify-center text-xs font-bold">1</span>
+              <p className="text-xs font-bold text-slate-900 dark:text-white">Recording Sales & POS</p>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed pl-7">
+              Use your phone camera or barcode gun to scan items, choose Cash/Transfer/POS, and send WhatsApp receipts.
+            </p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 flex items-center justify-center text-xs font-bold">2</span>
+              <p className="text-xs font-bold text-slate-900 dark:text-white">Tracking True Net Profit</p>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed pl-7">
+              Log daily operating expenses (fuel, packaging, dispatch) so MarketMate automatically calculates real take-home margins.
+            </p>
+          </div>
+        </div>
+      </Card>
 
       {/* Data Management Card (Reset & Demo dataset) */}
       <Card padding="lg" className="border-rose-100 dark:border-rose-950">

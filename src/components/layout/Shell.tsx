@@ -19,6 +19,7 @@ interface ShellProps {
   onOpenStaffModal?: () => void;
   onOpenLogoExportModal?: () => void;
   onOpenNotificationDrawer?: () => void;
+  onOpenTourModal?: () => void;
   businessName?: string;
   businessType?: string;
   currency?: string;
@@ -39,6 +40,7 @@ export const Shell: React.FC<ShellProps> = ({
   onOpenStaffModal,
   onOpenLogoExportModal,
   onOpenNotificationDrawer,
+  onOpenTourModal,
   businessName,
   businessType,
   currency,
@@ -78,6 +80,7 @@ export const Shell: React.FC<ShellProps> = ({
           onOpenStaffModal={onOpenStaffModal}
           onOpenLogoExportModal={onOpenLogoExportModal}
           onOpenNotificationDrawer={onOpenNotificationDrawer}
+          onOpenTourModal={onOpenTourModal}
         />
 
         {/* Viewport Content Container */}

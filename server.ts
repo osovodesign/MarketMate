@@ -299,6 +299,13 @@ Current Business Profile & Grounded Financial Summary:
     }
   });
 
+  // Serve favicon
+  app.get('/favicon.ico', (req, res) => {
+    const faviconPath = path.join(process.cwd(), process.env.NODE_ENV === 'production' ? 'dist' : 'public', 'favicon.svg');
+    res.type('image/svg+xml');
+    res.sendFile(faviconPath);
+  });
+
   // Vite middleware in dev or static files in production
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

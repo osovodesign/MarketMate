@@ -117,6 +117,7 @@ export const Signup: React.FC<SignupProps> = ({
             <Input
               label="Create Password (min. 6 chars)"
               type="password"
+              showPasswordToggle
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

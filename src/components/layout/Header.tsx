@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppView } from '../../types';
 import { useBusinessData } from '../../context/BusinessDataContext';
 import { useAuth } from '../../context/AuthContext';
+import { isSuperAdminEmail } from '../../lib/adminConfig';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { useNotifications } from '../../context/NotificationContext';
 
@@ -183,7 +184,7 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         {/* Super Admin Quick Access (Desktop) */}
-        {(user?.isSuperAdmin || isSuperAdmin || user?.email === 'osovoyoronogheneovo@gmail.com') && (
+        {(user?.isSuperAdmin || isSuperAdmin || isSuperAdminEmail(user?.email)) && (
           <button
             onClick={() => onNavigate('admin')}
             className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 ${
@@ -335,7 +336,7 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
 
                   {/* Super Admin Command Center (if authorized) */}
-                  {(user?.isSuperAdmin || isSuperAdmin || user?.email === 'osovoyoronogheneovo@gmail.com') && (
+                  {(user?.isSuperAdmin || isSuperAdmin || isSuperAdminEmail(user?.email)) && (
                     <button
                       onClick={() => handleNavigateView('admin')}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl transition-colors cursor-pointer ${

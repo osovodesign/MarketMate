@@ -25,6 +25,7 @@ import {
 import { AppView } from '../../types';
 import { useBusinessData } from '../../context/BusinessDataContext';
 import { useAuth } from '../../context/AuthContext';
+import { isSuperAdminEmail } from '../../lib/adminConfig';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 
 interface SidebarProps {
@@ -261,7 +262,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         {/* Super Admin Owner Link */}
-        {(isSuperAdmin || user?.email === 'osovoyoronogheneovo@gmail.com') && (
+        {(isSuperAdmin || isSuperAdminEmail(user?.email)) && (
           <div className="pt-2">
             <button
               onClick={() => onNavigate('admin')}

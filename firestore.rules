@@ -26,8 +26,10 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return isSignedIn() &&
-        request.auth.token.email != null &&
-        request.auth.token.email.lower() == 'osovoyoronogheneovo@gmail.com';
+        request.auth.token.email != null && (
+          request.auth.token.email.lower() == 'getmarketmate@gmail.com' ||
+          request.auth.token.email.lower() == 'osovoyoronogheneovo@gmail.com'
+        );
     }
 
     function isOwnerOfBusiness(businessId) {

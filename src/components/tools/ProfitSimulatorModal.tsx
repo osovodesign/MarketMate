@@ -15,14 +15,20 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { formatCurrency, formatPercent } from '../../lib/formatters';
+import { ProFeatureGate } from '../subscription/ProFeatureGate';
 
 interface ProfitSimulatorModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onUpgrade?: () => void;
 }
 
-export const ProfitSimulatorModal: React.FC<ProfitSimulatorModalProps> = ({ isOpen, onClose }) => {
-  const { business } = useAuth();
+export const ProfitSimulatorModal: React.FC<ProfitSimulatorModalProps> = ({
+  isOpen,
+  onClose,
+  onUpgrade,
+}) => {
+  const { business, user, isSuperAdmin, isDemoMode, isSubscribed } = useAuth();
   const { metrics } = useBusinessData();
   const currency = business?.currency || 'NGN';
 
@@ -77,6 +83,30 @@ export const ProfitSimulatorModal: React.FC<ProfitSimulatorModalProps> = ({ isOp
     setFuelOpExAdjustment(0);
     setVolumeAdjustment(0);
   };
+
+  if (!isSubscribed) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-lg">
+        <ProFeatureGate
+          mode="modal"
+          title="Profit Stress-Test Simulator"
+          subtitle="Simulate the real-world impact of inflation, petrol price hikes, price adjustments, and sales volume changes on your monthly take-home profit."
+          icon={Sliders}
+          benefits={[
+            'Simulate supplier inflation & fuel price shocks',
+            'Model the effect of price increases vs. sales volume dips',
+            'Interactive profit margin and net income forecasting',
+            'Automated warning flags when profit margins drop below safe thresholds',
+          ]}
+          onUpgrade={() => {
+            onClose();
+            onUpgrade?.();
+          }}
+          onBack={onClose}
+        />
+      </Modal>
+    );
+  }
 
   return (
     <Modal

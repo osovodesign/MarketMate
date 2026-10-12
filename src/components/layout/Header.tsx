@@ -20,6 +20,9 @@ import {
   ShoppingCart,
   Compass,
   HelpCircle,
+  Gift,
+  Menu,
+  Headphones,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppView } from '../../types';
@@ -39,6 +42,9 @@ interface HeaderProps {
   onOpenLogoExportModal?: () => void;
   onOpenNotificationDrawer?: () => void;
   onOpenTourModal?: () => void;
+  onOpenReferralModal?: () => void;
+  onOpenMobileMenu?: () => void;
+  onOpenSupportModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -51,6 +57,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenLogoExportModal,
   onOpenNotificationDrawer,
   onOpenTourModal,
+  onOpenReferralModal,
+  onOpenMobileMenu,
+  onOpenSupportModal,
 }) => {
   const { currentSession, isCloudSyncing } = useBusinessData();
   const { isDemoMode, user, isSuperAdmin } = useAuth();
@@ -101,6 +110,7 @@ export const Header: React.FC<HeaderProps> = ({
     ai: { title: 'MarketMate AI Advisor', subtitle: 'Ask questions about your business numbers' },
     settings: { title: 'Settings & Profile', subtitle: 'Manage business details and preferences' },
     admin: { title: 'Super Admin Portal', subtitle: 'Owner command center, registered merchants & platform health' },
+    staff: { title: 'Staff & Access Control', subtitle: 'Manage team members, 4-digit PINs & granular access permissions' },
   };
 
   const viewMeta = titles[currentView] || { title: 'Dashboard', subtitle: '' };
@@ -116,18 +126,28 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between transition-colors">
+    <header className="sticky top-0 z-30 bg-[#FEFEFE]/95 dark:bg-[#001A35]/95 backdrop-blur-xs border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between transition-colors">
       {/* Title / Current View */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-        {/* Mobile Brand Logo */}
-        <div className="lg:hidden flex items-center shrink-0">
+        {/* Mobile Menu Toggle & Brand Logo */}
+        <div className="lg:hidden flex items-center gap-1.5 shrink-0">
+          {onOpenMobileMenu && (
+            <button
+              onClick={onOpenMobileMenu}
+              className="p-1.5 rounded-lg text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              aria-label="Open navigation menu"
+              title="All Menus & Features"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
           <button onClick={() => onNavigate('dashboard')} className="cursor-pointer">
             <MarketMateLogo size="sm" />
           </button>
         </div>
 
         <div className="min-w-0">
-          <h1 className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">
+          <h1 className="text-sm sm:text-lg font-bold text-[#001A35] dark:text-[#FEFEFE] leading-tight truncate">
             {viewMeta.title}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 hidden lg:block leading-tight truncate">
@@ -141,13 +161,13 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Cloud Sync Status Pill (Desktop/Tablet) */}
         {!isDemoMode && user ? (
           <div
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 shadow-2xs shrink-0"
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#ECFDF5] text-[#059669] dark:bg-[#064E3B]/40 dark:text-[#34D399] border border-[#059669]/20 shadow-2xs shrink-0"
             title="Multi-Device Cloud Sync is active via Firebase Firestore"
           >
             {isCloudSyncing ? (
-              <RefreshCw className="w-3 h-3 text-emerald-600 dark:text-emerald-400 animate-spin shrink-0" />
+              <RefreshCw className="w-3 h-3 text-[#059669] dark:text-[#34D399] animate-spin shrink-0" />
             ) : (
-              <Cloud className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <Cloud className="w-3 h-3 text-[#059669] dark:text-[#34D399] shrink-0" />
             )}
             <span className="text-[11px]">{isCloudSyncing ? 'Syncing...' : 'Cloud Synced'}</span>
           </div>
@@ -189,13 +209,25 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => onNavigate('admin')}
             className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 ${
               currentView === 'admin'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/10'
+                ? 'bg-[#059669] text-[#FEFEFE] shadow-xs'
+                : 'bg-[#ECFDF5] text-[#059669] dark:bg-[#064E3B]/40 dark:text-[#34D399] border border-[#059669]/30 hover:bg-[#D1FAE5]'
             }`}
             title="Owner & Super Admin Portal"
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <ShieldCheck className="w-3.5 h-3.5 text-[#059669] dark:text-[#34D399] shrink-0" />
             <span>Admin</span>
+          </button>
+        )}
+
+        {/* Refer & Earn 5% Discount Quick Button */}
+        {onOpenReferralModal && (
+          <button
+            onClick={onOpenReferralModal}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-[#ECFDF5] dark:bg-[#064E3B]/40 text-[#059669] dark:text-[#34D399] border border-[#059669]/30 hover:bg-[#D1FAE5] transition-all cursor-pointer shrink-0"
+            title="Refer a Business - Earn 5% Off Subscription (Oct 12-30)"
+          >
+            <Gift className="w-3.5 h-3.5 text-[#059669] dark:text-[#34D399] shrink-0" />
+            <span>Refer & Earn 5%</span>
           </button>
         )}
 
@@ -207,26 +239,38 @@ export const Header: React.FC<HeaderProps> = ({
             title="Notifications & Announcements"
             aria-label="Notifications"
           >
-            <Bell className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+            <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 w-2 h-2 rounded-full bg-emerald-600 ring-2 ring-white dark:ring-slate-900" />
+              <span className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 w-2 h-2 rounded-full bg-[#059669] dark:bg-[#34D399] ring-2 ring-[#FEFEFE] dark:ring-[#001A35]" />
             )}
           </button>
         )}
 
-        {/* Responsive User / Actions Dropdown with Chevron (All devices & especially mobile) */}
+        {/* Contact Admin & Support Quick Button */}
+        {onOpenSupportModal && (
+          <button
+            onClick={onOpenSupportModal}
+            className="p-1.5 sm:p-2 text-slate-500 hover:text-[#059669] dark:text-slate-400 dark:hover:text-[#34D399] hover:bg-[#ECFDF5] dark:hover:bg-[#064E3B]/30 rounded-lg transition-colors cursor-pointer relative shrink-0"
+            title="Contact MarketMate Admin (WhatsApp 0708 923 8728)"
+            aria-label="Contact Admin & Support"
+          >
+            <Headphones className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+          </button>
+        )}
+
+        {/* Responsive User / Actions Dropdown with Chevron */}
         <div className="relative shrink-0" ref={dropdownRef}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className={`flex items-center gap-1 sm:gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg border transition-all cursor-pointer shrink-0 ${
               isDropdownOpen
-                ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 shadow-xs'
-                : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-800 border-slate-200/90 dark:border-slate-700/80 text-slate-700 dark:text-slate-200'
+                ? 'bg-[#ECFDF5] border-[#059669]/40 text-[#059669] dark:bg-[#064E3B]/40 dark:border-[#059669]/60 dark:text-[#34D399] shadow-xs'
+                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100'
             }`}
             aria-expanded={isDropdownOpen}
             aria-label="User account and options menu"
           >
-            <div className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0">
+            <div className="w-6 h-6 rounded-full bg-[#059669] text-[#FEFEFE] flex items-center justify-center text-xs font-bold shrink-0">
               {currentSession?.staffName
                 ? currentSession.staffName.charAt(0).toUpperCase()
                 : (businessName ? businessName.charAt(0).toUpperCase() : 'M')}
@@ -251,10 +295,10 @@ export const Header: React.FC<HeaderProps> = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.96 }}
                 transition={{ duration: 0.15, ease: 'easeOut' }}
-                className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 py-2 z-50 overflow-hidden"
+                className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-[#001A35] rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-50 overflow-hidden"
               >
                 {/* Profile / Store Header */}
-                <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
+                <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                       {businessName}
@@ -263,7 +307,7 @@ export const Header: React.FC<HeaderProps> = ({
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                         isCashier
                           ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                          : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                          : 'bg-[#ECFDF5] text-[#059669] dark:bg-[#064E3B] dark:text-[#34D399] border border-[#059669]/20'
                       }`}
                     >
                       {isCashier ? 'Cashier Mode' : 'Owner / Manager'}
@@ -312,6 +356,25 @@ export const Header: React.FC<HeaderProps> = ({
                         </div>
                       </div>
                       <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded font-semibold">Change</span>
+                    </button>
+                  )}
+
+                  {/* Refer & Earn 5% Discount */}
+                  {onOpenReferralModal && (
+                    <button
+                      onClick={() => handleAction(onOpenReferralModal)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-emerald-950 dark:text-emerald-200 bg-emerald-50/70 dark:bg-emerald-950/40 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60 rounded-xl transition-colors cursor-pointer border border-emerald-200/60 dark:border-emerald-800/60"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+                          <Gift className="w-4 h-4" />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-bold text-emerald-900 dark:text-emerald-300">Refer & Earn 5% Off</p>
+                          <p className="text-[10px] text-emerald-700 dark:text-emerald-400">Campaign: Oct 12 – 30, 2026</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">5% OFF</span>
                     </button>
                   )}
 
@@ -383,6 +446,24 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="text-left">
                         <p className="font-semibold text-slate-900 dark:text-white">Brand Assets & Logos</p>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400">Download high-res PNG/SVG icons</p>
+                      </div>
+                    </button>
+                  )}
+                  {/* Contact Admin & WhatsApp Support */}
+                  {onOpenSupportModal && (
+                    <button
+                      onClick={() => handleAction(onOpenSupportModal)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-emerald-850 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
+                        <Headphones className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-semibold text-slate-900 dark:text-white">Contact Admin & Support</p>
+                          <span className="text-[9px] font-bold bg-emerald-600 text-white px-1.5 py-0.2 rounded">WhatsApp</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Chat 0708 923 8728 or send ticket</p>
                       </div>
                     </button>
                   )}

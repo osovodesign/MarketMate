@@ -18,6 +18,9 @@ import {
   Users,
   Target,
   Clock,
+  Lock,
+  Shield,
+  Coins,
 } from 'lucide-react';
 import { useBusinessData } from '../../context/BusinessDataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -28,6 +31,7 @@ import { ReceiptModal } from '../sales/ReceiptModal';
 import { formatCurrency, formatPercent, formatDateFriendly } from '../../lib/formatters';
 import { AppView, Sale } from '../../types';
 import { QuickStartGuide } from '../onboarding/QuickStartGuide';
+import { hasPermission } from '../../lib/staffPermissions';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -72,9 +76,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenGoalsModal,
   onOpenTourModal,
 }) => {
-  const { metrics, sales, expenses, debts, totalOutstandingReceivables, totalUnpaidInvoices, invoices } = useBusinessData();
-  const { business, user } = useAuth();
+  const {
+    metrics,
+    sales,
+    expenses,
+    debts,
+    totalOutstandingReceivables,
+    totalUnpaidInvoices,
+    invoices,
+    currentSession,
+    activeShift,
+  } = useBusinessData();
+  const { business, user, isSuperAdmin, isDemoMode, isSubscribed } = useAuth();
   const currency = business?.currency || 'NGN';
+
+  const canViewExpenses = hasPermission(currentSession, 'canViewExpenses');
+  const canViewProfit = hasPermission(currentSession, 'showProfitAndMargins');
 
   const [activePeriod, setActivePeriod] = useState<PeriodTab>('today');
   const [selectedSaleForReceipt, setSelectedSaleForReceipt] = useState<Sale | null>(null);
@@ -104,7 +121,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <p className="text-emerald-700 dark:text-emerald-400 font-semibold">
             Sales: {formatCurrency(payload[0]?.value, currency)}
           </p>
-          {payload[1] && (
+          {canViewProfit && payload[1] && (
             <p className="text-amber-700 dark:text-amber-400 font-semibold">
               Profit: {formatCurrency(payload[1]?.value, currency)}
             </p>
@@ -134,7 +151,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Here is what happened in <span className="font-semibold text-slate-700 dark:text-slate-200">{business?.businessName}</span>
+            Here is what happened in <span className="font-semibold text-slate-900 dark:text-white">{business?.businessName}</span>
           </p>
         </div>
 
@@ -162,12 +179,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Period Selection Filter Tabs */}
       <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-3">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 dark:bg-slate-800 rounded-xl">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
           <button
             onClick={() => setActivePeriod('today')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activePeriod === 'today'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -177,7 +194,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => setActivePeriod('thisWeek')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activePeriod === 'thisWeek'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -187,7 +204,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => setActivePeriod('thisMonth')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activePeriod === 'thisMonth'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
@@ -209,11 +226,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {activePeriod === 'today' ? "Today's Sales" : activePeriod === 'thisWeek' ? "This Week's Sales" : "This Month's Sales"}
               </p>
-              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1 tracking-tight">
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#001A35] dark:text-[#FEFEFE] mt-1 tracking-tight">
                 {formatCurrency(currentSummary.revenue, currency)}
               </p>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#ECFDF5] text-[#059669] dark:bg-[#064E3B]/40 dark:text-[#34D399] flex items-center justify-center shrink-0">
               <TrendingUp className="w-5 h-5" />
             </div>
           </div>
@@ -223,7 +240,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
             <button
               onClick={() => onNavigate('sales')}
-              className="text-emerald-700 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-0.5"
+              className="text-[#059669] dark:text-[#34D399] font-semibold hover:underline flex items-center gap-0.5 cursor-pointer"
             >
               <span>View sales</span>
               <ArrowRight className="w-3 h-3" />
@@ -231,61 +248,131 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </Card>
 
-        {/* Operating Expenses */}
+        {/* Operating Expenses Card */}
         <Card padding="md" className="relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {activePeriod === 'today' ? "Today's Expenses" : activePeriod === 'thisWeek' ? "This Week's Expenses" : "This Month's Expenses"}
+                {canViewExpenses
+                  ? (activePeriod === 'today' ? "Today's Expenses" : activePeriod === 'thisWeek' ? "This Week's Expenses" : "This Month's Expenses")
+                  : 'Cash Drawer Float'}
               </p>
-              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mt-1 tracking-tight">
-                {formatCurrency(currentSummary.operatingExpenses, currency)}
-              </p>
+              <div className="mt-1">
+                {canViewExpenses ? (
+                  <p className="text-2xl sm:text-3xl font-extrabold text-[#001A35] dark:text-[#FEFEFE] tracking-tight">
+                    {formatCurrency(currentSummary.operatingExpenses, currency)}
+                  </p>
+                ) : activeShift ? (
+                  <div>
+                    <p className="text-2xl sm:text-3xl font-extrabold text-amber-700 dark:text-amber-400 tracking-tight font-mono">
+                      {formatCurrency(activeShift.expectedCash, currency)}
+                    </p>
+                    <span className="text-[11px] text-amber-800 dark:text-amber-300 font-semibold block mt-0.5">
+                      Shift active ({activeShift.staffName})
+                    </span>
+                  </div>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-slate-400 font-mono text-xl py-1">
+                    <Lock className="w-4 h-4" />
+                    <span>Confidential</span>
+                  </span>
+                )}
+              </div>
             </div>
             <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <Receipt className="w-5 h-5" />
+              {canViewExpenses ? <Receipt className="w-5 h-5" /> : <Coins className="w-5 h-5" />}
             </div>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-            <span className="text-slate-500 dark:text-slate-400">
-              {currentSummary.expensesCount} {currentSummary.expensesCount === 1 ? 'expense' : 'expenses'} recorded
-            </span>
-            <button
-              onClick={() => onNavigate('expenses')}
-              className="text-amber-800 dark:text-amber-400 font-semibold hover:underline flex items-center gap-0.5"
-            >
-              <span>View expenses</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
+            {canViewExpenses ? (
+              <>
+                <span className="text-slate-500 dark:text-slate-400">
+                  {currentSummary.expensesCount} {currentSummary.expensesCount === 1 ? 'expense' : 'expenses'} recorded
+                </span>
+                <button
+                  onClick={() => onNavigate('expenses')}
+                  className="text-amber-800 dark:text-amber-400 font-semibold hover:underline flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>View expenses</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-slate-500 dark:text-slate-400 text-[11px]">
+                  Restricted to Store Owner & Manager
+                </span>
+                <button
+                  onClick={() => onNavigate('pos')}
+                  className="text-[#059669] dark:text-[#34D399] font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Go to POS</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </>
+            )}
           </div>
         </Card>
 
-        {/* Net Operating Profit */}
-        <Card padding="md" className="bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-800/60 relative overflow-hidden">
+        {/* Net Operating Profit (10% Accent Hero) */}
+        <Card padding="md" className="bg-[#ECFDF5] dark:bg-[#064E3B]/30 border-[#059669]/30 dark:border-[#059669]/40 relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
-                {activePeriod === 'today' ? "Today's Take-Home Profit" : activePeriod === 'thisWeek' ? "This Week's Profit" : "This Month's Profit"}
+              <p className="text-xs font-bold text-[#047857] dark:text-[#34D399] uppercase tracking-wider">
+                {canViewProfit
+                  ? (activePeriod === 'today' ? "Today's Take-Home Profit" : activePeriod === 'thisWeek' ? "This Week's Profit" : "This Month's Profit")
+                  : 'Gross Profit & Margins'}
               </p>
-              <p className="text-2xl sm:text-3xl font-extrabold text-emerald-800 dark:text-emerald-300 mt-1 tracking-tight">
-                {formatCurrency(currentSummary.operatingProfit, currency)}
-              </p>
+              <div className="mt-1">
+                {canViewProfit ? (
+                  <p className="text-2xl sm:text-3xl font-extrabold text-[#047857] dark:text-[#34D399] tracking-tight">
+                    {formatCurrency(currentSummary.operatingProfit, currency)}
+                  </p>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-base sm:text-lg font-bold text-[#047857] dark:text-[#34D399] py-1">
+                    <Shield className="w-4 h-4 text-[#059669] shrink-0" />
+                    <span>Protected Confidential Metric</span>
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
-              <PiggyBank className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-[#059669] text-[#FEFEFE] flex items-center justify-center shrink-0 shadow-2xs">
+              {canViewProfit ? <PiggyBank className="w-5 h-5" /> : <Shield className="w-5 h-5" />}
             </div>
           </div>
-          <div className="mt-3 pt-3 border-t border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-between text-xs">
-            <span className="text-emerald-800 dark:text-emerald-300 font-semibold">
-              Profit Margin: {formatPercent(currentSummary.profitMargin)}
-            </span>
-            <button
-              onClick={() => onNavigate('reports')}
-              className="text-emerald-900 dark:text-emerald-200 font-bold hover:underline flex items-center gap-0.5"
-            >
-              <span>Full reports</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
+          <div className="mt-3 pt-3 border-t border-[#059669]/20 flex items-center justify-between text-xs">
+            {canViewProfit ? (
+              <>
+                <span className="text-[#065F46] dark:text-[#A7F3D0] font-bold">
+                  Profit Margin: <span className="text-[#047857] dark:text-[#34D399]">{formatPercent(currentSummary.profitMargin)}</span>
+                </span>
+                <button
+                  onClick={() => onNavigate('reports')}
+                  className="text-[#047857] dark:text-[#34D399] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Full reports</span>
+                  {!isSubscribed && (
+                    <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                      PRO
+                    </span>
+                  )}
+                  <ArrowRight className="w-3 h-3 text-[#059669] dark:text-[#34D399]" />
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-[#065F46] dark:text-[#A7F3D0] font-medium text-[11px]">
+                  Store margins protected for cashier sessions
+                </span>
+                <button
+                  onClick={() => onNavigate('pos')}
+                  className="text-[#047857] dark:text-[#34D399] font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Open POS</span>
+                  <ArrowRight className="w-3 h-3 text-[#059669] dark:text-[#34D399]" />
+                </button>
+              </>
+            )}
           </div>
         </Card>
       </div>
@@ -305,6 +392,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <Badge variant="amber" size="sm">
                   Live Data
                 </Badge>
+                {!isSubscribed && (
+                  <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 font-extrabold">
+                    PRO
+                  </span>
+                )}
               </div>
               <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 mt-1 leading-relaxed">
                 {metrics.thisMonth.revenue > 0 ? (
@@ -339,6 +431,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             rightIcon={<Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
           >
             Ask MarketMate AI
+            {!isSubscribed && (
+              <span className="ml-1 text-[9px] font-black uppercase px-1 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                PRO
+              </span>
+            )}
           </Button>
         </div>
 
@@ -351,10 +448,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {onOpenGoalsModal && (
               <button
                 onClick={onOpenGoalsModal}
-                className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1"
+                className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
               >
                 <Target className="w-3.5 h-3.5" />
-                Goals & Targets
+                <span>Goals & Targets</span>
+                {!isSubscribed && (
+                  <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                    PRO
+                  </span>
+                )}
               </button>
             )}
           </div>
@@ -362,19 +464,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {onOpenPricingCalculator && (
               <button
                 onClick={onOpenPricingCalculator}
-                className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-xs font-bold text-left transition-colors flex items-center gap-2 border border-emerald-200/60 dark:border-emerald-800/60"
+                className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-xs font-bold text-left transition-colors flex items-center justify-between border border-emerald-200/60 dark:border-emerald-800/60 cursor-pointer"
               >
-                <Calculator className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
-                <span className="leading-tight">Pricing Calculator</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Calculator className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                  <span className="leading-tight truncate">Pricing</span>
+                </div>
+                {!isSubscribed && (
+                  <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 shrink-0">
+                    PRO
+                  </span>
+                )}
               </button>
             )}
             {onOpenProfitSimulator && (
               <button
                 onClick={onOpenProfitSimulator}
-                className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100/80 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-xs font-bold text-left transition-colors flex items-center gap-2 border border-amber-200/60 dark:border-amber-800/60"
+                className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100/80 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-xs font-bold text-left transition-colors flex items-center justify-between border border-amber-200/60 dark:border-amber-800/60 cursor-pointer"
               >
-                <Sliders className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-                <span className="leading-tight">Profit Simulator</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Sliders className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
+                  <span className="leading-tight truncate">Simulator</span>
+                </div>
+                {!isSubscribed && (
+                  <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 shrink-0">
+                    PRO
+                  </span>
+                )}
               </button>
             )}
           </div>
@@ -411,10 +527,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => onNavigate('debts')}
             variant="outline"
             size="sm"
-            className="border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-300 hover:bg-rose-100/80 dark:hover:bg-rose-950/60 font-bold shrink-0 w-full sm:w-auto"
+            className="border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-300 hover:bg-rose-100/80 dark:hover:bg-rose-950/60 font-bold shrink-0 w-full sm:w-auto flex items-center gap-1.5"
             rightIcon={<ArrowRight className="w-4 h-4" />}
           >
-            Open Debt Book
+            <span>Open Debt Book</span>
+            {!isSubscribed && (
+              <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                PRO
+              </span>
+            )}
           </Button>
         </div>
       )}
@@ -449,10 +570,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => onNavigate('invoices')}
             variant="outline"
             size="sm"
-            className="border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100/80 dark:hover:bg-emerald-950/60 font-bold shrink-0 w-full sm:w-auto"
+            className="border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100/80 dark:hover:bg-emerald-950/60 font-bold shrink-0 w-full sm:w-auto flex items-center gap-1.5"
             rightIcon={<ArrowRight className="w-4 h-4" />}
           >
-            Manage Invoices
+            <span>Manage Invoices</span>
+            {!isSubscribed && (
+              <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+                PRO
+              </span>
+            )}
           </Button>
         </div>
       )}
@@ -463,7 +589,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <Card padding="md" className="lg:col-span-2">
           <CardHeader>
             <div>
-              <CardTitle>7-Day Sales & Profit Trend</CardTitle>
+              <CardTitle>{canViewProfit ? '7-Day Sales & Profit Trend' : '7-Day Sales Performance'}</CardTitle>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Daily comparison over the past week</p>
             </div>
             <div className="flex items-center gap-3 text-xs">
@@ -471,10 +597,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
                 <span className="text-slate-600 dark:text-slate-300">Sales</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                <span className="text-slate-600 dark:text-slate-300">Profit</span>
-              </div>
+              {canViewProfit && (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <span className="text-slate-600 dark:text-slate-300">Profit</span>
+                </div>
+              )}
             </div>
           </CardHeader>
 
@@ -508,14 +636,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   fillOpacity={1}
                   fill="url(#colorSales)"
                 />
-                <Area
-                  type="monotone"
-                  dataKey="profit"
-                  stroke="#D97706"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorProfit)"
-                />
+                {canViewProfit && (
+                  <Area
+                    type="monotone"
+                    dataKey="profit"
+                    stroke="#D97706"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorProfit)"
+                  />
+                )}
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -579,9 +709,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </CardHeader>
 
-          {metrics.recentTransactions.length > 0 ? (
+          {metrics.recentTransactions
+            .filter((tx) => canViewExpenses || tx.type === 'sale')
+            .length > 0 ? (
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {metrics.recentTransactions.slice(0, 6).map((tx) => {
+              {metrics.recentTransactions
+                .filter((tx) => canViewExpenses || tx.type === 'sale')
+                .slice(0, 6)
+                .map((tx) => {
                 const isSale = tx.type === 'sale';
                 return (
                   <div key={tx.id} className="py-3 flex items-center justify-between gap-3">
@@ -613,7 +748,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {isSale ? '+' : '-'}
                           {formatCurrency(tx.amount, currency)}
                         </p>
-                        {isSale && tx.profit !== undefined && (
+                        {isSale && tx.profit !== undefined && canViewProfit && (
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
                             Profit: {formatCurrency(tx.profit, currency)}
                           </p>

@@ -24,6 +24,12 @@ import {
 } from '../lib/firebase';
 
 import { isSuperAdminEmail, SUPER_ADMIN_CONFIG } from '../lib/adminConfig';
+import {
+  detectAndStoreReferralCode,
+  getPendingReferralCode,
+  recordReferralSignup,
+  recordReferralSubscription,
+} from '../lib/referralService';
 
 export interface UserSession {
   id: string;
@@ -43,9 +49,15 @@ interface AuthContextType {
   isLoading: boolean;
   isCloudConnected: boolean;
   isSuperAdmin: boolean;
+  isSubscribed: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: () => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
-  signup: (fullName: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (
+    fullName: string,
+    email: string,
+    password: string,
+    referralCode?: string
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   createBusiness: (data: {
     businessName: string;
@@ -54,6 +66,7 @@ interface AuthContextType {
     phone?: string;
   }) => Promise<void>;
   updateBusiness: (data: Partial<BusinessProfile>) => Promise<void>;
+  activateSubscription: (planName?: string) => Promise<{ success: boolean; error?: string }>;
   activateDemoMode: () => void;
   resetPassword: (email: string) => Promise<{ success: boolean; message: string }>;
 }
@@ -76,6 +89,9 @@ const DEMO_BUSINESS: BusinessProfile = {
   ownerName: 'Adaeze Okonkwo',
   createdAt: '2026-08-01T08:00:00Z',
   updatedAt: '2026-08-27T08:00:00Z',
+  isSubscribed: true,
+  subscriptionPlan: 'MarketMate Pro (Free Demo Explorer)',
+  subscribedAt: '2026-08-01T08:00:00Z',
 };
 
 const STORAGE_KEYS = {
@@ -91,8 +107,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(true);
 
-  // Test Firestore connection on boot
+  // Test Firestore connection on boot & check for referral codes in URL
   useEffect(() => {
+    detectAndStoreReferralCode();
     testFirestoreConnection().then((connected) => {
       setIsCloudConnected(connected);
     });
@@ -129,6 +146,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const bizData = bizSnap.data() as BusinessProfile;
               setBusiness(bizData);
               localStorage.setItem(STORAGE_KEYS.BUSINESS, JSON.stringify(bizData));
+              // Update real-time heartbeat and ensure ownerEmail is recorded
+              try {
+                const nowIso = new Date().toISOString();
+                setDoc(
+                  bizDocRef,
+                  {
+                    ...bizData,
+                    ownerEmail: firebaseUser.email || (bizData as any).ownerEmail || '',
+                    lastActiveAt: nowIso,
+                  },
+                  { merge: true }
+                ).catch(() => {});
+              } catch (_) {}
             }
           } else {
             // Query businesses where ownerId == uid
@@ -138,6 +168,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const firstBiz = bizQuerySnap.docs[0].data() as BusinessProfile;
               setBusiness(firstBiz);
               localStorage.setItem(STORAGE_KEYS.BUSINESS, JSON.stringify(firstBiz));
+              // Update real-time heartbeat and ensure ownerEmail is recorded
+              try {
+                const nowIso = new Date().toISOString();
+                setDoc(
+                  doc(db, 'businesses', firstBiz.id),
+                  {
+                    ...firstBiz,
+                    ownerEmail: firebaseUser.email || (firstBiz as any).ownerEmail || '',
+                    lastActiveAt: nowIso,
+                  },
+                  { merge: true }
+                ).catch(() => {});
+              } catch (_) {}
             } else {
               // Check local storage fallback
               const savedBizStr = localStorage.getItem(STORAGE_KEYS.BUSINESS);
@@ -205,6 +248,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
           { merge: true }
         );
+
+        // Record pending referral if user signed up with a referral link
+        const pendingRef = getPendingReferralCode();
+        if (pendingRef) {
+          recordReferralSignup({
+            referrerCode: pendingRef,
+            referredUserId: fbUser.uid,
+            referredUserEmail: fbUser.email || undefined,
+            referredBusinessName: fbUser.displayName || 'New Merchant',
+          }).catch((err) => console.warn('Referral signup record error:', err));
+        }
       } catch (err) {
         console.warn('User doc save fallback:', err);
       }
@@ -277,7 +331,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (
     fullName: string,
     email: string,
-    password: string
+    password: string,
+    referralCode?: string
   ): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
@@ -302,6 +357,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
+
+        // Record referral if provided or pending
+        const codeToAttribute = (referralCode || getPendingReferralCode() || '').trim().toUpperCase();
+        if (codeToAttribute) {
+          recordReferralSignup({
+            referrerCode: codeToAttribute,
+            referredUserId: fbUser.uid,
+            referredUserEmail: fbUser.email || email,
+            referredBusinessName: fullName.trim(),
+          }).catch((err) => console.warn('Referral signup record error:', err));
+        }
       } catch (err) {
         console.warn('Could not write user profile doc:', err);
       }
@@ -372,6 +438,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await setDoc(bizDocRef, {
           id: bizId,
           ownerId: user.id,
+          ownerEmail: user.email || '',
           businessName: newProfile.businessName,
           businessType: newProfile.businessType,
           currency: newProfile.currency,
@@ -384,6 +451,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Update user doc with current business ID
         const userDocRef = doc(db, 'users', user.id);
         await setDoc(userDocRef, { currentBusinessId: bizId }, { merge: true });
+
+        // Trigger automated branded welcome email from notifications@getmarketmate.online
+        if (user.email && user.email.includes('@')) {
+          fetch('/api/email/welcome', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: user.email,
+              ownerName: user.fullName || newProfile.ownerName,
+              businessName: newProfile.businessName,
+              businessType: newProfile.businessType,
+            }),
+          }).catch((e) => console.warn('Welcome email trigger notice:', e));
+        }
       } catch (err) {
         console.warn('Could not sync business profile to cloud:', err);
       }
@@ -411,6 +492,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         console.warn('Could not sync business update to cloud:', err);
       }
+    }
+  };
+
+  const activateSubscription = async (
+    planName: string = 'MarketMate Pioneer Standard'
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const now = new Date().toISOString();
+      if (business) {
+        await updateBusiness({
+          isSubscribed: true,
+          subscriptionPlan: planName,
+          subscribedAt: now,
+        });
+      }
+
+      if (user?.id) {
+        await recordReferralSubscription(user.id, planName);
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.warn('Subscription activation error:', err);
+      return { success: false, error: err?.message || 'Could not activate subscription' };
     }
   };
 
@@ -442,6 +547,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAuthenticated = !!user;
   const isOnboarded = !!business;
   const isSuperAdmin = !!user?.isSuperAdmin || isSuperAdminEmail(user?.email);
+  // Demo Mode account (Adaeze) has all Pro features completely unlocked for free exploration.
+  // Real registered users remain locked on the Free Tier unless their subscription is approved.
+  const isSubscribed = Boolean(
+    business?.isSubscribed || isSuperAdmin || user?.isSuperAdmin || isDemoMode
+  );
 
   return (
     <AuthContext.Provider
@@ -454,12 +564,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         isCloudConnected,
         isSuperAdmin,
+        isSubscribed,
         login,
         loginWithGoogle,
         signup,
         logout,
         createBusiness,
         updateBusiness,
+        activateSubscription,
         activateDemoMode,
         resetPassword,
       }}

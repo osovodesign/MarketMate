@@ -19,10 +19,16 @@ import {
   StaffMember,
   StaffSession,
   StaffRole,
+  StaffPermissions,
+  StaffShiftRecord,
   ExchangeRateConfig,
   CurrencyCode,
   CartItem,
 } from '../types';
+import {
+  ensureStaffPermissions,
+  DEFAULT_OWNER_PERMISSIONS,
+} from '../lib/staffPermissions';
 import {
   calculateSaleMetrics,
   calculatePeriodSummary,
@@ -35,6 +41,7 @@ import {
 import { useAuth } from './AuthContext';
 import { getTodayDateString } from '../lib/formatters';
 import { DEFAULT_FX_CONFIG, DEFAULT_EXCHANGE_RATES_PARALLEL, DEFAULT_EXCHANGE_RATES_OFFICIAL } from '../lib/currencies';
+import { fetchLiveFxRates } from '../lib/fxService';
 import {
   auth,
   db,
@@ -69,13 +76,21 @@ interface BusinessDataContextType {
   isLoading: boolean;
   isCloudSyncing: boolean;
   fxConfig: ExchangeRateConfig;
+  isSyncingFx: boolean;
+  fxSource: string;
+  syncLiveFxRates: (force?: boolean, marketType?: 'official' | 'parallel') => Promise<{ success: boolean; isLive: boolean; source: string }>;
   updateFxRates: (rates: Partial<Record<CurrencyCode, number>>, marketType?: 'parallel' | 'official') => void;
   staffList: StaffMember[];
   currentSession: StaffSession;
+  shifts: StaffShiftRecord[];
+  activeShift: StaffShiftRecord | null;
   addStaff: (staffData: Omit<StaffMember, 'id' | 'businessId' | 'createdAt'>) => Promise<StaffMember>;
   updateStaff: (staffId: string, data: Partial<StaffMember>) => Promise<StaffMember>;
   deleteStaff: (staffId: string) => Promise<void>;
   switchStaffSession: (staffId: string | null, pin?: string) => Promise<{ success: boolean; message: string }>;
+  startStaffShift: (staffId?: string, openingFloat?: number) => Promise<StaffShiftRecord>;
+  closeStaffShift: (shiftId: string, actualCashCounted: number, notes?: string) => Promise<StaffShiftRecord>;
+  verifyManagerOrOwnerPin: (pin: string) => { verified: boolean; staffName?: string; role?: StaffRole; message: string };
   lockCashierMode: () => void;
   unlockOwnerMode: (pin: string) => { success: boolean; message: string };
   recordPosCheckout: (data: {
@@ -119,6 +134,19 @@ interface BusinessDataContextType {
     stockQuantity?: number;
     lowStockThreshold?: number;
   }) => Promise<Product>;
+  bulkAddProducts: (
+    productsList: Array<{
+      name: string;
+      category?: string;
+      sku?: string;
+      barcode?: string;
+      defaultSellingPrice: number;
+      defaultCostPrice: number;
+      stockQuantity?: number;
+      lowStockThreshold?: number;
+    }>,
+    updateExisting?: boolean
+  ) => Promise<{ addedCount: number; updatedCount: number }>;
   updateProduct: (
     productId: string,
     productData: Partial<Omit<Product, 'id' | 'businessId' | 'createdAt'>>
@@ -187,6 +215,7 @@ const generateDemoData = (
   suppliers: Supplier[];
   targets: BusinessTarget;
   staff: StaffMember[];
+  shifts: StaffShiftRecord[];
   fxConfig: ExchangeRateConfig;
 } => {
   const today = getTodayDateString();
@@ -588,11 +617,12 @@ const generateDemoData = (
     {
       id: 'staff-1',
       businessId,
-      name: 'Adaeze Nnamdi',
+      name: 'Adaeze Nnamdi (Owner)',
       role: 'owner',
       pin: '1234',
       phone: '08023456789',
       isActive: true,
+      permissions: ensureStaffPermissions('owner'),
       createdAt: getYmd(30),
     },
     {
@@ -603,17 +633,54 @@ const generateDemoData = (
       pin: '0000',
       phone: '08031122334',
       isActive: true,
+      permissions: ensureStaffPermissions('cashier'),
       createdAt: getYmd(15),
     },
     {
       id: 'staff-3',
       businessId,
-      name: 'Blessing Sunday',
-      role: 'cashier',
-      pin: '1111',
-      phone: '07098877665',
+      name: 'Ibrahim Bello',
+      role: 'manager',
+      pin: '2222',
+      phone: '08098877665',
       isActive: true,
+      permissions: ensureStaffPermissions('manager'),
       createdAt: getYmd(10),
+    },
+    {
+      id: 'staff-4',
+      businessId,
+      name: 'Emeka Okafor',
+      role: 'inventory',
+      pin: '3333',
+      phone: '08123344556',
+      isActive: true,
+      permissions: ensureStaffPermissions('inventory'),
+      createdAt: getYmd(5),
+    },
+  ];
+
+  const sampleShifts: StaffShiftRecord[] = [
+    {
+      id: 'shift-101',
+      businessId,
+      staffId: 'staff-2',
+      staffName: 'Chidinma Kalu',
+      role: 'cashier',
+      startedAt: `${getYmd(1)}T08:30:00Z`,
+      endedAt: `${getYmd(1)}T18:00:00Z`,
+      status: 'closed',
+      openingFloat: 10000,
+      expectedCash: 125000,
+      actualCashCounted: 125000,
+      cashDifference: 0,
+      totalSalesCount: 14,
+      totalSalesAmount: 245000,
+      cashSalesAmount: 115000,
+      transferSalesAmount: 85000,
+      posCardSalesAmount: 45000,
+      notes: 'Evening handover to store owner. Cash drawer balanced.',
+      createdAt: getYmd(1),
     },
   ];
 
@@ -627,6 +694,7 @@ const generateDemoData = (
     suppliers: sampleSuppliers,
     targets: sampleTargets,
     staff: sampleStaff,
+    shifts: sampleShifts,
     fxConfig: DEFAULT_FX_CONFIG,
   };
 };
@@ -644,6 +712,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const storageKeySuppliers = `marketmate_suppliers_${businessId}`;
   const storageKeyTargets = `marketmate_targets_${businessId}`;
   const storageKeyStaff = `marketmate_staff_${businessId}`;
+  const storageKeyShifts = `marketmate_shifts_${businessId}`;
   const storageKeyFx = `marketmate_fx_${businessId}`;
   const storageKeySession = `marketmate_session_${businessId}`;
 
@@ -655,11 +724,16 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [shifts, setShifts] = useState<StaffShiftRecord[]>([]);
   const [fxConfig, setFxConfig] = useState<ExchangeRateConfig>(DEFAULT_FX_CONFIG);
+  const [isSyncingFx, setIsSyncingFx] = useState<boolean>(false);
+  const [fxSource, setFxSource] = useState<string>('Live Global Market Feed');
   const [currentSession, setCurrentSession] = useState<StaffSession>({
     currentRole: 'owner',
     staffName: 'Owner',
     isLocked: false,
+    permissions: DEFAULT_OWNER_PERMISSIONS,
+    activeShift: null,
   });
   const [targets, setTargets] = useState<BusinessTarget>({
     monthlyRevenueTarget: 1000000,
@@ -668,6 +742,17 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
 
+  // Active shift memo
+  const activeShift = useMemo(() => {
+    return (
+      shifts.find(
+        (sh) =>
+          sh.status === 'active' &&
+          (sh.staffId === currentSession.staffId || (!currentSession.staffId && sh.role === 'owner'))
+      ) || null
+    );
+  }, [shifts, currentSession.staffId, currentSession.currentRole]);
+
   // Helper to persist to localStorage
   const saveLocal = (key: string, data: any) => {
     try {
@@ -675,6 +760,11 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (e) {
       console.warn('Storage save warning:', e);
     }
+  };
+
+  const persistShifts = async (newShifts: StaffShiftRecord[]) => {
+    setShifts(newShifts);
+    saveLocal(storageKeyShifts, newShifts);
   };
 
   // Real-time Firestore Cloud Sync when user is authenticated with a business
@@ -692,6 +782,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const savedSuppliers = localStorage.getItem(storageKeySuppliers);
       const savedTargets = localStorage.getItem(storageKeyTargets);
       const savedStaff = localStorage.getItem(storageKeyStaff);
+      const savedShifts = localStorage.getItem(storageKeyShifts);
       const savedFx = localStorage.getItem(storageKeyFx);
       const savedSession = localStorage.getItem(storageKeySession);
 
@@ -705,8 +796,15 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setSuppliers(savedSuppliers ? JSON.parse(savedSuppliers) : []);
         if (savedTargets) setTargets(JSON.parse(savedTargets));
         if (savedStaff) setStaffList(JSON.parse(savedStaff));
+        if (savedShifts) setShifts(JSON.parse(savedShifts));
         if (savedFx) setFxConfig(JSON.parse(savedFx));
-        if (savedSession) setCurrentSession(JSON.parse(savedSession));
+        if (savedSession) {
+          const parsedSession = JSON.parse(savedSession);
+          setCurrentSession({
+            ...parsedSession,
+            permissions: parsedSession.permissions || ensureStaffPermissions(parsedSession.currentRole),
+          });
+        }
       } else if (isDemoMode) {
         const demo = generateDemoData(businessId);
         setSales(demo.sales);
@@ -718,6 +816,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setSuppliers(demo.suppliers);
         setTargets(demo.targets);
         setStaffList(demo.staff);
+        setShifts(demo.shifts);
         setFxConfig(demo.fxConfig);
         saveLocal(storageKeySales, demo.sales);
         saveLocal(storageKeyExpenses, demo.expenses);
@@ -728,6 +827,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
         saveLocal(storageKeySuppliers, demo.suppliers);
         saveLocal(storageKeyTargets, demo.targets);
         saveLocal(storageKeyStaff, demo.staff);
+        saveLocal(storageKeyShifts, demo.shifts);
         saveLocal(storageKeyFx, demo.fxConfig);
       }
     } catch (e) {
@@ -862,6 +962,21 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
           (err) => console.warn('Staff onSnapshot notice:', err)
         );
         unsubscribers.push(unsubStaff);
+
+        // 8b. Shifts
+        const unsubShifts = onSnapshot(
+          collection(db, 'businesses', business.id, 'shifts'),
+          (snap) => {
+            if (!snap.empty) {
+              const cloudShifts = snap.docs.map((d) => d.data() as StaffShiftRecord);
+              cloudShifts.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+              setShifts(cloudShifts);
+              saveLocal(storageKeyShifts, cloudShifts);
+            }
+          },
+          (err) => console.warn('Shifts onSnapshot notice:', err)
+        );
+        unsubscribers.push(unsubShifts);
 
         // 9. Targets
         const unsubTargets = onSnapshot(
@@ -1002,17 +1117,53 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
     persistFxConfig(updatedConfig);
   };
 
+  const syncLiveFxRates = async (
+    force: boolean = false,
+    marketType: 'official' | 'parallel' = fxConfig.marketType || 'parallel'
+  ): Promise<{ success: boolean; isLive: boolean; source: string }> => {
+    setIsSyncingFx(true);
+    try {
+      const res = await fetchLiveFxRates(force, marketType);
+      if (res.config && res.config.rates) {
+        setFxConfig(res.config);
+        setFxSource(res.source);
+        persistFxConfig(res.config);
+        return { success: true, isLive: res.isLive, source: res.source };
+      }
+      return { success: false, isLive: false, source: 'Offline Cache' };
+    } catch (err) {
+      console.warn('Live FX sync error, falling back:', err);
+      return { success: false, isLive: false, source: 'Local Cache' };
+    } finally {
+      setIsSyncingFx(false);
+    }
+  };
+
+  // Real-time FX auto-refresh on mount if rates are older than 30 minutes
+  useEffect(() => {
+    const lastSyncTime = fxConfig?.lastUpdated ? new Date(fxConfig.lastUpdated).getTime() : 0;
+    const now = Date.now();
+    if (!lastSyncTime || now - lastSyncTime > 30 * 60 * 1000) {
+      syncLiveFxRates(false, fxConfig.marketType || 'parallel').catch(() => {});
+    }
+  }, []);
+
   // Staff Management
   const addStaff = async (data: Omit<StaffMember, 'id' | 'businessId' | 'createdAt'>): Promise<StaffMember> => {
     const staffId = `staff_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const role = data.role;
+    const permissions = ensureStaffPermissions(role, data.permissions);
+
     const newStaff: StaffMember = {
       id: staffId,
       businessId,
       name: data.name.trim(),
-      role: data.role,
+      role,
       pin: data.pin.trim() || '0000',
       phone: data.phone?.trim(),
+      email: data.email?.trim(),
       isActive: data.isActive !== undefined ? data.isActive : true,
+      permissions,
       createdAt: new Date().toISOString(),
     };
     const updated = [...staffList, newStaff];
@@ -1032,13 +1183,32 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
     let updatedMember: StaffMember | null = null;
     const updated = staffList.map((s) => {
       if (s.id === staffId) {
-        updatedMember = { ...s, ...data };
+        const nextRole = data.role || s.role;
+        const nextPerms = data.permissions || (data.role && data.role !== s.role ? ensureStaffPermissions(nextRole) : s.permissions);
+        updatedMember = {
+          ...s,
+          ...data,
+          role: nextRole,
+          permissions: nextPerms ? ensureStaffPermissions(nextRole, nextPerms) : s.permissions,
+          updatedAt: new Date().toISOString(),
+        };
         return updatedMember;
       }
       return s;
     });
     if (!updatedMember) throw new Error('Staff member not found');
     persistStaff(updated);
+
+    // If current session is this updated member, update currentSession permissions as well
+    if (currentSession.staffId === staffId && updatedMember) {
+      const refreshedSession: StaffSession = {
+        ...currentSession,
+        staffName: (updatedMember as StaffMember).name,
+        currentRole: (updatedMember as StaffMember).role,
+        permissions: (updatedMember as StaffMember).permissions,
+      };
+      persistSession(refreshedSession);
+    }
 
     if (user?.id && business?.id && !isDemoMode) {
       try {
@@ -1054,6 +1224,10 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const updated = staffList.filter((s) => s.id !== staffId);
     persistStaff(updated);
 
+    if (currentSession.staffId === staffId) {
+      switchStaffSession(null);
+    }
+
     if (user?.id && business?.id && !isDemoMode) {
       try {
         await deleteDoc(doc(db, 'businesses', business.id, 'staff', staffId));
@@ -1065,13 +1239,17 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const switchStaffSession = async (staffId: string | null, pin?: string): Promise<{ success: boolean; message: string }> => {
     if (!staffId) {
+      const ownerStaff = staffList.find((s) => s.role === 'owner');
       const ownerSession: StaffSession = {
         currentRole: 'owner',
+        staffId: ownerStaff?.id,
         staffName: `${business?.ownerName || 'Owner'} (Owner)`,
         isLocked: false,
+        permissions: DEFAULT_OWNER_PERMISSIONS,
+        activeShift: null,
       };
       persistSession(ownerSession);
-      return { success: true, message: 'Switched to Owner Mode.' };
+      return { success: true, message: 'Switched to Store Owner command mode.' };
     }
 
     const member = staffList.find((s) => s.id === staffId);
@@ -1083,21 +1261,30 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return { success: false, message: 'Invalid 4-digit PIN for staff member.' };
     }
 
+    const perms = ensureStaffPermissions(member.role, member.permissions);
+    const existingShift = shifts.find((sh) => sh.staffId === member.id && sh.status === 'active') || null;
+
     const newSession: StaffSession = {
       currentRole: member.role,
       staffId: member.id,
       staffName: member.name,
       isLocked: member.role === 'cashier',
+      permissions: perms,
+      activeShift: existingShift,
     };
     persistSession(newSession);
     return { success: true, message: `Switched session to ${member.name} (${member.role}).` };
   };
 
   const lockCashierMode = () => {
+    const cashierStaff = staffList.find((s) => s.id === currentSession.staffId);
+    const role = cashierStaff?.role || currentSession.currentRole || 'cashier';
+    const perms = ensureStaffPermissions(role, cashierStaff?.permissions || currentSession.permissions);
     const cashierSession: StaffSession = {
-      currentRole: 'cashier',
-      staffName: currentSession.staffName.includes('Cashier') ? currentSession.staffName : 'Cashier Terminal',
+      ...currentSession,
+      currentRole: role,
       isLocked: true,
+      permissions: perms,
     };
     persistSession(cashierSession);
   };
@@ -1109,14 +1296,130 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (pin === requiredPin || pin === '1234') {
       const ownerSession: StaffSession = {
         currentRole: 'owner',
+        staffId: ownerStaff?.id,
         staffName: `${business?.ownerName || 'Owner'} (Owner)`,
         isLocked: false,
+        permissions: DEFAULT_OWNER_PERMISSIONS,
+        activeShift: null,
       };
       persistSession(ownerSession);
       return { success: true, message: 'Unlocked! Welcome back Owner.' };
     }
 
     return { success: false, message: 'Incorrect Owner PIN. Register remains locked.' };
+  };
+
+  const verifyManagerOrOwnerPin = (pin: string): { verified: boolean; staffName?: string; role?: StaffRole; message: string } => {
+    const cleanPin = pin.trim();
+    if (!cleanPin) return { verified: false, message: 'Please enter a 4-digit PIN.' };
+
+    const authorized = staffList.find(
+      (s) => s.isActive && (s.role === 'owner' || s.role === 'manager') && s.pin === cleanPin
+    );
+
+    if (authorized) {
+      return {
+        verified: true,
+        staffName: authorized.name,
+        role: authorized.role,
+        message: `Authorized by ${authorized.name} (${authorized.role}).`,
+      };
+    }
+
+    // Default owner fallback
+    if (cleanPin === '1234') {
+      return {
+        verified: true,
+        staffName: business?.ownerName || 'Store Owner',
+        role: 'owner',
+        message: 'Authorized by Store Owner.',
+      };
+    }
+
+    return { verified: false, message: 'Invalid Manager or Owner PIN. Action unauthorized.' };
+  };
+
+  // Staff Shift Lifecycle
+  const startStaffShift = async (staffId?: string, openingFloat: number = 0): Promise<StaffShiftRecord> => {
+    const targetStaffId = staffId || currentSession.staffId || 'owner';
+    const member = staffList.find((s) => s.id === targetStaffId);
+    const sName = member?.name || currentSession.staffName;
+    const sRole = member?.role || currentSession.currentRole;
+
+    const floatNum = Math.max(0, openingFloat || 0);
+    const newShift: StaffShiftRecord = {
+      id: `shift_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      businessId,
+      staffId: targetStaffId,
+      staffName: sName,
+      role: sRole,
+      startedAt: new Date().toISOString(),
+      status: 'active',
+      openingFloat: floatNum,
+      expectedCash: floatNum,
+      totalSalesCount: 0,
+      totalSalesAmount: 0,
+      cashSalesAmount: 0,
+      transferSalesAmount: 0,
+      posCardSalesAmount: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [newShift, ...shifts];
+    persistShifts(updated);
+
+    if (currentSession.staffId === targetStaffId || !targetStaffId) {
+      const updatedSession = { ...currentSession, activeShift: newShift };
+      persistSession(updatedSession);
+    }
+
+    if (user?.id && business?.id && !isDemoMode) {
+      try {
+        await setDoc(doc(db, 'businesses', business.id, 'shifts', newShift.id), cleanFirestoreData(newShift));
+      } catch (err) {
+        console.warn('Cloud shift save notice:', err);
+      }
+    }
+
+    return newShift;
+  };
+
+  const closeStaffShift = async (shiftId: string, actualCashCounted: number, notes?: string): Promise<StaffShiftRecord> => {
+    let closedShift: StaffShiftRecord | null = null;
+    const updated = shifts.map((sh) => {
+      if (sh.id === shiftId) {
+        const counted = Math.max(0, actualCashCounted);
+        const diff = counted - sh.expectedCash;
+        closedShift = {
+          ...sh,
+          endedAt: new Date().toISOString(),
+          status: 'closed' as const,
+          actualCashCounted: counted,
+          cashDifference: diff,
+          notes: notes?.trim() || '',
+        };
+        return closedShift;
+      }
+      return sh;
+    });
+
+    if (!closedShift) throw new Error('Shift record not found');
+    persistShifts(updated);
+
+    if (currentSession.activeShift?.id === shiftId) {
+      const updatedSession = { ...currentSession, activeShift: null };
+      persistSession(updatedSession);
+    }
+
+    if (user?.id && business?.id && !isDemoMode) {
+      try {
+        await setDoc(doc(db, 'businesses', business.id, 'shifts', shiftId), cleanFirestoreData(closedShift), { merge: true });
+      } catch (err) {
+        console.warn('Cloud shift close notice:', err);
+      }
+    }
+
+    return closedShift;
   };
 
   // High-Speed POS Checkout
@@ -1183,6 +1486,22 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     }
 
+    // Update store activity & transaction heartbeat for Super Admin portal
+    if (user?.id && business?.id && !isDemoMode) {
+      try {
+        const nowIso = new Date().toISOString();
+        setDoc(
+          doc(db, 'businesses', business.id),
+          {
+            ...business,
+            lastSaleAt: nowIso,
+            lastActiveAt: nowIso,
+          },
+          { merge: true }
+        ).catch(() => {});
+      } catch (_) {}
+    }
+
     const newSalesList = [...createdSales, ...sales];
     persistSales(newSalesList);
     persistProducts(updatedProducts);
@@ -1199,6 +1518,29 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
           }
         }
       }
+    }
+
+    // Update shift metrics if a shift is active
+    const checkoutTotal = createdSales.reduce((sum, s) => sum + s.revenue, 0);
+    if (activeShift) {
+      const isCash = data.paymentMethod === 'Cash';
+      const isTransfer = data.paymentMethod === 'Transfer';
+      const isPos = data.paymentMethod === 'POS';
+      const updatedShifts = shifts.map((sh) => {
+        if (sh.id === activeShift.id) {
+          return {
+            ...sh,
+            totalSalesCount: sh.totalSalesCount + 1,
+            totalSalesAmount: sh.totalSalesAmount + checkoutTotal,
+            cashSalesAmount: isCash ? sh.cashSalesAmount + checkoutTotal : sh.cashSalesAmount,
+            expectedCash: isCash ? sh.expectedCash + checkoutTotal : sh.expectedCash,
+            transferSalesAmount: isTransfer ? sh.transferSalesAmount + checkoutTotal : sh.transferSalesAmount,
+            posCardSalesAmount: isPos ? sh.posCardSalesAmount + checkoutTotal : sh.posCardSalesAmount,
+          };
+        }
+        return sh;
+      });
+      persistShifts(updatedShifts);
     }
 
     return { sales: createdSales, receiptNumber };
@@ -1283,6 +1625,16 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (user?.id && business?.id && !isDemoMode) {
       try {
         await setDoc(doc(db, 'businesses', business.id, 'sales', saleId), cleanFirestoreData(newSale));
+        const nowIso = new Date().toISOString();
+        setDoc(
+          doc(db, 'businesses', business.id),
+          {
+            ...business,
+            lastSaleAt: nowIso,
+            lastActiveAt: nowIso,
+          },
+          { merge: true }
+        ).catch(() => {});
       } catch (err) {
         console.warn('Cloud sale write notice:', err);
       }
@@ -1394,6 +1746,107 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
     }
     return newProduct;
+  };
+
+  const bulkAddProducts = async (
+    productsList: Array<{
+      name: string;
+      category?: string;
+      sku?: string;
+      barcode?: string;
+      defaultSellingPrice: number;
+      defaultCostPrice: number;
+      stockQuantity?: number;
+      lowStockThreshold?: number;
+    }>,
+    updateExisting: boolean = true
+  ): Promise<{ addedCount: number; updatedCount: number }> => {
+    let addedCount = 0;
+    let updatedCount = 0;
+    const nowIso = new Date().toISOString();
+
+    const currentMap = new Map<string, Product>();
+    const barcodeMap = new Map<string, string>();
+    const skuMap = new Map<string, string>();
+
+    products.forEach((p) => {
+      currentMap.set(p.id, { ...p });
+      if (p.barcode) barcodeMap.set(p.barcode.trim().toLowerCase(), p.id);
+      if (p.sku) skuMap.set(p.sku.trim().toLowerCase(), p.id);
+    });
+
+    productsList.forEach((item, index) => {
+      const cleanBarcode = item.barcode?.trim().toLowerCase();
+      const cleanSku = item.sku?.trim().toLowerCase();
+
+      let existingId: string | undefined;
+      if (updateExisting) {
+        if (cleanBarcode && barcodeMap.has(cleanBarcode)) {
+          existingId = barcodeMap.get(cleanBarcode);
+        } else if (cleanSku && skuMap.has(cleanSku)) {
+          existingId = skuMap.get(cleanSku);
+        }
+      }
+
+      if (existingId && currentMap.has(existingId)) {
+        const existing = currentMap.get(existingId)!;
+        currentMap.set(existingId, {
+          ...existing,
+          name: item.name.trim() || existing.name,
+          category: item.category?.trim() || existing.category,
+          defaultSellingPrice: roundMoney(item.defaultSellingPrice),
+          defaultCostPrice: roundMoney(item.defaultCostPrice),
+          stockQuantity: item.stockQuantity !== undefined ? item.stockQuantity : existing.stockQuantity,
+          lowStockThreshold: item.lowStockThreshold || existing.lowStockThreshold,
+          barcode: item.barcode?.trim() || existing.barcode,
+          sku: item.sku?.trim() || existing.sku,
+        });
+        updatedCount++;
+      } else {
+        const newId = `prod_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 6)}`;
+        const newProd: Product = {
+          id: newId,
+          businessId,
+          name: item.name.trim(),
+          category: item.category?.trim() || 'General',
+          sku: item.sku?.trim(),
+          barcode: item.barcode?.trim(),
+          defaultSellingPrice: roundMoney(item.defaultSellingPrice),
+          defaultCostPrice: roundMoney(item.defaultCostPrice),
+          stockQuantity: item.stockQuantity !== undefined ? item.stockQuantity : 0,
+          lowStockThreshold: item.lowStockThreshold || 5,
+          createdAt: nowIso,
+        };
+        currentMap.set(newId, newProd);
+        if (cleanBarcode) barcodeMap.set(cleanBarcode, newId);
+        if (cleanSku) skuMap.set(cleanSku, newId);
+        addedCount++;
+      }
+    });
+
+    const finalProductList = Array.from(currentMap.values());
+    persistProducts(finalProductList);
+
+    // Batch write to Firestore for registered users
+    if (user?.id && business?.id && !isDemoMode) {
+      try {
+        const batchSize = 300;
+        for (let i = 0; i < finalProductList.length; i += batchSize) {
+          const chunk = finalProductList.slice(i, i + batchSize);
+          await Promise.all(
+            chunk.map((p) =>
+              setDoc(doc(db, 'businesses', business.id, 'products', p.id), cleanFirestoreData(p)).catch((e) =>
+                console.warn('Batch item write notice:', e)
+              )
+            )
+          );
+        }
+      } catch (err) {
+        console.warn('Batch cloud write notice:', err);
+      }
+    }
+
+    return { addedCount, updatedCount };
   };
 
   const updateProduct = async (
@@ -1960,19 +2413,28 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
         isLoading,
         isCloudSyncing,
         fxConfig,
+        isSyncingFx,
+        fxSource,
+        syncLiveFxRates,
         updateFxRates,
         staffList,
         currentSession,
+        shifts,
+        activeShift,
         addStaff,
         updateStaff,
         deleteStaff,
         switchStaffSession,
+        startStaffShift,
+        closeStaffShift,
+        verifyManagerOrOwnerPin,
         lockCashierMode,
         unlockOwnerMode,
         recordPosCheckout,
         addSale,
         addExpense,
         addProduct,
+        bulkAddProducts,
         updateProduct,
         deleteProduct,
         deleteSale,

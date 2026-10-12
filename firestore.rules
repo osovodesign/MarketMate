@@ -57,8 +57,8 @@ service cloud.firestore {
 
     // 2. Users Collection
     match /users/{userId} {
-      allow get: if isSignedIn() && request.auth.uid == userId;
-      allow list: if false; // Strict PII protection
+      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+      allow list: if isSuperAdmin(); // Super Admin can retrieve merchant emails for direct communication
       allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
       allow update: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && incoming().id == existing().id;
       allow delete: if isSignedIn() && request.auth.uid == userId;
@@ -74,6 +74,47 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create, delete: if isSuperAdmin();
       allow update: if isSuperAdmin() || isSignedIn();
+    }
+
+    // Platform Configuration (e.g. Official Receiving Bank Details)
+    match /platform_config/{configId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // Subscription Payment Requests & Approvals
+    match /subscription_requests/{requestId} {
+      allow get: if isSignedIn() && (isSuperAdmin() || resource.data.userId == request.auth.uid);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && (isSuperAdmin() || resource.data.userId == request.auth.uid);
+      allow delete: if isSuperAdmin();
+    }
+
+    // Referrals & Growth Rewards
+    match /referrals/{referralId} {
+      allow get: if isSignedIn() && (
+        isSuperAdmin() ||
+        resource.data.referrerUserId == request.auth.uid ||
+        resource.data.referredUserId == request.auth.uid
+      );
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        resource.data.referrerUserId == request.auth.uid ||
+        resource.data.referredUserId == request.auth.uid
+      );
+      allow delete: if isSuperAdmin();
+    }
+
+    // Support & Assistance Inquiries
+    match /support_tickets/{ticketId} {
+      allow get: if isSignedIn() && (isSuperAdmin() || resource.data.userId == request.auth.uid);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (isSuperAdmin() || resource.data.userId == request.auth.uid);
+      allow delete: if isSuperAdmin();
     }
 
     // 3. Businesses Collection (Master Root)
@@ -146,6 +187,14 @@ service cloud.firestore {
         allow create: if isOwnerOfBusiness(businessId) && isValidId(staffId) && incoming().businessId == businessId;
         allow update: if isOwnerOfBusiness(businessId) && isValidId(staffId) && incoming().businessId == existing().businessId;
         allow delete: if isOwnerOfBusiness(businessId) && isValidId(staffId);
+      }
+
+      // 12. Shifts Subcollection
+      match /shifts/{shiftId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId) && isValidId(shiftId) && incoming().businessId == businessId;
+        allow update: if isOwnerOfBusiness(businessId) && isValidId(shiftId) && incoming().businessId == existing().businessId;
+        allow delete: if isOwnerOfBusiness(businessId) && isValidId(shiftId);
       }
 
       // 12. Targets Subcollection

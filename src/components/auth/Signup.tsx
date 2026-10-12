@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { Mail, Lock, User, ArrowRight, ShieldCheck, CheckCircle2, X, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Lock, User, ArrowRight, ShieldCheck, CheckCircle2, X, ArrowLeft, Gift, Tag } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useAuth } from '../../context/AuthContext';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { AuthErrorNotice } from './AuthErrorNotice';
+import { detectAndStoreReferralCode, getPendingReferralCode } from '../../lib/referralService';
+import { LegalModal } from '../legal/LegalModal';
+import { SocialMediaLinks } from '../common/SocialMediaLinks';
 
 interface SignupProps {
   onSuccess: () => void;
@@ -23,13 +26,22 @@ export const Signup: React.FC<SignupProps> = ({
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+
+  useEffect(() => {
+    const detected = detectAndStoreReferralCode() || getPendingReferralCode();
+    if (detected) {
+      setReferralCode(detected);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    const res = await signup(fullName, email, password);
+    const res = await signup(fullName, email, password, referralCode.trim() || undefined);
     if (res.success) {
       onSuccess();
     } else {
@@ -125,6 +137,26 @@ export const Signup: React.FC<SignupProps> = ({
               leftAddon={<Lock className="w-4 h-4" />}
             />
 
+            {/* Referral Code (Optional) */}
+            <div>
+              <Input
+                label="Referral Code (Optional)"
+                type="text"
+                placeholder="e.g. MM-A8F29C"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                leftAddon={<Tag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
+              />
+              {referralCode.trim() && (
+                <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-300 font-medium">
+                  <Gift className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>
+                    Referral code applied! Inviting merchant unlocks 5% discount once your store registers and activates a MarketMate subscription.
+                  </span>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-start gap-2 pt-1 text-xs text-slate-600 dark:text-slate-400">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
               <span>Free tier includes unlimited offline recording, POS register, and multi-device sync.</span>
@@ -178,7 +210,19 @@ export const Signup: React.FC<SignupProps> = ({
             <span>Sign up with Google</span>
           </button>
 
-          <div className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">
+          {/* Terms & Disclaimers Agreement Notice */}
+          <p className="mt-4 text-center text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+            By creating an account, you agree to MarketMate’s{' '}
+            <button
+              type="button"
+              onClick={() => setIsLegalModalOpen(true)}
+              className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+            >
+              Terms of Service & Disclaimers
+            </button>.
+          </p>
+
+          <div className="mt-5 text-center text-xs text-slate-500 dark:text-slate-400">
             Already have an account?{' '}
             <button
               type="button"
@@ -188,8 +232,21 @@ export const Signup: React.FC<SignupProps> = ({
               Sign in here
             </button>
           </div>
+
+          {/* Official Community Handles */}
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-1.5">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+              Official MarketMate Community
+            </span>
+            <SocialMediaLinks variant="compact" />
+          </div>
         </div>
       </div>
+
+      <LegalModal
+        isOpen={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+      />
     </div>
   );
 };

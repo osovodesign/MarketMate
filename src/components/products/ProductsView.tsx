@@ -15,6 +15,11 @@ import {
   Scan,
   Barcode,
   DollarSign,
+  Lock,
+  Shield,
+  FileSpreadsheet,
+  Download,
+  Upload,
 } from 'lucide-react';
 import { useBusinessData } from '../../context/BusinessDataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -25,20 +30,53 @@ import { Input } from '../ui/Input';
 import { formatCurrency, formatPercent } from '../../lib/formatters';
 import { Product, CurrencyCode } from '../../types';
 import { BarcodeScannerModal } from '../pos/BarcodeScannerModal';
+import { BulkProductImportModal } from './BulkProductImportModal';
+import { hasPermission } from '../../lib/staffPermissions';
 
 interface ProductsViewProps {
   onOpenAddSaleWithProduct?: (product: Product) => void;
 }
 
 export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithProduct }) => {
-  const { products, sales, deleteProduct, addProduct, updateProduct } = useBusinessData();
+  const { products, sales, deleteProduct, addProduct, updateProduct, currentSession } = useBusinessData();
   const { business } = useAuth();
   const currency = business?.currency || 'NGN';
+
+  const canShowCost = hasPermission(currentSession, 'showCostPrice');
+  const canShowMargins = hasPermission(currentSession, 'showProfitAndMargins');
+  const canAddProduct = hasPermission(currentSession, 'canEditProducts');
+  const canEditProduct = hasPermission(currentSession, 'canEditProducts');
 
   const [search, setSearch] = useState('');
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+
+  // Export current catalog to standard CSV format
+  const handleExportCatalog = () => {
+    if (products.length === 0) return;
+    const headers =
+      'Product Name,Category,Selling Price (NGN),Cost Price (NGN),Stock Quantity,Barcode / SKU,Low Stock Alert\n';
+    const rows = products
+      .map((p) => {
+        const cleanName = `"${p.name.replace(/"/g, '""')}"`;
+        const cleanCat = `"${(p.category || 'General').replace(/"/g, '""')}"`;
+        const barcodeVal = `"${(p.barcode || p.sku || '').replace(/"/g, '""')}"`;
+        return `${cleanName},${cleanCat},${p.defaultSellingPrice},${p.defaultCostPrice},${p.stockQuantity ?? 0},${barcodeVal},${p.lowStockThreshold || 5}`;
+      })
+      .join('\n');
+
+    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${business?.businessName || 'MarketMate'}_Catalog_Export.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // Form State
   const [name, setName] = useState('');
@@ -186,14 +224,42 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
           </p>
         </div>
 
-        <Button
-          onClick={handleOpenAdd}
-          size="md"
-          leftIcon={<PlusCircle className="w-4 h-4" />}
-          className="shadow-xs"
-        >
-          + Add New Product / Service
-        </Button>
+        {canAddProduct && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              onClick={() => setIsBulkImportOpen(true)}
+              leftIcon={<FileSpreadsheet className="w-4 h-4 text-emerald-600" />}
+              className="border-emerald-300 text-emerald-800 hover:bg-emerald-50 bg-white"
+            >
+              Bulk Import (Excel/CSV)
+            </Button>
+            {products.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={handleExportCatalog}
+                leftIcon={<Download className="w-4 h-4 text-slate-600" />}
+                className="hidden sm:inline-flex bg-white"
+                title="Download current catalog as Excel/CSV"
+              >
+                Export CSV
+              </Button>
+            )}
+            <Button
+              type="button"
+              onClick={handleOpenAdd}
+              size="md"
+              leftIcon={<PlusCircle className="w-4 h-4" />}
+              className="shadow-xs"
+            >
+              + Add Product
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Metric Cards */}
@@ -209,16 +275,25 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
         <Card padding="md" className="bg-emerald-50/60 border-emerald-200">
           <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Average Catalog Margin</p>
           <p className="text-2xl sm:text-3xl font-extrabold text-emerald-800 mt-1">
-            {products.length > 0
-              ? formatPercent(
-                  products.reduce((sum, p) => {
-                    const margin = p.defaultSellingPrice > 0 ? ((p.defaultSellingPrice - p.defaultCostPrice) / p.defaultSellingPrice) * 100 : 0;
-                    return sum + margin;
-                  }, 0) / products.length
-                )
-              : '0%'}
+            {canShowMargins ? (
+              products.length > 0
+                ? formatPercent(
+                    products.reduce((sum, p) => {
+                      const margin = p.defaultSellingPrice > 0 ? ((p.defaultSellingPrice - p.defaultCostPrice) / p.defaultSellingPrice) * 100 : 0;
+                      return sum + margin;
+                    }, 0) / products.length
+                  )
+                : '0%'
+            ) : (
+              <span className="flex items-center gap-1.5 text-lg font-mono text-emerald-700">
+                <Lock className="w-4 h-4" />
+                <span>Confidential</span>
+              </span>
+            )}
           </p>
-          <p className="text-xs text-emerald-700 mt-1">Target profitability per item</p>
+          <p className="text-xs text-emerald-700 mt-1">
+            {canShowMargins ? 'Target profitability per item' : 'Restricted for current staff role'}
+          </p>
         </Card>
 
         <Card padding="md" className="bg-white">
@@ -453,10 +528,12 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
                   <th className="py-3 px-4">Item Name / Code</th>
                   <th className="py-3 px-4">Category</th>
                   <th className="py-3 px-4 text-center">Stock</th>
-                  <th className="py-3 px-4 text-right">Cost Price</th>
+                  <th className="py-3 px-4 text-right">
+                    {canShowCost ? 'Cost Price' : 'Cost (Shielded)'}
+                  </th>
                   <th className="py-3 px-4 text-right">Selling Price</th>
-                  <th className="py-3 px-4 text-right">Unit Profit</th>
-                  <th className="py-3 px-4 text-right">Margin</th>
+                  {canShowMargins && <th className="py-3 px-4 text-right">Unit Profit</th>}
+                  {canShowMargins && <th className="py-3 px-4 text-right">Margin</th>}
                   <th className="py-3 px-4 text-center">Historical Sales</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
@@ -515,35 +592,54 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
                         )}
                       </td>
                       <td className="py-3 px-4 text-right text-slate-500 font-medium">
-                        {formatCurrency(prod.defaultCostPrice, currency)}
-                        {prod.foreignCostPrice && prod.foreignCurrency && (
-                          <span className="block text-[10px] text-slate-400 font-mono">
-                            ({prod.foreignCurrency} {prod.foreignCostPrice})
+                        {canShowCost ? (
+                          <>
+                            {formatCurrency(prod.defaultCostPrice, currency)}
+                            {prod.foreignCostPrice && prod.foreignCurrency && (
+                              <span className="block text-[10px] text-slate-400 font-mono">
+                                ({prod.foreignCurrency} {prod.foreignCostPrice})
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 font-mono">
+                            <Lock className="w-3 h-3 text-slate-400" />
+                            <span>••••••</span>
                           </span>
                         )}
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-slate-900">
                         {formatCurrency(prod.defaultSellingPrice, currency)}
                       </td>
-                      <td className="py-3 px-4 text-right font-semibold text-emerald-700">
-                        +{formatCurrency(profit, currency)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-800">
-                        {formatPercent(margin)}
-                      </td>
+                      {canShowMargins && (
+                        <td className="py-3 px-4 text-right font-semibold text-emerald-700">
+                          +{formatCurrency(profit, currency)}
+                        </td>
+                      )}
+                      {canShowMargins && (
+                        <td className="py-3 px-4 text-right font-bold text-emerald-800">
+                          {formatPercent(margin)}
+                        </td>
+                      )}
                       <td className="py-3 px-4 text-center text-slate-600">
                         <span className="font-semibold text-slate-800">{hist.totalSold}</span> units
                       </td>
                       <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
-                          <button
-                            onClick={() => handleOpenEdit(prod)}
-                            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
-                            title="Edit Item"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          {deleteProduct && (
+                          {canEditProduct ? (
+                            <button
+                              onClick={() => handleOpenEdit(prod)}
+                              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+                              title="Edit Item"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-semibold px-2 py-0.5">
+                              View Only
+                            </span>
+                          )}
+                          {canEditProduct && deleteProduct && (
                             <button
                               onClick={() => deleteProduct(prod.id)}
                               className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
@@ -571,12 +667,28 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
                 Add standard products to speed up sale recording and track margins automatically.
               </p>
             </div>
-            <Button onClick={handleOpenAdd} size="sm" className="mt-2">
-              + Add First Product
-            </Button>
+            <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsBulkImportOpen(true)}
+                leftIcon={<FileSpreadsheet className="w-4 h-4 text-emerald-600" />}
+              >
+                Upload Excel / CSV (Bulk)
+              </Button>
+              <Button onClick={handleOpenAdd} size="sm">
+                + Add Single Product
+              </Button>
+            </div>
           </div>
         )}
       </Card>
+
+      {/* Bulk Product Import Modal */}
+      <BulkProductImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+      />
     </div>
   );
 };

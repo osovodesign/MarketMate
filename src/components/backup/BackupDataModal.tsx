@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useBusinessData } from '../../context/BusinessDataContext';
 import { useAuth } from '../../context/AuthContext';
+import { ProFeatureGate } from '../subscription/ProFeatureGate';
 import {
   Download,
   Upload,
@@ -16,14 +17,16 @@ import {
 interface BackupDataModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onUpgrade?: () => void;
 }
 
 export const BackupDataModal: React.FC<BackupDataModalProps> = ({
   isOpen,
   onClose,
+  onUpgrade,
 }) => {
   const { exportAllDataJSON, importAllDataJSON, sales, expenses, products, debts } = useBusinessData();
-  const { business } = useAuth();
+  const { business, user, isSuperAdmin, isDemoMode, isSubscribed } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [importStatus, setImportStatus] = useState<{
@@ -73,6 +76,30 @@ export const BackupDataModal: React.FC<BackupDataModalProps> = ({
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
+
+  if (!isSubscribed) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} size="md">
+        <ProFeatureGate
+          mode="modal"
+          title="Encrypted Data Backup & Vault"
+          subtitle="Download complete offline backup snapshots and restore previous business ledgers safely to ensure your financial records are never lost."
+          icon={Database}
+          benefits={[
+            'Export full business JSON ledger snapshots anytime',
+            'Restore complete inventory, customer, sales, and debt databases',
+            'Encrypted offline portability across any laptop, phone, or tablet',
+            'Protection against device loss, data corruption, or hardware damage',
+          ]}
+          onUpgrade={() => {
+            onClose();
+            onUpgrade?.();
+          }}
+          onBack={onClose}
+        />
+      </Modal>
+    );
+  }
 
   return (
     <Modal

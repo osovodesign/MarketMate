@@ -314,7 +314,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <MarketMateLogo size="sm" />
             <span>— Know Your Numbers. Grow Your Business.</span>
           </div>
-          <p>© 2026 MarketMate. Built for Nigerian Micro and Small Businesses.</p>
+          <div className="flex items-center gap-3">
+            <a
+              href="https://getmarketmate.online"
+              className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
+            >
+              getmarketmate.online
+            </a>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <p>© 2026 MarketMate. Built for Nigerian Micro and Small Businesses.</p>
+          </div>
         </div>
       </footer>
     </div>

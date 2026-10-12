@@ -29,15 +29,40 @@ import { FinancialGoalsModal } from './components/goals/FinancialGoalsModal';
 import { BackupDataModal } from './components/backup/BackupDataModal';
 import { MultiCurrencyCalculatorModal } from './components/currency/MultiCurrencyCalculatorModal';
 import { StaffManagementModal } from './components/staff/StaffManagementModal';
+import { StaffManagementView } from './components/staff/StaffManagementView';
 import { LogoExportModal } from './components/common/LogoExportModal';
 import { AppTourModal } from './components/onboarding/AppTourModal';
+import { ReferralModal } from './components/referral/ReferralModal';
 import { NotificationDrawer } from './components/notifications/NotificationDrawer';
 import { NotificationProvider } from './context/NotificationContext';
+import { ProFeatureGate } from './components/subscription/ProFeatureGate';
+import { SubscribeModal } from './components/subscription/SubscribeModal';
+import { HelpSupportModal } from './components/common/HelpSupportModal';
 import { AppView } from './types';
-import { Sparkles } from 'lucide-react';
+import {
+  Sparkles,
+  FileText,
+  BarChart3,
+  BookUser,
+  Package,
+  Users,
+  Bot,
+  Shield,
+} from 'lucide-react';
 
 function AppContent() {
-  const { user, business, isAuthenticated, isOnboarded, isDemoMode, logout, activateDemoMode } = useAuth();
+  const {
+    user,
+    business,
+    isAuthenticated,
+    isOnboarded,
+    isDemoMode,
+    logout,
+    activateDemoMode,
+    isSuperAdmin,
+    isSubscribed,
+  } = useAuth();
+
   const [currentView, setCurrentView] = useState<AppView>('landing');
   const [isAddSaleOpen, setIsAddSaleOpen] = useState(false);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
@@ -50,6 +75,9 @@ function AppContent() {
   const [isLogoExportOpen, setIsLogoExportOpen] = useState(false);
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
   const [isTourModalOpen, setIsTourModalOpen] = useState(false);
+  const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
+  const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
   // If unauthenticated or navigating public auth views
   if (!isAuthenticated && currentView === 'landing') {
@@ -141,8 +169,42 @@ function AppContent() {
       case 'expenses':
         return <ExpensesView onOpenAddExpense={() => setIsAddExpenseOpen(true)} />;
       case 'invoices':
+        if (!isSubscribed) {
+          return (
+            <ProFeatureGate
+              title="Invoices & Official Quotations"
+              subtitle="Generate professional, branded PDF and WhatsApp invoices, create official quotations, track partial payments, and issue merchant receipts."
+              icon={FileText}
+              benefits={[
+                'Issue professional PDF & WhatsApp invoices with your store branding',
+                'Send official price quotations and convert them to invoices in 1 click',
+                'Track uncollected, overdue, and partial payments with audit trails',
+                'Include verified Nigerian bank account details on every invoice',
+              ]}
+              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          );
+        }
         return <InvoicesView />;
       case 'contacts':
+        if (!isSubscribed) {
+          return (
+            <ProFeatureGate
+              title="CRM & Customer Directory"
+              subtitle="Centralize your business address book, track individual customer lifetime spend, manage wholesale suppliers, and send WhatsApp alerts."
+              icon={BookUser}
+              benefits={[
+                'Unlimited customer & supplier directory with instant search',
+                'Track customer lifetime purchase histories and top buyers',
+                '1-click direct WhatsApp messaging and customer account notes',
+                'Track supplier payment terms, order histories, and deliveries',
+              ]}
+              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          );
+        }
         return (
           <ContactsView
             onOpenRecordExpense={(desc) => setIsAddExpenseOpen(true)}
@@ -150,14 +212,82 @@ function AppContent() {
           />
         );
       case 'debts':
+        if (!isSubscribed) {
+          return (
+            <ProFeatureGate
+              title="Credit & Debit Ledger Book"
+              subtitle="Stop losing money to forgotten credits. Track who owes your business, set due date reminders, and send friendly WhatsApp debt recovery prompts."
+              icon={Users}
+              benefits={[
+                'Track total uncollected receivables and customer credit balances',
+                'Set repayment due dates with overdue alert badges',
+                'Send polite, pre-filled WhatsApp payment reminder templates',
+                'Partial payment logging and automatic balance recalculations',
+              ]}
+              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          );
+        }
         return <DebtsView />;
       case 'products':
+        if (!isSubscribed) {
+          return (
+            <ProFeatureGate
+              title="Catalog & Stock Inventory"
+              subtitle="Centralize your entire store inventory, barcode scanning, stock reorder alerts, batch pricing, and profit margin audits."
+              icon={Package}
+              benefits={[
+                'Unlimited product catalog with SKUs, barcodes, and categories',
+                'Live stock tracking with low-stock and out-of-stock warning alerts',
+                'Batch cost and selling price updates with profit margin audits',
+                'Barcode scanner integration for lightning-fast checkout',
+              ]}
+              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          );
+        }
         return <ProductsView />;
       case 'transactions':
         return <TransactionsView />;
       case 'reports':
+        if (!isSubscribed) {
+          return (
+            <ProFeatureGate
+              title="Reports & Profit and Loss (P&L)"
+              subtitle="Detailed financial intelligence, automated Net Profit audits, expense leak detection, and tax-ready business reports."
+              icon={BarChart3}
+              benefits={[
+                'Automated Profit & Loss (P&L) statements with gross & net margins',
+                'Top-selling product analytics and customer retention insights',
+                'Expense categorization and operational cost breakdown',
+                'Exportable accounting summaries formatted for tax & bank audits',
+              ]}
+              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          );
+        }
         return <ReportsView />;
       case 'ai':
+        if (!isSubscribed) {
+          return (
+            <ProFeatureGate
+              title="MarketMate AI Business Advisor"
+              subtitle="Your 24/7 retail financial advisor trained on Nigerian commerce, currency inflation hedge strategies, and margin optimization."
+              icon={Bot}
+              benefits={[
+                '24/7 retail financial advisor powered by Gemini AI',
+                'Custom pricing and profitability recommendations for your catalog',
+                'Actionable suggestions to reduce operating expenses and waste',
+                'Market insights tailored to Nigerian trade and FX fluctuations',
+              ]}
+              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          );
+        }
         return <AIAssistantView />;
       case 'settings':
         return (
@@ -166,10 +296,31 @@ function AppContent() {
             onLoadDemo={() => setCurrentView('dashboard')}
             onOpenLogoExport={() => setIsLogoExportOpen(true)}
             onOpenTour={() => setIsTourModalOpen(true)}
+            onOpenReferralModal={() => setIsReferralModalOpen(true)}
+            onOpenSupportModal={() => setIsSupportModalOpen(true)}
           />
         );
       case 'admin':
         return <AdminPortalView />;
+      case 'staff':
+        if (!isSubscribed) {
+          return (
+            <ProFeatureGate
+              title="Staff, Roles & Permissions"
+              subtitle="Hire cashiers, sales clerks, and branch managers with PIN-locked access, cash drawer shift handovers, and role-based permissions."
+              icon={Shield}
+              benefits={[
+                'Multi-user PIN login and quick-switching between staff at the register',
+                'Granular permissions: lock profit margins, cost prices, discounts, and deletions',
+                'Opening cash float and end-of-shift drawer reconciliation audits',
+                'Staff sales performance tracking and accountability logging',
+              ]}
+              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onBack={() => setCurrentView('dashboard')}
+            />
+          );
+        }
+        return <StaffManagementView />;
       default:
         return (
           <DashboardView
@@ -200,6 +351,8 @@ function AppContent() {
       onOpenLogoExportModal={() => setIsLogoExportOpen(true)}
       onOpenNotificationDrawer={() => setIsNotificationDrawerOpen(true)}
       onOpenTourModal={() => setIsTourModalOpen(true)}
+      onOpenReferralModal={() => setIsReferralModalOpen(true)}
+      onOpenSupportModal={() => setIsSupportModalOpen(true)}
       businessName={business?.businessName}
       businessType={business?.businessType}
       currency={currency}
@@ -210,22 +363,40 @@ function AppContent() {
     >
       {/* Demo Mode Notice Banner */}
       {isDemoMode && (
-        <div className="mb-5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between shadow-2xs">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span>
-              <strong>Demo Mode:</strong> Exploring with sample data for <em>{business?.businessName}</em>.
-            </span>
+        <div className="mb-5 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-100/50 dark:from-emerald-950/60 dark:via-slate-900 dark:to-emerald-900/40 border border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-black shrink-0">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white">
+                Free Demo Explorer Account • All Pro Features Unlocked
+              </p>
+              <p className="text-[11px] text-emerald-800 dark:text-emerald-300/90 mt-0.5">
+                Exploring as <strong>Adaeze Okonkwo ({business?.businessName})</strong>. Test Invoices, Reports & P&L, Debt Book, POS, and AI Advisor freely! Real registered accounts remain locked until subscription.
+              </p>
+            </div>
           </div>
-          <button
-            onClick={() => {
-              logout();
-              setCurrentView('signup');
-            }}
-            className="text-amber-800 dark:text-amber-300 underline font-bold text-xs ml-2 hover:text-amber-950 dark:hover:text-amber-100 cursor-pointer"
-          >
-            Create Your Real Business
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                logout();
+                setCurrentView('signup');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-colors cursor-pointer"
+            >
+              Sign Up For Real Store
+            </button>
+            <button
+              onClick={() => {
+                logout();
+                setCurrentView('landing');
+              }}
+              className="px-2.5 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-white/40 dark:hover:bg-slate-800 text-xs font-semibold cursor-pointer"
+            >
+              Exit Demo
+            </button>
+          </div>
         </div>
       )}
 
@@ -257,30 +428,50 @@ function AppContent() {
       <PricingCalculatorModal
         isOpen={isPricingCalcOpen}
         onClose={() => setIsPricingCalcOpen(false)}
+        onUpgrade={() => setIsSubscribeModalOpen(true)}
       />
       <ProfitSimulatorModal
         isOpen={isProfitSimOpen}
         onClose={() => setIsProfitSimOpen(false)}
+        onUpgrade={() => setIsSubscribeModalOpen(true)}
       />
       <FinancialGoalsModal
         isOpen={isGoalsModalOpen}
         onClose={() => setIsGoalsModalOpen(false)}
+        onUpgrade={() => setIsSubscribeModalOpen(true)}
       />
       <BackupDataModal
         isOpen={isBackupModalOpen}
         onClose={() => setIsBackupModalOpen(false)}
+        onUpgrade={() => setIsSubscribeModalOpen(true)}
       />
       <MultiCurrencyCalculatorModal
         isOpen={isFxModalOpen}
         onClose={() => setIsFxModalOpen(false)}
+        onUpgrade={() => setIsSubscribeModalOpen(true)}
       />
       <StaffManagementModal
         isOpen={isStaffModalOpen}
         onClose={() => setIsStaffModalOpen(false)}
+        onUpgrade={() => setIsSubscribeModalOpen(true)}
+        onNavigateToFullView={() => setCurrentView('staff')}
       />
       <LogoExportModal
         isOpen={isLogoExportOpen}
         onClose={() => setIsLogoExportOpen(false)}
+      />
+      <ReferralModal
+        isOpen={isReferralModalOpen}
+        onClose={() => setIsReferralModalOpen(false)}
+      />
+      <SubscribeModal
+        isOpen={isSubscribeModalOpen}
+        onClose={() => setIsSubscribeModalOpen(false)}
+      />
+      <HelpSupportModal
+        isOpen={isSupportModalOpen}
+        onClose={() => setIsSupportModalOpen(false)}
+        businessName={business?.businessName}
       />
     </Shell>
   );

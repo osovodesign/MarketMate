@@ -23,13 +23,20 @@ import {
   AlertCircle,
   Clock,
   Sparkles,
+  Coins,
+  KeyRound,
 } from 'lucide-react';
 import { Product, CartItem, PaymentMethod, CurrencyCode } from '../../types';
 import { useBusinessData } from '../../context/BusinessDataContext';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { POSReceiptModal } from './POSReceiptModal';
+import { ManagerOverrideModal } from '../staff/ManagerOverrideModal';
+import { ShiftClosingModal } from '../staff/ShiftClosingModal';
+import { StaffSwitchModal } from '../staff/StaffSwitchModal';
+import { ROLE_CONFIGS, hasPermission } from '../../lib/staffPermissions';
 import { CURRENCIES, convertCurrency } from '../../lib/currencies';
 import { formatMoney } from '../../lib/calculations';
+import { formatCurrency } from '../../lib/formatters';
 
 interface POSViewProps {
   onOpenStaffModal?: () => void;
@@ -57,12 +64,23 @@ export const POSView: React.FC<POSViewProps> = ({
     unlockOwnerMode,
     switchStaffSession,
     staffList,
+    activeShift,
+    startStaffShift,
   } = useBusinessData();
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>('NGN');
+
+  // Staff & Security Modals
+  const [isManagerOverrideOpen, setIsManagerOverrideOpen] = useState(false);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [pendingOverrideAction, setPendingOverrideAction] = useState<(() => void) | null>(null);
+  const [isShiftClosingOpen, setIsShiftClosingOpen] = useState(false);
+  const [isStaffSwitchOpen, setIsStaffSwitchOpen] = useState(false);
+  const [isStartShiftModalOpen, setIsStartShiftModalOpen] = useState(false);
+  const [openingFloatInput, setOpeningFloatInput] = useState('10000');
   
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -71,6 +89,8 @@ export const POSView: React.FC<POSViewProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash');
   const [amountTendered, setAmountTendered] = useState<string>('');
   const [saleNotes, setSaleNotes] = useState<string>('');
+  const [editingDiscountId, setEditingDiscountId] = useState<string | null>(null);
+  const [discountInputVal, setDiscountInputVal] = useState<string>('');
   
   // Modals
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -195,6 +215,48 @@ export const POSView: React.FC<POSViewProps> = ({
     );
   };
 
+  const requestItemDiscount = (productId: string, requestedDiscountNgn: number) => {
+    const item = cart.find((i) => i.product.id === productId);
+    if (!item) return;
+
+    const perms = currentSession.permissions;
+    const canDiscount = perms?.canGiveDiscount ?? true;
+    const maxPercent = perms?.maxDiscountPercent ?? 100;
+    const requestedPercent = Math.round((requestedDiscountNgn / item.unitPrice) * 100);
+
+    if (!canDiscount && requestedDiscountNgn > 0) {
+      setOverrideReason(
+        'Staff role is restricted from giving custom discounts. Store Owner or Manager PIN is required to authorize this discount.'
+      );
+      setPendingOverrideAction(() => () => updateItemDiscount(productId, requestedDiscountNgn));
+      setIsManagerOverrideOpen(true);
+      return;
+    }
+
+    if (requestedPercent > maxPercent) {
+      setOverrideReason(
+        `Requested discount of ${requestedPercent}% exceeds your authorized limit of ${maxPercent}%. Store Owner or Manager PIN is required to authorize.`
+      );
+      setPendingOverrideAction(() => () => updateItemDiscount(productId, requestedDiscountNgn));
+      setIsManagerOverrideOpen(true);
+      return;
+    }
+
+    updateItemDiscount(productId, requestedDiscountNgn);
+  };
+
+  // Open Shift Form Handler
+  const handleStartShiftSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const floatAmount = parseFloat(openingFloatInput) || 0;
+    try {
+      await startStaffShift(currentSession.staffId, floatAmount);
+      setIsStartShiftModalOpen(false);
+    } catch (err: any) {
+      alert('Error opening shift: ' + (err.message || 'Unknown error'));
+    }
+  };
+
   // Totals calculations
   const totalNgn = cart.reduce(
     (sum, item) => sum + (item.unitPrice - (item.discount || 0)) * item.quantity,
@@ -262,26 +324,31 @@ export const POSView: React.FC<POSViewProps> = ({
   return (
     <div className="space-y-4 pb-24 lg:pb-8">
       {/* Top POS Header & Staff Status Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FEFEFE] dark:bg-[#001A35] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-[#059669] text-white flex items-center justify-center font-bold shadow-2xs shrink-0">
             <ShoppingCart className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-slate-900 leading-tight">POS Register Terminal</h2>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight">POS Register Terminal</h2>
               <span
                 className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                   currentSession.currentRole === 'owner'
-                    ? 'bg-purple-100 text-purple-800'
-                    : 'bg-emerald-100 text-emerald-800'
+                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                 }`}
               >
                 {currentSession.currentRole === 'owner' ? 'Owner Mode' : 'Cashier Mode'}
               </span>
             </div>
-            <p className="text-xs text-slate-500">
-              Active Attendant: <strong className="text-slate-800">{currentSession.staffName}</strong>
+            <p className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap mt-0.5">
+              <span>Attendant: <strong className="text-slate-800 dark:text-slate-200">{currentSession.staffName}</strong></span>
+              {activeShift && (
+                <span className="text-[11px] text-[#059669] dark:text-[#34D399] font-medium flex items-center gap-1">
+                  • Shift Active (Drawer Cash: {formatCurrency(activeShift.expectedCash, 'NGN')})
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -289,9 +356,9 @@ export const POSView: React.FC<POSViewProps> = ({
         {/* Currency & Staff Security Controls */}
         <div className="flex items-center flex-wrap gap-2">
           {/* Currency Selector */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
             <span className="text-[11px] font-semibold text-slate-500 px-2 flex items-center gap-1">
-              <DollarSign className="w-3 h-3 text-emerald-600" />
+              <DollarSign className="w-3 h-3 text-[#059669]" />
               FX:
             </span>
             {(['NGN', 'USD', 'GBP', 'EUR', 'CNY', 'GHS'] as CurrencyCode[]).map((cCode) => (
@@ -299,15 +366,22 @@ export const POSView: React.FC<POSViewProps> = ({
                 key={cCode}
                 type="button"
                 onClick={() => setSelectedCurrency(cCode)}
-                className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-2 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   selectedCurrency === cCode
-                    ? 'bg-emerald-700 text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                    ? 'bg-[#059669] text-white shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 {cCode}
               </button>
             ))}
+
+            {selectedCurrency !== 'NGN' && (
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800 flex items-center gap-1 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live: 1 {selectedCurrency} = ₦{ngnRate.toLocaleString()}
+              </span>
+            )}
           </div>
 
           {/* FX Rates config trigger */}
@@ -315,49 +389,143 @@ export const POSView: React.FC<POSViewProps> = ({
             <button
               type="button"
               onClick={handleOpenFx}
-              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
               title="Exchange Rate Calculator & Customs"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-slate-600" />
+              <RefreshCw className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
               <span className="hidden sm:inline">Rates</span>
             </button>
           )}
 
-          {/* Cashier Lock / Switch Staff Trigger */}
-          {currentSession.currentRole === 'owner' ? (
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={lockCashierMode}
-                className="px-3 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                title="Lock Terminal in Cashier Mode"
-              >
-                <Lock className="w-3.5 h-3.5 text-amber-700" />
-                <span>Lock Register</span>
-              </button>
-              {handleOpenStaff && (
-                <button
-                  type="button"
-                  onClick={handleOpenStaff}
-                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                >
-                  <Users className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Staff ({staffList.length})</span>
-                </button>
-              )}
-            </div>
-          ) : (
+          {/* End Shift / Drawer Count button */}
+          {activeShift && (
             <button
               type="button"
-              onClick={() => setIsUnlockModalOpen(true)}
-              className="px-3 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-900 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              onClick={() => setIsShiftClosingOpen(true)}
+              className="px-3 py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Close Cash Register Shift & Reconcile Drawer"
             >
-              <Unlock className="w-3.5 h-3.5 text-purple-700" />
-              <span>Owner PIN</span>
+              <Coins className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+              <span>End Shift</span>
+            </button>
+          )}
+
+          {/* Switch Attendant Keypad Button */}
+          <button
+            type="button"
+            onClick={() => setIsStaffSwitchOpen(true)}
+            className="px-3 py-2 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Switch Attendant or Lock Till"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-purple-700 dark:text-purple-400" />
+            <span>Switch Cashier</span>
+          </button>
+
+          {/* Owner Manage Staff Trigger */}
+          {handleOpenStaff && (
+            <button
+              type="button"
+              onClick={handleOpenStaff}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Users className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+              <span>Staff ({staffList.length})</span>
             </button>
           )}
         </div>
       </div>
+
+      {/* Cashier Shift & Register Drawer Live Tally Banner */}
+      {activeShift ? (
+        <div className="bg-gradient-to-r from-emerald-50 via-teal-50/40 to-white dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900 border border-emerald-200/90 dark:border-emerald-800/60 rounded-2xl p-3.5 shadow-2xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-2xs shrink-0">
+                <Coins className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                    Active Till Shift: {activeShift.staffName}
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                    Live Drawer
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Started {new Date(activeShift.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Opening Float: {formatCurrency(activeShift.openingFloat, 'NGN')}
+                </p>
+              </div>
+            </div>
+
+            {/* Shift Sales Totals */}
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-3.5 shrink-0">
+              <div className="bg-white/90 dark:bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700">
+                <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Shift Sales</span>
+                <span className="text-xs sm:text-sm font-extrabold text-emerald-700 dark:text-emerald-400">
+                  {formatCurrency(
+                    activeShift.totalSalesAmount ||
+                      (activeShift.totalCashCollected + activeShift.totalTransferCollected + activeShift.totalPosCollected),
+                    'NGN'
+                  )}
+                </span>
+                <span className="text-[10px] text-slate-400 block font-medium">({activeShift.totalSalesCount || 0} sales)</span>
+              </div>
+
+              <div className="bg-white/90 dark:bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700">
+                <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Cash in Drawer</span>
+                <span className="text-xs sm:text-sm font-extrabold text-amber-700 dark:text-amber-400">
+                  {formatCurrency(activeShift.expectedCash, 'NGN')}
+                </span>
+                <span className="text-[10px] text-slate-400 block font-medium">Float + Cash</span>
+              </div>
+
+              <div className="bg-white/90 dark:bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700">
+                <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">Transfer & POS</span>
+                <span className="text-xs sm:text-sm font-extrabold text-blue-700 dark:text-blue-400">
+                  {formatCurrency(activeShift.totalTransferCollected + activeShift.totalPosCollected, 'NGN')}
+                </span>
+                <span className="text-[10px] text-slate-400 block font-medium">Non-Cash</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsShiftClosingOpen(true)}
+                className="w-full md:w-auto px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+              >
+                <Coins className="w-3.5 h-3.5" />
+                <span>End Shift & Reconcile</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/90 dark:border-slate-700/80 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold shrink-0">
+              <Coins className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                No active cash drawer shift running for {currentSession.staffName}
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Open a shift with your starting cash float to track drawer totals, sales tallies, and end-of-day reconciliation.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsStartShiftModalOpen(true)}
+            className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs shrink-0 cursor-pointer transition-colors"
+          >
+            <Coins className="w-3.5 h-3.5" />
+            <span>+ Open Drawer & Start Shift</span>
+          </button>
+        </div>
+      )}
 
       {/* Main POS 2-Column Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
@@ -526,48 +694,110 @@ export const POSView: React.FC<POSViewProps> = ({
                     : `${currMeta.symbol}${toSelectedCurr(itemTotal).toFixed(2)}`;
 
                 return (
-                  <div key={item.product.id} className="pt-2 first:pt-0 flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-900 truncate leading-tight">
-                        {item.product.name}
-                      </p>
-                      <p className="text-[11px] text-slate-500">
-                        {selectedCurrency === 'NGN'
-                          ? formatMoney(item.unitPrice)
-                          : `${currMeta.symbol}${toSelectedCurr(item.unitPrice).toFixed(2)}`}{' '}
-                        each
-                      </p>
+                  <div key={item.product.id} className="pt-2 first:pt-0 flex flex-col gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-900 truncate leading-tight">
+                          {item.product.name}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                          <span>
+                            {selectedCurrency === 'NGN'
+                              ? formatMoney(item.unitPrice)
+                              : `${currMeta.symbol}${toSelectedCurr(item.unitPrice).toFixed(2)}`}{' '}
+                            each
+                          </span>
+                          {item.discount && item.discount > 0 && (
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/80 px-1.5 py-0.2 rounded">
+                              Disc: -{formatMoney(item.discount)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Quantity Modifiers */}
+                      <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg p-1">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.product.id, -1)}
+                          className="w-6 h-6 rounded bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors text-xs font-bold shadow-2xs"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-5 text-center text-xs font-bold text-slate-800">{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.product.id, 1)}
+                          className="w-6 h-6 rounded bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors text-xs font-bold shadow-2xs"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-bold text-slate-900 block">{formattedItemTotal}</span>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (editingDiscountId === item.product.id) {
+                                setEditingDiscountId(null);
+                              } else {
+                                setEditingDiscountId(item.product.id);
+                                setDiscountInputVal(item.discount ? String(item.discount) : '');
+                              }
+                            }}
+                            className="text-[10px] text-[#059669] hover:underline font-semibold"
+                          >
+                            {item.discount ? 'Edit Disc' : '+ Disc'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(item.product.id)}
+                            className="text-[10px] text-rose-500 hover:text-rose-700 font-semibold"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Quantity Modifiers */}
-                    <div className="flex items-center gap-1.5 bg-slate-100 rounded-lg p-1">
-                      <button
-                        type="button"
-                        onClick={() => updateQuantity(item.product.id, -1)}
-                        className="w-6 h-6 rounded bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors text-xs font-bold shadow-2xs"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="w-5 text-center text-xs font-bold text-slate-800">{item.quantity}</span>
-                      <button
-                        type="button"
-                        onClick={() => updateQuantity(item.product.id, 1)}
-                        className="w-6 h-6 rounded bg-white hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors text-xs font-bold shadow-2xs"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="text-xs font-bold text-slate-900 block">{formattedItemTotal}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeFromCart(item.product.id)}
-                        className="text-[10px] text-rose-500 hover:text-rose-700 font-semibold"
-                      >
-                        Remove
-                      </button>
-                    </div>
+                    {/* Inline Discount Input Editor */}
+                    {editingDiscountId === item.product.id && (
+                      <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 mt-1">
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                          Item Discount ({selectedCurrency}):
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={discountInputVal}
+                            onChange={(e) => setDiscountInputVal(e.target.value)}
+                            className="w-20 p-1 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-right font-bold"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const val = parseFloat(discountInputVal) || 0;
+                              requestItemDiscount(item.product.id, val);
+                              setEditingDiscountId(null);
+                            }}
+                            className="px-2 py-1 bg-[#059669] text-white text-[10px] font-bold rounded"
+                          >
+                            Apply
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingDiscountId(null)}
+                            className="px-1.5 py-1 text-slate-500 text-[10px]"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -580,20 +810,31 @@ export const POSView: React.FC<POSViewProps> = ({
               Payment Method:
             </label>
             <div className="grid grid-cols-4 gap-1.5">
-              {(['Cash', 'Transfer', 'POS Terminal', 'Credit'] as PaymentMethod[]).map((method) => (
-                <button
-                  key={method}
-                  type="button"
-                  onClick={() => setPaymentMethod(method)}
-                  className={`py-2 px-1 rounded-xl text-[11px] font-bold text-center transition-colors ${
-                    paymentMethod === method
-                      ? 'bg-emerald-700 text-white shadow-2xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {method}
-                </button>
-              ))}
+              {(['Cash', 'Transfer', 'POS', 'Other'] as PaymentMethod[]).map((method) => {
+                const label = method === 'Other' ? 'Customer Debt' : method === 'POS' ? 'POS Terminal' : method;
+                return (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => {
+                      if (method === 'Other' && currentSession.permissions && !currentSession.permissions.canRecordDebt) {
+                        setOverrideReason('Recording customer credit or unpaid debt is restricted for cashiers. Store Owner or Manager authorization required.');
+                        setPendingOverrideAction(() => () => setPaymentMethod(method));
+                        setIsManagerOverrideOpen(true);
+                        return;
+                      }
+                      setPaymentMethod(method);
+                    }}
+                    className={`py-2 px-1 rounded-xl text-[11px] font-bold text-center transition-colors cursor-pointer ${
+                      paymentMethod === method
+                        ? 'bg-[#059669] text-white shadow-2xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -719,6 +960,109 @@ export const POSView: React.FC<POSViewProps> = ({
                   className="py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold shadow-2xs"
                 >
                   Unlock
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Manager Security Override Modal */}
+      <ManagerOverrideModal
+        isOpen={isManagerOverrideOpen}
+        onClose={() => {
+          setIsManagerOverrideOpen(false);
+          setPendingOverrideAction(null);
+        }}
+        reason={overrideReason}
+        onSuccess={() => {
+          if (pendingOverrideAction) {
+            pendingOverrideAction();
+            setPendingOverrideAction(null);
+          }
+        }}
+      />
+
+      {/* Staff Shift Closing & Reconciliation Modal */}
+      <ShiftClosingModal
+        isOpen={isShiftClosingOpen}
+        onClose={() => setIsShiftClosingOpen(false)}
+      />
+
+      {/* Staff Switch Keypad Modal */}
+      <StaffSwitchModal
+        isOpen={isStaffSwitchOpen}
+        onClose={() => setIsStaffSwitchOpen(false)}
+        onOpenManageStaff={handleOpenStaff}
+      />
+
+      {/* Start Shift / Opening Cash Float Modal */}
+      {isStartShiftModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm shadow-xl p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                <Coins className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Open Register Till
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Starting shift for {currentSession.staffName}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleStartShiftSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  Opening Cash Float in Drawer (₦):
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    ₦
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="500"
+                    autoFocus
+                    value={openingFloatInput}
+                    onChange={(e) => setOpeningFloatInput(e.target.value)}
+                    placeholder="e.g. 10000"
+                    className="w-full pl-8 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  />
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  {['0', '5000', '10000', '20000'].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setOpeningFloatInput(preset)}
+                      className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
+                    >
+                      ₦{Number(preset).toLocaleString()}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-2">
+                  This cash float is counted at the start of your shift and subtracted at end-of-shift reconciliation.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsStartShiftModalOpen(false)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-2xs cursor-pointer"
+                >
+                  Start Shift
                 </button>
               </div>
             </form>

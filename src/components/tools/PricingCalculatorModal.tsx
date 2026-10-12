@@ -18,17 +18,20 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { formatCurrency, formatPercent } from '../../lib/formatters';
+import { ProFeatureGate } from '../subscription/ProFeatureGate';
 
 interface PricingCalculatorModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onUpgrade?: () => void;
 }
 
 export const PricingCalculatorModal: React.FC<PricingCalculatorModalProps> = ({
   isOpen,
   onClose,
+  onUpgrade,
 }) => {
-  const { business } = useAuth();
+  const { business, user, isSuperAdmin, isDemoMode, isSubscribed } = useAuth();
   const { addProduct } = useBusinessData();
   const currency = business?.currency || 'NGN';
 
@@ -80,6 +83,30 @@ export const PricingCalculatorModal: React.FC<PricingCalculatorModalProps> = ({
       console.error(e);
     }
   };
+
+  if (!isSubscribed) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-lg">
+        <ProFeatureGate
+          mode="modal"
+          title="Pricing & Margin Calculator"
+          subtitle="Calculate mathematically precise retail prices that guarantee your target margins after factoring packaging, dispatch, and POS transaction fees."
+          icon={Calculator}
+          benefits={[
+            'Calculate exact selling prices based on target margin %',
+            'Account for packaging, dispatch, and POS payment fees',
+            '1-click export of calculated items directly to your store catalog',
+            'Markup vs profit margin real-time sensitivity comparison',
+          ]}
+          onUpgrade={() => {
+            onClose();
+            onUpgrade?.();
+          }}
+          onBack={onClose}
+        />
+      </Modal>
+    );
+  }
 
   return (
     <Modal

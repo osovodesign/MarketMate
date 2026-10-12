@@ -12,6 +12,7 @@ import {
   User as FirebaseUser,
 } from 'firebase/auth';
 import {
+  initializeFirestore,
   getFirestore,
   doc,
   getDocFromServer,
@@ -36,8 +37,21 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
+// Pre-configure Firestore with auto-detect long polling for resilient connections across all networks
+try {
+  initializeFirestore(
+    app,
+    {
+      experimentalAutoDetectLongPolling: true,
+    },
+    firebaseConfig.firestoreDatabaseId
+  );
+} catch {
+  // Ignore if already initialized
+}
+
 // Initialize Firestore with specific database ID from config
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
 
 // Initialize Firebase Auth
 export const auth = getAuth(app);
@@ -100,19 +114,14 @@ export function handleFirestoreError(
 }
 
 /**
- * Validate connection to Firestore on initial boot
+ * Optional connection check when explicitly needed
  */
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    if (!auth.currentUser) return true;
+    await getDoc(doc(db, 'users', auth.currentUser.uid));
     return true;
-  } catch (error: any) {
-    if (
-      error?.code === 'unavailable' ||
-      (error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('unavailable')))
-    ) {
-      console.info('Firestore: Background client initialized in offline-first mode.');
-    }
+  } catch {
     return false;
   }
 }

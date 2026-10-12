@@ -32,17 +32,17 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantClasses = {
     primary:
-      'bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm focus-visible:ring-emerald-600',
+      'bg-[#059669] hover:bg-[#047857] text-[#FEFEFE] font-bold shadow-sm focus-visible:ring-[#059669]',
     secondary:
-      'bg-slate-100 hover:bg-slate-200 text-slate-800 focus-visible:ring-slate-400',
+      'bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100 font-semibold focus-visible:ring-slate-400',
     outline:
-      'border border-slate-300 hover:bg-slate-50 text-slate-700 focus-visible:ring-slate-400',
+      'border border-slate-200 hover:bg-slate-50 text-slate-700 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 focus-visible:ring-slate-400',
     danger:
       'bg-rose-600 hover:bg-rose-700 text-white shadow-sm focus-visible:ring-rose-500',
     ghost:
-      'text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-slate-400',
+      'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white focus-visible:ring-[#059669]',
     success:
-      'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm focus-visible:ring-emerald-500',
+      'bg-[#059669] hover:bg-[#047857] text-[#FEFEFE] font-bold shadow-sm focus-visible:ring-[#059669]',
   };
 
   const widthClass = fullWidth ? 'w-full' : '';

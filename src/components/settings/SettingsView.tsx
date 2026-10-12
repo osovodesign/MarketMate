@@ -21,6 +21,15 @@ import {
   FileImage,
   Compass,
   HelpCircle,
+  Gift,
+  Share2,
+  Copy,
+  Check,
+  Clock,
+  Headphones,
+  MessageCircle,
+  Phone,
+  Scale,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useBusinessData } from '../../context/BusinessDataContext';
@@ -34,12 +43,26 @@ import { StaffManagementModal } from '../staff/StaffManagementModal';
 import { MultiCurrencyCalculatorModal } from '../currency/MultiCurrencyCalculatorModal';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { LogoExportModal } from '../common/LogoExportModal';
+import { SubscribeModal } from '../subscription/SubscribeModal';
+import { LegalModal } from '../legal/LegalModal';
+import { SocialMediaLinks } from '../common/SocialMediaLinks';
+import { SubscriptionRequest } from '../../types';
+import { fetchSubscriptionRequests } from '../../lib/subscriptionService';
+import { SUPPORT_CONFIG, getWhatsAppSupportUrl } from '../../lib/adminConfig';
+import {
+  getReferralCodeForUser,
+  getReferralShareUrl,
+  getWhatsAppShareMessage,
+  REFERRAL_CAMPAIGN,
+} from '../../lib/referralService';
 
 interface SettingsViewProps {
   onResetData: () => void;
   onLoadDemo: () => void;
   onOpenLogoExport?: () => void;
   onOpenTour?: () => void;
+  onOpenReferralModal?: () => void;
+  onOpenSupportModal?: () => void;
 }
 
 const BUSINESS_CATEGORIES: { value: BusinessCategory; label: string }[] = [
@@ -64,9 +87,25 @@ const CURRENCIES: { value: CurrencyCode; label: string }[] = [
   { value: 'GHS', label: 'GH₵ Ghanaian Cedi (GHS)' },
 ];
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ onResetData, onLoadDemo, onOpenLogoExport, onOpenTour }) => {
-  const { user, business, updateBusiness } = useAuth();
-  const { resetData, loadDemoData, staffList, fxConfig, currentSession } = useBusinessData();
+export const SettingsView: React.FC<SettingsViewProps> = ({
+  onResetData,
+  onLoadDemo,
+  onOpenLogoExport,
+  onOpenTour,
+  onOpenReferralModal,
+  onOpenSupportModal,
+}) => {
+  const { user, business, updateBusiness, activateSubscription, isDemoMode, isSubscribed } = useAuth();
+  const {
+    resetData,
+    loadDemoData,
+    staffList,
+    fxConfig,
+    currentSession,
+    syncLiveFxRates,
+    isSyncingFx,
+    fxSource,
+  } = useBusinessData();
   const {
     customLogoLight,
     customLogoDark,
@@ -86,6 +125,59 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onResetData, onLoadD
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [isFxModalOpen, setIsFxModalOpen] = useState(false);
   const [isLogoExportModalOpen, setIsLogoExportModalOpen] = useState(false);
+  const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
+  const [pendingSubRequest, setPendingSubRequest] = useState<SubscriptionRequest | null>(null);
+  const [copiedField, setCopiedField] = useState<'link' | 'code' | null>(null);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subSuccess, setSubSuccess] = useState(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState<'disclaimers' | 'terms' | 'privacy'>('disclaimers');
+
+  const checkSubRequests = async () => {
+    if (!user?.id) return;
+    try {
+      const reqs = await fetchSubscriptionRequests({
+        businessId: business?.id,
+        userId: user.id,
+      });
+      const pending = reqs.find((r) => r.status === 'pending');
+      setPendingSubRequest(pending || null);
+    } catch (err) {
+      console.warn('Could not fetch subscription status for merchant:', err);
+    }
+  };
+
+  React.useEffect(() => {
+    checkSubRequests();
+  }, [user?.id, business?.id, business?.isSubscribed]);
+
+  const handleActivateSub = async () => {
+    setSubscribing(true);
+    try {
+      await activateSubscription('MarketMate Pioneer Standard');
+      setSubSuccess(true);
+      setTimeout(() => setSubSuccess(false), 4000);
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  const userReferralCode = getReferralCodeForUser(user?.id);
+  const userReferralLink = getReferralShareUrl(userReferralCode);
+
+  const handleCopy = (type: 'link' | 'code', val: string) => {
+    navigator.clipboard.writeText(val);
+    setCopiedField(type);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handleShareWhatsApp = () => {
+    const msg = getWhatsAppShareMessage(
+      userReferralCode,
+      business?.businessName || user?.fullName || 'a fellow merchant'
+    );
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  };
 
   const lightFileInputRef = useRef<HTMLInputElement>(null);
   const darkFileInputRef = useRef<HTMLInputElement>(null);
@@ -396,16 +488,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onResetData, onLoadD
               Live exchange rates for USD, CNY, EUR, GBP, GHS and import landed cost calculations.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setIsFxModalOpen(true)}
-            leftIcon={<Ship className="w-3.5 h-3.5 text-emerald-700" />}
-          >
-            FX & Landed Cost Tool
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isSyncingFx}
+              onClick={() => syncLiveFxRates(true)}
+              leftIcon={<RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${isSyncingFx ? 'animate-spin' : ''}`} />}
+            >
+              {isSyncingFx ? 'Syncing...' : 'Sync Live'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFxModalOpen(true)}
+              leftIcon={<Ship className="w-3.5 h-3.5 text-emerald-700" />}
+            >
+              FX & Landed Cost Tool
+            </Button>
+          </div>
         </CardHeader>
+
+        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 pb-2 flex-wrap gap-2">
+          <span className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Live Market Feed: {fxSource || 'Global Interbank Feed'}
+          </span>
+          {fxConfig.lastUpdated && (
+            <span className="text-[10px] text-slate-400">
+              Synced: {new Date(fxConfig.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
 
         <div className="pt-2 text-xs grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl text-center">
@@ -468,6 +584,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onResetData, onLoadD
         isOpen={isLogoExportModalOpen}
         onClose={() => setIsLogoExportModalOpen(false)}
       />
+      <SubscribeModal
+        isOpen={isSubscribeModalOpen}
+        onClose={() => {
+          setIsSubscribeModalOpen(false);
+          checkSubRequests();
+        }}
+        onSuccess={() => {
+          checkSubRequests();
+        }}
+      />
+      <LegalModal
+        isOpen={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+        defaultTab={legalModalTab}
+      />
 
       {/* User Guide & Walkthrough Card */}
       <Card padding="lg">
@@ -511,6 +642,419 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onResetData, onLoadD
               Log daily operating expenses (fuel, packaging, dispatch) so MarketMate automatically calculates real take-home margins.
             </p>
           </div>
+        </div>
+      </Card>
+
+      {/* Referral Program & 5% Subscription Discount Card */}
+      <Card padding="lg" className="border-emerald-200 dark:border-emerald-800/80 bg-gradient-to-br from-emerald-50/40 via-white to-teal-50/30 dark:from-emerald-950/20 dark:via-slate-900 dark:to-teal-950/20">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Gift className="w-4 h-4" />
+              </div>
+              <div>
+                <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Refer & Earn 5% Discount</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                    {REFERRAL_CAMPAIGN.discountPercent}% OFF
+                  </span>
+                </CardTitle>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Share your link with fellow retail merchants. When they register and subscribe to MarketMate, you receive 5% off your subscription!
+                </p>
+              </div>
+            </div>
+
+            {onOpenReferralModal && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onOpenReferralModal}
+                className="self-start sm:self-auto shrink-0 border-emerald-300 text-emerald-800 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-300"
+              >
+                View Full Stats
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+
+        <div className="space-y-4 pt-2">
+          {/* Subscription Status & Referral Qualification */}
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-800/90 border border-emerald-200/80 dark:border-emerald-800 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">
+                    Your Store Subscription:
+                  </span>
+                  {isDemoMode ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                      <Sparkles className="w-3 h-3 text-emerald-600" />
+                      Free Demo Account • All Pro Features Unlocked
+                    </span>
+                  ) : business?.isSubscribed ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                      <Check className="w-3 h-3 text-emerald-600" />
+                      Active Subscribed ({business.subscriptionPlan || 'Standard Plan'})
+                    </span>
+                  ) : pendingSubRequest ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 animate-pulse">
+                      <Clock className="w-3 h-3 text-amber-600" />
+                      Payment Under Admin Verification
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                      Free Pioneer Tier (Pro Locked)
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  {isDemoMode
+                    ? 'You are currently exploring MarketMate with Adaeze Okonkwo sample data. All Pro features (Invoices, CRM, Debt Book, Reports, AI Advisor, Staff Roles) are completely free to test. Real registered merchants must subscribe to unlock these features.'
+                    : business?.isSubscribed
+                    ? 'Your store is actively subscribed. Referral discounts will apply to subsequent renewal invoices.'
+                    : pendingSubRequest
+                    ? `Bank transfer proof of ₦${pendingSubRequest.finalAmount.toLocaleString()} submitted (Ref: ${pendingSubRequest.paymentReference}). Admin is verifying receipt in bank statement.`
+                    : 'Subscribe to MarketMate via direct bank transfer to unlock Invoices, Debt Book, P&L Reports, AI Advisor, and Staff Management.'}
+                </p>
+                {subSuccess && (
+                  <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                    ✓ Subscription activated! Any referral attribution is now qualified.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {isDemoMode ? (
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    Pro Features Unlocked
+                  </span>
+                ) : business?.isSubscribed ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsSubscribeModalOpen(true)}
+                    className="text-xs font-bold"
+                  >
+                    View Renewal / Bank Details
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setIsSubscribeModalOpen(true)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                    >
+                      {pendingSubRequest ? 'View / Update Transfer' : 'Subscribe via Bank Transfer'}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleActivateSub}
+                      disabled={subscribing}
+                      className="text-slate-600 dark:text-slate-300 text-xs hidden sm:inline-flex"
+                      title="Activate instant free trial tier during pioneer window"
+                    >
+                      {subscribing ? 'Activating...' : 'Instant Free Trial'}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {pendingSubRequest && (
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span>
+                    Pending transfer: <strong>₦{pendingSubRequest.finalAmount.toLocaleString()}</strong> from{' '}
+                    <strong>{pendingSubRequest.senderBank}</strong> ({pendingSubRequest.senderAccountName}). Narration Ref:{' '}
+                    <code className="font-mono font-bold">{pendingSubRequest.paymentReference}</code>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSubscribeModalOpen(true)}
+                  className="px-2.5 py-1 rounded-lg bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 font-bold text-[11px] hover:bg-amber-300 transition-colors cursor-pointer shrink-0"
+                >
+                  Details
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Campaign Period Notice */}
+          <div className="p-3 rounded-xl bg-emerald-100/60 dark:bg-emerald-950/60 border border-emerald-300/80 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+              <span>
+                <strong>Campaign Period:</strong> {REFERRAL_CAMPAIGN.durationText}
+              </span>
+            </div>
+            <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
+              Reward applies when referred stores register & subscribe
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Referral Code Field */}
+            <div className="p-3.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  Your Referral Code
+                </p>
+                <p className="text-base font-black tracking-widest text-emerald-700 dark:text-emerald-400 font-mono mt-0.5">
+                  {userReferralCode}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => handleCopy('code', userReferralCode)}
+                leftIcon={copiedField === 'code' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+              >
+                {copiedField === 'code' ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+
+            {/* Quick Share Buttons */}
+            <div className="p-3.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  Share Referral Link
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 truncate mt-0.5 font-mono">
+                  {userReferralLink}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleCopy('link', userReferralLink)}
+                  title="Copy link"
+                >
+                  {copiedField === 'link' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleShareWhatsApp}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  title="Share on WhatsApp"
+                  leftIcon={<Share2 className="w-3.5 h-3.5" />}
+                >
+                  WhatsApp
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Official Help & Support Desk Card */}
+      <Card padding="lg" className="border-emerald-200/70 dark:border-emerald-900/60 bg-gradient-to-br from-white via-white to-emerald-50/20 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
+                <Headphones className="w-5 h-5" />
+              </div>
+              <div>
+                <CardTitle className="text-slate-900 dark:text-white">
+                  Help, Support & Contact Admin
+                </CardTitle>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Have questions, feature requests, or need billing help? Reach the admin team directly.
+                </p>
+              </div>
+            </div>
+
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              WhatsApp Online
+            </span>
+          </div>
+        </CardHeader>
+
+        <div className="space-y-4 pt-2">
+          {/* WhatsApp Direct Chat Banner */}
+          <div className="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <p className="text-xs font-bold text-emerald-950 dark:text-emerald-200">
+                  Instant WhatsApp Support ({SUPPORT_CONFIG.whatsappDisplay})
+                </p>
+              </div>
+              <p className="text-[11px] text-emerald-800 dark:text-emerald-300/90 leading-relaxed">
+                Chat directly with our administrative team on WhatsApp for real-time help, onboarding assistance, or payment inquiries.
+              </p>
+            </div>
+
+            <a
+              href={getWhatsAppSupportUrl(`Hello Admin, I am using MarketMate for "${business?.businessName || 'my store'}". I need assistance.`)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>Chat on WhatsApp</span>
+            </a>
+          </div>
+
+          {/* In-App Ticket & Email Support Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Headphones className="w-3.5 h-3.5 text-emerald-600" />
+                  In-App Support Ticket
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  Submit a structured assistance ticket and track replies directly inside MarketMate.
+                </p>
+              </div>
+
+              {onOpenSupportModal && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenSupportModal}
+                  className="w-full justify-center"
+                >
+                  Open Support Hub
+                </Button>
+              )}
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                  Phone & Email Desk
+                </p>
+                <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 space-y-0.5 font-mono">
+                  <p>Line: <a href={`tel:${SUPPORT_CONFIG.phone}`} className="text-emerald-600 dark:text-emerald-400 hover:underline">{SUPPORT_CONFIG.phone}</a></p>
+                  <p>Mail: <a href={`mailto:${SUPPORT_CONFIG.email}`} className="text-emerald-600 dark:text-emerald-400 hover:underline">{SUPPORT_CONFIG.email}</a></p>
+                </div>
+              </div>
+
+              <span className="text-[10px] text-slate-400">
+                Operating Hours: Mon – Sat, 8:00 AM – 8:00 PM WAT
+              </span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Official Community & Social Media Channels Card */}
+      <Card padding="lg" className="border-slate-200 dark:border-slate-800">
+        <SocialMediaLinks variant="cards" showTitle={true} />
+      </Card>
+
+      {/* Legal Disclaimers, Terms & NDPA Compliance Card */}
+      <Card padding="lg" className="border-slate-200 dark:border-slate-800">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 flex items-center justify-center shrink-0 shadow-2xs">
+                <Scale className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Legal, Compliance & Disclaimers</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    Version 2.0
+                  </span>
+                </CardTitle>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Official Terms of Service, accounting & bank transfer disclaimers, and NDPA compliance notices.
+                </p>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setLegalModalTab('disclaimers');
+                setIsLegalModalOpen(true);
+              }}
+              className="self-start sm:self-auto shrink-0"
+              leftIcon={<Scale className="w-3.5 h-3.5 text-emerald-600" />}
+            >
+              Open Legal Center
+            </Button>
+          </div>
+        </CardHeader>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              setLegalModalTab('disclaimers');
+              setIsLegalModalOpen(true);
+            }}
+            className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-left hover:border-emerald-500/50 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 transition-colors">
+                🛡️ Legal Disclaimers
+              </span>
+              <span className="text-[10px] text-slate-400">View</span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              Accounting estimates, bank transfer reconciliation, and debt collection boundaries.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setLegalModalTab('terms');
+              setIsLegalModalOpen(true);
+            }}
+            className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-left hover:border-emerald-500/50 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 transition-colors">
+                📜 Terms of Service
+              </span>
+              <span className="text-[10px] text-slate-400">View</span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              Founder limitation of liability, prohibited contraband, and dispute jurisdiction (Warri, Nigeria).
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setLegalModalTab('privacy');
+              setIsLegalModalOpen(true);
+            }}
+            className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 text-left hover:border-emerald-500/50 transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 transition-colors">
+                🔒 Privacy & NDPA
+              </span>
+              <span className="text-[10px] text-slate-400">View</span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              Strict Nigerian Data Protection Act compliance. Merchant and customer data is never sold.
+            </p>
+          </button>
         </div>
       </Card>
 

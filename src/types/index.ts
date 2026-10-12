@@ -24,7 +24,49 @@ export interface ExchangeRateConfig {
   marketType: 'parallel' | 'official';
 }
 
-export type StaffRole = 'owner' | 'manager' | 'cashier';
+export type StaffRole = 'owner' | 'manager' | 'cashier' | 'inventory' | 'accountant';
+
+export interface StaffPermissions {
+  // Financial & Cost Protection (Confidential)
+  showCostPrice: boolean;
+  showProfitAndMargins: boolean;
+  canViewExpenses: boolean;
+  // Sales & Cashier Controls (Fraud Prevention)
+  canProcessSales: boolean;
+  canGiveDiscount: boolean;
+  maxDiscountPercent: number; // e.g. 5 for 5%, 0 for none, 100 for unlimited
+  canRecordDebt: boolean;
+  canEditDeleteSales: boolean;
+  // Inventory & Product Catalog
+  canViewProducts: boolean;
+  canEditProducts: boolean;
+  canAdjustStock: boolean;
+  // Data Protection & Settings
+  canExportData: boolean;
+  canAccessSettings: boolean;
+}
+
+export interface StaffShiftRecord {
+  id: string;
+  businessId: string;
+  staffId: string;
+  staffName: string;
+  role: StaffRole;
+  startedAt: string; // ISO string
+  endedAt?: string; // ISO string
+  status: 'active' | 'closed';
+  openingFloat: number; // in NGN/base currency
+  expectedCash: number;
+  actualCashCounted?: number;
+  cashDifference?: number; // actual - expected
+  totalSalesCount: number;
+  totalSalesAmount: number;
+  cashSalesAmount: number;
+  transferSalesAmount: number;
+  posCardSalesAmount: number;
+  notes?: string;
+  createdAt: string;
+}
 
 export interface StaffMember {
   id: string;
@@ -33,8 +75,12 @@ export interface StaffMember {
   role: StaffRole;
   pin: string; // 4-digit PIN
   phone?: string;
+  email?: string;
   isActive: boolean;
+  permissions?: StaffPermissions;
+  currentShiftId?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface StaffSession {
@@ -42,6 +88,8 @@ export interface StaffSession {
   staffId?: string;
   staffName: string;
   isLocked: boolean;
+  permissions?: StaffPermissions;
+  activeShift?: StaffShiftRecord | null;
 }
 
 export type PaymentMethod = 'Cash' | 'Transfer' | 'POS' | 'Other';
@@ -89,6 +137,10 @@ export interface BusinessProfile {
   logoDarkUrl?: string;
   bankDetails?: BankDetails;
   invoiceTerms?: string;
+  isSubscribed?: boolean;
+  subscriptionPlan?: string;
+  subscribedAt?: string;
+  subscriptionDiscountPercent?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -304,7 +356,12 @@ export interface Supplier {
   createdAt: string;
 }
 
-export type MessageTargetType = 'broadcast' | 'direct';
+export type MessageTargetType =
+  | 'broadcast'
+  | 'direct'
+  | 'zero_sales'
+  | 'dormant'
+  | 'transacting';
 export type MessageChannel = 'in_app' | 'email' | 'both';
 export type MessagePriority = 'normal' | 'important' | 'urgent';
 
@@ -314,6 +371,7 @@ export interface PlatformAnnouncement {
   content: string;
   type: MessageTargetType; // 'broadcast' for all, 'direct' for single merchant
   targetBusinessId?: string; // specific business ID if direct
+  targetBusinessIds?: string[]; // specific business IDs if segment targeted
   targetBusinessName?: string;
   targetEmail?: string;
   channel: MessageChannel;
@@ -325,6 +383,97 @@ export interface PlatformAnnouncement {
   createdAt: string;
   readBy?: string[]; // Array of business IDs or user IDs that have read it
   emailSentCount?: number;
+}
+
+export interface ReferralRecord {
+  id: string;
+  referrerCode: string;
+  referrerUserId?: string;
+  referrerEmail?: string;
+  referrerBusinessName?: string;
+  referredUserId: string;
+  referredUserEmail?: string;
+  referredBusinessName?: string;
+  discountPercent: number; // 5%
+  campaign: string; // 'MarketMate Pioneer Referral Campaign'
+  validFrom: string; // '2026-10-12'
+  validUntil: string; // '2026-10-30'
+  status: 'pending_subscription' | 'qualified' | 'redeemed' | 'active';
+  referredSubscribed: boolean; // Must be TRUE (merchant registered & subscribed) to earn 5% discount
+  subscribedAt?: string;
+  subscriptionPlan?: string;
+  createdAt: string;
+}
+
+export interface PlatformBankConfig {
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  instructions?: string;
+  monthlyPlanPrice: number; // in NGN
+  annualPlanPrice: number;  // in NGN
+  supportPhone?: string;
+  supportEmail?: string;
+  updatedAt?: string;
+}
+
+export interface SubscriptionRequest {
+  id: string;
+  businessId: string;
+  businessName: string;
+  userId: string;
+  userEmail: string;
+  ownerName?: string;
+  phone?: string;
+  planId: 'monthly' | 'annual' | 'pioneer_launch';
+  planName: string;
+  planOriginalPrice: number;
+  discountPercent: number;
+  finalAmount: number;
+  currency: string;
+  senderBank: string;
+  senderAccountName: string;
+  paymentReference: string;
+  proofNote?: string;
+  proofImageUrl?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SupportTicketCategory =
+  | 'general'
+  | 'payment_subscription'
+  | 'pos_sales'
+  | 'inventory_catalog'
+  | 'bug_report'
+  | 'feature_request'
+  | 'account_security';
+
+export type SupportTicketPriority = 'normal' | 'urgent';
+export type SupportTicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+
+export interface SupportTicket {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName?: string;
+  businessId?: string;
+  businessName?: string;
+  whatsappPhone?: string;
+  category: SupportTicketCategory;
+  subject: string;
+  message: string;
+  priority: SupportTicketPriority;
+  status: SupportTicketStatus;
+  adminReply?: string;
+  repliedAt?: string;
+  repliedBy?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type AppView =
@@ -344,6 +493,7 @@ export type AppView =
   | 'reports'
   | 'ai'
   | 'settings'
-  | 'admin';
+  | 'admin'
+  | 'staff';
 
 

@@ -32,6 +32,7 @@ interface NotificationContextType {
     content: string;
     type: MessageTargetType;
     targetBusinessId?: string;
+    targetBusinessIds?: string[];
     targetBusinessName?: string;
     targetEmail?: string;
     channel: MessageChannel;
@@ -127,6 +128,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return allAnnouncements.filter((item) => {
       // If broadcast to all
       if (item.type === 'broadcast') return true;
+      // If segment targeted with specific store IDs
+      if (item.targetBusinessIds && Array.isArray(item.targetBusinessIds)) {
+        if (business && item.targetBusinessIds.includes(business.id)) return true;
+        return false;
+      }
+      if (item.type === 'zero_sales' || item.type === 'dormant' || item.type === 'transacting') {
+        if (!item.targetBusinessId || item.targetBusinessId === business?.id) return true;
+      }
       // If targeted to this business
       if (business && item.targetBusinessId === business.id) return true;
       // If targeted to this user's email
@@ -223,6 +232,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     content: string;
     type: MessageTargetType;
     targetBusinessId?: string;
+    targetBusinessIds?: string[];
     targetBusinessName?: string;
     targetEmail?: string;
     channel: MessageChannel;
@@ -249,6 +259,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       if (data.targetBusinessId?.trim()) {
         payload.targetBusinessId = data.targetBusinessId.trim();
+      }
+      if (data.targetBusinessIds && Array.isArray(data.targetBusinessIds)) {
+        payload.targetBusinessIds = data.targetBusinessIds;
       }
       if (data.targetBusinessName?.trim()) {
         payload.targetBusinessName = data.targetBusinessName.trim();

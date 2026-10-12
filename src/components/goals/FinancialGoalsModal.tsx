@@ -5,6 +5,7 @@ import { Badge } from '../ui/Badge';
 import { useBusinessData } from '../../context/BusinessDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatPercent } from '../../lib/formatters';
+import { ProFeatureGate } from '../subscription/ProFeatureGate';
 import {
   Target,
   TrendingUp,
@@ -20,14 +21,16 @@ import {
 interface FinancialGoalsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onUpgrade?: () => void;
 }
 
 export const FinancialGoalsModal: React.FC<FinancialGoalsModalProps> = ({
   isOpen,
   onClose,
+  onUpgrade,
 }) => {
   const { targets, updateTargets, metrics } = useBusinessData();
-  const { business } = useAuth();
+  const { business, user, isSuperAdmin, isDemoMode, isSubscribed } = useAuth();
   const currency = business?.currency || 'NGN';
 
   const [revenueTarget, setRevenueTarget] = useState(
@@ -79,6 +82,30 @@ export const FinancialGoalsModal: React.FC<FinancialGoalsModalProps> = ({
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2500);
   };
+
+  if (!isSubscribed) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} size="md">
+        <ProFeatureGate
+          mode="modal"
+          title="Financial Goals & Daily Run-Rates"
+          subtitle="Set monthly revenue & net profit benchmarks with live day-by-day pacing, required daily run-rates, and performance milestones."
+          icon={Target}
+          benefits={[
+            'Define monthly revenue and take-home net profit benchmarks',
+            'Live day-by-day progress tracking against days remaining',
+            'Calculates required daily sales run-rates to hit targets',
+            'Milestone achievement badges and pacing indicators',
+          ]}
+          onUpgrade={() => {
+            onClose();
+            onUpgrade?.();
+          }}
+          onBack={onClose}
+        />
+      </Modal>
+    );
+  }
 
   return (
     <Modal

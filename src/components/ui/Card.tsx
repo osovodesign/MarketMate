@@ -21,8 +21,8 @@ export const Card: React.FC<CardProps> = ({
 
   return (
     <div
-      className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs transition-colors ${paddingMap[padding]} ${
-        hoverable ? 'hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700' : ''
+      className={`bg-[#FEFEFE] dark:bg-[#001A35] rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs transition-colors ${paddingMap[padding]} ${
+        hoverable ? 'hover:shadow-md hover:border-[#059669]/40 dark:hover:border-[#10B981]/40' : ''
       } ${className}`}
       {...props}
     >
@@ -46,7 +46,7 @@ export const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({
   className = '',
   ...props
 }) => (
-  <h3 className={`text-base font-semibold text-slate-900 dark:text-white tracking-tight ${className}`} {...props}>
+  <h3 className={`text-base font-bold text-[#001A35] dark:text-[#FEFEFE] tracking-tight ${className}`} {...props}>
     {children}
   </h3>
 );

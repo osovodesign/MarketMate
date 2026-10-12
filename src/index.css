@@ -2,13 +2,70 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Smooth transition for theme change */
+@theme {
+  /* 10% Accent / CTA / Highlights / Active / Success (Initial Emerald Green) */
+  --color-mm-green: #059669;
+  --color-mm-green-deep: #047857;
+  --color-mm-green-hover: #047857;
+  --color-mm-green-light: #ECFDF5;
+  --color-mm-green-subtle: rgba(5, 150, 105, 0.12);
+  --color-mm-green-glow: #10B981;
+  --color-mm-green-bright: #34D399;
+
+  /* 30% Headings / Navigation / Structural Text */
+  --color-mm-navy: #001A35;
+  --color-mm-navy-deep: #082F4B;
+  --color-mm-navy-card: #0F2744;
+
+  /* 60% Dominant Canvas & Cards */
+  --color-mm-white: #FEFEFE;
+
+  /* Structural Borders, Dividers & Secondary Surfaces */
+  --color-mm-gray: #E2E8F0;
+  --color-mm-gray-light: #F8FAFC;
+  --color-mm-gray-muted: #64748B;
+
+  /* Align emerald system */
+  --color-emerald-50: #ECFDF5;
+  --color-emerald-100: #D1FAE5;
+  --color-emerald-500: #10B981;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065F46;
+  --color-emerald-900: #064E3B;
+}
+
+:root {
+  --color-canvas-bg: #FEFEFE;
+  --color-canvas-card: #FEFEFE;
+  --color-structure-navy: #001A35;
+  --color-structure-border: #E2E8F0;
+  --color-accent-green: #059669;
+  --color-accent-green-deep: #047857;
+}
+
+/* Base Global Setup following 60-30-10 */
 html {
   transition: background-color 0.2s ease, color 0.2s ease;
+  background-color: #FEFEFE;
+  color: #001A35;
+}
+
+body {
+  background-color: #FEFEFE;
+  color: #001A35;
+  margin: 0;
+  padding: 0;
 }
 
 html.dark {
   color-scheme: dark;
-  background-color: #0b0f17;
-  color: #f1f5f9;
+  background-color: #082F4B;
+  color: #FEFEFE;
 }
+
+html.dark body {
+  background-color: #082F4B;
+  color: #FEFEFE;
+}
+

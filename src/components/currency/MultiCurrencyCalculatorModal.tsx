@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Calculator,
@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { CurrencyCode, ExchangeRateConfig } from '../../types';
 import { useBusinessData } from '../../context/BusinessDataContext';
+import { useAuth } from '../../context/AuthContext';
+import { ProFeatureGate } from '../subscription/ProFeatureGate';
 import {
   CURRENCIES,
   calculateLandedCost,
@@ -25,13 +27,16 @@ import { formatMoney } from '../../lib/calculations';
 interface MultiCurrencyCalculatorModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onUpgrade?: () => void;
 }
 
 export const MultiCurrencyCalculatorModal: React.FC<MultiCurrencyCalculatorModalProps> = ({
   isOpen,
   onClose,
+  onUpgrade,
 }) => {
-  const { fxConfig, updateFxRates } = useBusinessData();
+  const { fxConfig, updateFxRates, syncLiveFxRates, isSyncingFx, fxSource } = useBusinessData();
+  const { business, user, isSuperAdmin, isDemoMode, isSubscribed } = useAuth();
   const [activeTab, setActiveTab] = useState<'landed_cost' | 'rates_manager'>('landed_cost');
 
   // Landed Cost State
@@ -53,8 +58,50 @@ export const MultiCurrencyCalculatorModal: React.FC<MultiCurrencyCalculatorModal
   });
   const [marketType, setMarketType] = useState<'parallel' | 'official'>(fxConfig.marketType || 'parallel');
   const [isSavedNotice, setIsSavedNotice] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEditableRates(fxConfig.rates);
+    setCustomExchangeRate(String(fxConfig.rates[foreignCurrency] || 1));
+  }, [fxConfig, foreignCurrency]);
+
+  const handleSyncLive = async (forceType?: 'parallel' | 'official') => {
+    const targetType = forceType || marketType;
+    const res = await syncLiveFxRates(true, targetType);
+    if (res.success) {
+      setSyncNotice(`✓ Live market rates updated via ${res.source}`);
+      setMarketType(targetType);
+      setTimeout(() => setSyncNotice(null), 3500);
+    }
+  };
 
   if (!isOpen) return null;
+
+  if (!isSubscribed) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+          <ProFeatureGate
+            mode="modal"
+            title="FX & Landed Cost Import Calculator"
+            subtitle="Calculate authentic landed costs for imported goods (USD, EUR, GBP, CNY) factoring freight, customs duties, clearing, and parallel vs. official exchange rates."
+            icon={Ship}
+            benefits={[
+              'Foreign currency conversions (USD, RMB/CNY, EUR, GBP)',
+              'Accurate freight, clearing, and port demurrage absorption',
+              'Per-unit true landed cost and breakeven selling price',
+              'Parallel (Black Market) vs. CBN Official exchange rate manager',
+            ]}
+            onUpgrade={() => {
+              onClose();
+              onUpgrade?.();
+            }}
+            onBack={onClose}
+          />
+        </div>
+      </div>
+    );
+  }
 
   // Calculate landed cost results
   const qty = Math.max(1, Number(unitsQuantity) || 1);
@@ -148,6 +195,41 @@ export const MultiCurrencyCalculatorModal: React.FC<MultiCurrencyCalculatorModal
           </button>
         </div>
 
+        {/* Live Rates Auto-Sync Status Bar */}
+        <div className="px-6 py-2.5 bg-emerald-50/90 dark:bg-emerald-950/40 border-b border-emerald-100 dark:border-emerald-900/60 flex items-center justify-between flex-wrap gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-bold text-emerald-900 dark:text-emerald-200">
+              Live Real-Time Market Rates Active
+            </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              • {fxSource || 'Global Interbank Feed'}
+            </span>
+            {fxConfig.lastUpdated && (
+              <span className="text-[10px] text-slate-400 hidden sm:inline">
+                (Updated {new Date(fxConfig.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => handleSyncLive()}
+            disabled={isSyncingFx}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
+          >
+            <RefreshCw className={`w-3 h-3 ${isSyncingFx ? 'animate-spin' : ''}`} />
+            <span>{isSyncingFx ? 'Syncing...' : 'Sync Live Rates'}</span>
+          </button>
+        </div>
+
+        {syncNotice && (
+          <div className="px-6 py-2 bg-emerald-100 text-emerald-800 text-xs font-semibold flex items-center gap-1.5 animate-in fade-in">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{syncNotice}</span>
+          </div>
+        )}
+
         {/* Tab 1: Landed Cost Import Calculator */}
         {activeTab === 'landed_cost' && (
           <div className="p-6 overflow-y-auto space-y-5">
@@ -194,9 +276,18 @@ export const MultiCurrencyCalculatorModal: React.FC<MultiCurrencyCalculatorModal
 
               {/* Custom Exchange Rate */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700">
-                  Exchange Rate (₦ per 1 {foreignCurrency}):
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700">
+                    Exchange Rate (₦ per 1 {foreignCurrency}):
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCustomExchangeRate(String(fxConfig.rates[foreignCurrency] || 1))}
+                    className="text-[10px] text-emerald-600 font-bold hover:underline cursor-pointer"
+                  >
+                    Use Live (₦{fxConfig.rates[foreignCurrency]?.toLocaleString()})
+                  </button>
+                </div>
                 <input
                   type="number"
                   value={customExchangeRate}
@@ -361,10 +452,11 @@ export const MultiCurrencyCalculatorModal: React.FC<MultiCurrencyCalculatorModal
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => handleResetToPreset('parallel')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  onClick={() => handleSyncLive('parallel')}
+                  disabled={isSyncingFx}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                     marketType === 'parallel'
-                      ? 'bg-slate-900 text-white'
+                      ? 'bg-slate-900 text-white shadow-2xs'
                       : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
                   }`}
                 >
@@ -372,14 +464,15 @@ export const MultiCurrencyCalculatorModal: React.FC<MultiCurrencyCalculatorModal
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleResetToPreset('official')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  onClick={() => handleSyncLive('official')}
+                  disabled={isSyncingFx}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                     marketType === 'official'
-                      ? 'bg-slate-900 text-white'
+                      ? 'bg-slate-900 text-white shadow-2xs'
                       : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  Official (CBN)
+                  Official (CBN/NAFEM)
                 </button>
               </div>
             </div>

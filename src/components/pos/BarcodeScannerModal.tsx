@@ -139,6 +139,15 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       // Audio context not allowed or unsupported
     }
 
+    // Trigger subtle mobile haptic vibration if supported
+    try {
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate([40, 20, 40]);
+      }
+    } catch (e) {
+      // Haptic vibration not supported on device
+    }
+
     const matched = findProduct(trimmed);
     setMatchedProduct(matched || null);
     onScanSuccess(trimmed, matched);

@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { MobileBottomNav } from './MobileBottomNav';
+import { MobileNavDrawer } from './MobileNavDrawer';
 import { AnnouncementBanner } from '../notifications/AnnouncementBanner';
+import { FloatingSupportButton } from '../common/FloatingSupportButton';
+import { HelpSupportModal } from '../common/HelpSupportModal';
 import { AppView } from '../../types';
 
 interface ShellProps {
@@ -20,6 +23,8 @@ interface ShellProps {
   onOpenLogoExportModal?: () => void;
   onOpenNotificationDrawer?: () => void;
   onOpenTourModal?: () => void;
+  onOpenReferralModal?: () => void;
+  onOpenSupportModal?: () => void;
   businessName?: string;
   businessType?: string;
   currency?: string;
@@ -41,13 +46,26 @@ export const Shell: React.FC<ShellProps> = ({
   onOpenLogoExportModal,
   onOpenNotificationDrawer,
   onOpenTourModal,
+  onOpenReferralModal,
+  onOpenSupportModal,
   businessName,
   businessType,
   currency,
   onLogout,
 }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+
+  const handleOpenSupport = () => {
+    if (onOpenSupportModal) {
+      onOpenSupportModal();
+    } else {
+      setIsSupportModalOpen(true);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f17] flex text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-emerald-100 selection:text-emerald-900 transition-colors">
+    <div className="min-h-screen bg-[#FEFEFE] dark:bg-[#082F4B] flex text-[#001A35] dark:text-[#FEFEFE] font-sans antialiased selection:bg-[#059669]/20 selection:text-[#001A35] transition-colors">
       {/* Desktop Persistent Sidebar */}
       <Sidebar
         currentView={currentView}
@@ -61,6 +79,8 @@ export const Shell: React.FC<ShellProps> = ({
         onOpenFxModal={onOpenFxModal}
         onOpenStaffModal={onOpenStaffModal}
         onOpenLogoExportModal={onOpenLogoExportModal}
+        onOpenReferralModal={onOpenReferralModal}
+        onOpenSupportModal={handleOpenSupport}
         businessName={businessName}
         businessType={businessType}
       />
@@ -81,6 +101,9 @@ export const Shell: React.FC<ShellProps> = ({
           onOpenLogoExportModal={onOpenLogoExportModal}
           onOpenNotificationDrawer={onOpenNotificationDrawer}
           onOpenTourModal={onOpenTourModal}
+          onOpenReferralModal={onOpenReferralModal}
+          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+          onOpenSupportModal={handleOpenSupport}
         />
 
         {/* Viewport Content Container */}
@@ -89,6 +112,24 @@ export const Shell: React.FC<ShellProps> = ({
         </main>
       </div>
 
+      {/* Mobile Full Navigation Drawer */}
+      <MobileNavDrawer
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        currentView={currentView}
+        onNavigate={onNavigate}
+        onOpenPricingCalculator={onOpenPricingCalculator}
+        onOpenProfitSimulator={onOpenProfitSimulator}
+        onOpenGoalsModal={onOpenGoalsModal}
+        onOpenBackupModal={onOpenBackupModal}
+        onOpenFxModal={onOpenFxModal}
+        onOpenStaffModal={onOpenStaffModal}
+        onOpenReferralModal={onOpenReferralModal}
+        onOpenSupportModal={handleOpenSupport}
+        businessName={businessName}
+        businessType={businessType}
+      />
+
       {/* Mobile Sticky Bottom Navigation */}
       <MobileBottomNav
         currentView={currentView}
@@ -96,8 +137,22 @@ export const Shell: React.FC<ShellProps> = ({
         onOpenAddSale={onOpenAddSale}
         onOpenAddExpense={onOpenAddExpense}
         onLogout={onLogout}
+        onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
       />
+
+      {/* Persistent Global Floating Support Button (WhatsApp & Help Desk) */}
+      <FloatingSupportButton onOpen={handleOpenSupport} />
+
+      {/* Fallback Help & Support Hub Modal if not provided by parent App */}
+      {!onOpenSupportModal && (
+        <HelpSupportModal
+          isOpen={isSupportModalOpen}
+          onClose={() => setIsSupportModalOpen(false)}
+          businessName={businessName}
+        />
+      )}
     </div>
   );
 };
+
 

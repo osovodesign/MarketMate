@@ -5,6 +5,8 @@ import { Input } from '../ui/Input';
 import { useAuth } from '../../context/AuthContext';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { AuthErrorNotice } from './AuthErrorNotice';
+import { LegalModal } from '../legal/LegalModal';
+import { SocialMediaLinks } from '../common/SocialMediaLinks';
 
 interface LoginProps {
   onSuccess: () => void;
@@ -25,6 +27,7 @@ export const Login: React.FC<LoginProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,8 +203,31 @@ export const Login: React.FC<LoginProps> = ({
               Create free account
             </button>
           </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
+            <button
+              type="button"
+              onClick={() => setIsLegalModalOpen(true)}
+              className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline cursor-pointer"
+            >
+              Terms of Service & Legal Disclaimers
+            </button>
+          </div>
+
+          {/* Official Community Handles */}
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-1.5">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+              Official MarketMate Community
+            </span>
+            <SocialMediaLinks variant="compact" />
+          </div>
         </div>
       </div>
+
+      <LegalModal
+        isOpen={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+      />
     </div>
   );
 };

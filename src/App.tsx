@@ -49,6 +49,7 @@ import {
   Users,
   Bot,
   Shield,
+  Building2,
 } from 'lucide-react';
 
 function AppContent() {
@@ -58,13 +59,48 @@ function AppContent() {
     isAuthenticated,
     isOnboarded,
     isDemoMode,
+    isLoading,
     logout,
     activateDemoMode,
     isSuperAdmin,
     isSubscribed,
   } = useAuth();
 
-  const [currentView, setCurrentView] = useState<AppView>('landing');
+  const [currentView, setCurrentView] = useState<AppView>(() => {
+    try {
+      const saved = localStorage.getItem('marketmate_current_view');
+      if (
+        saved &&
+        saved !== 'landing' &&
+        saved !== 'login' &&
+        saved !== 'signup' &&
+        saved !== 'onboarding'
+      ) {
+        return saved as AppView;
+      }
+      const savedUser = localStorage.getItem('marketmate_auth_user');
+      const savedDemo = localStorage.getItem('marketmate_is_demo') === 'true';
+      if (savedUser || savedDemo) {
+        return 'dashboard';
+      }
+    } catch {}
+    return 'landing';
+  });
+
+  const navigateTo = (view: AppView) => {
+    setCurrentView(view);
+    try {
+      if (
+        view !== 'landing' &&
+        view !== 'login' &&
+        view !== 'signup' &&
+        view !== 'onboarding'
+      ) {
+        localStorage.setItem('marketmate_current_view', view);
+      }
+    } catch {}
+  };
+
   const [isAddSaleOpen, setIsAddSaleOpen] = useState(false);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isPricingCalcOpen, setIsPricingCalcOpen] = useState(false);
@@ -80,54 +116,75 @@ function AppContent() {
   const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
+  // While restoring auth & business session from cloud, show branded splash screen
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 select-none">
+        <div className="relative mb-5">
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-2xl shadow-emerald-600/30">
+            <Building2 className="w-8 h-8" />
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center">
+            <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+          </div>
+        </div>
+        <h1 className="text-xl font-black text-white tracking-tight mb-2">MarketMate</h1>
+        <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+          <span className="w-3.5 h-3.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+          <span>Restoring store session...</span>
+        </div>
+      </div>
+    );
+  }
+
   // If unauthenticated or navigating public auth views
-  if (!isAuthenticated && currentView === 'landing') {
+  if (!isAuthenticated) {
+    if (currentView === 'login') {
+      return (
+        <Login
+          onSuccess={() => navigateTo('dashboard')}
+          onNavigateToSignup={() => navigateTo('signup')}
+          onNavigateToForgotPassword={() => navigateTo('forgot-password' as any)}
+          onExit={() => navigateTo('landing')}
+          onExploreDemo={() => {
+            activateDemoMode();
+            navigateTo('dashboard');
+          }}
+        />
+      );
+    }
+
+    if (currentView === 'signup') {
+      return (
+        <Signup
+          onSuccess={() => navigateTo('onboarding')}
+          onNavigateToLogin={() => navigateTo('login')}
+          onExit={() => navigateTo('landing')}
+          onExploreDemo={() => {
+            activateDemoMode();
+            navigateTo('dashboard');
+          }}
+        />
+      );
+    }
+
+    if ((currentView as any) === 'forgot-password') {
+      return (
+        <ForgotPassword
+          onBackToLogin={() => navigateTo('login')}
+          onExit={() => navigateTo('landing')}
+        />
+      );
+    }
+
     return (
       <LandingPage
-        onStartFree={() => setCurrentView('signup')}
-        onLogin={() => setCurrentView('login')}
+        onStartFree={() => navigateTo('signup')}
+        onLogin={() => navigateTo('login')}
         onExploreDemo={() => {
           activateDemoMode();
-          setCurrentView('dashboard');
+          navigateTo('dashboard');
         }}
-      />
-    );
-  }
-
-  if (!isAuthenticated && currentView === 'login') {
-    return (
-      <Login
-        onSuccess={() => setCurrentView('dashboard')}
-        onNavigateToSignup={() => setCurrentView('signup')}
-        onNavigateToForgotPassword={() => setCurrentView('forgot-password' as any)}
-        onExit={() => setCurrentView('landing')}
-        onExploreDemo={() => {
-          activateDemoMode();
-          setCurrentView('dashboard');
-        }}
-      />
-    );
-  }
-
-  if (!isAuthenticated && currentView === 'signup') {
-    return (
-      <Signup
-        onSuccess={() => setCurrentView('onboarding')}
-        onNavigateToLogin={() => setCurrentView('login')}
-        onExit={() => setCurrentView('landing')}
-        onExploreDemo={() => {
-          activateDemoMode();
-          setCurrentView('dashboard');
-        }}
-      />
-    );
-  }
-
-  if (!isAuthenticated && (currentView as any) === 'forgot-password') {
-    return (
-      <ForgotPassword
-        onBackToLogin={() => setCurrentView('login')}
-        onExit={() => setCurrentView('landing')}
       />
     );
   }
@@ -136,7 +193,7 @@ function AppContent() {
   if (isAuthenticated && !isOnboarded) {
     return (
       <Onboarding
-        onCompleted={() => setCurrentView('dashboard')}
+        onCompleted={() => navigateTo('dashboard')}
       />
     );
   }
@@ -149,7 +206,7 @@ function AppContent() {
       case 'dashboard':
         return (
           <DashboardView
-            onNavigate={(view) => setCurrentView(view)}
+            onNavigate={(view) => navigateTo(view)}
             onOpenAddSale={() => setIsAddSaleOpen(true)}
             onOpenAddExpense={() => setIsAddExpenseOpen(true)}
             onOpenPricingCalculator={() => setIsPricingCalcOpen(true)}
@@ -340,7 +397,7 @@ function AppContent() {
   return (
     <Shell
       currentView={currentView}
-      onNavigate={(view) => setCurrentView(view)}
+      onNavigate={(view) => navigateTo(view)}
       onOpenAddSale={() => setIsAddSaleOpen(true)}
       onOpenAddExpense={() => setIsAddExpenseOpen(true)}
       onOpenPricingCalculator={() => setIsPricingCalcOpen(true)}
@@ -359,7 +416,10 @@ function AppContent() {
       currency={currency}
       onLogout={() => {
         logout();
-        setCurrentView('landing');
+        try {
+          localStorage.removeItem('marketmate_current_view');
+        } catch {}
+        navigateTo('landing');
       }}
     >
       {/* Demo Mode Notice Banner */}

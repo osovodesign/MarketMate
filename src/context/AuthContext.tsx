@@ -102,10 +102,46 @@ const STORAGE_KEYS = {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserSession | null>(null);
-  const [business, setBusiness] = useState<BusinessProfile | null>(null);
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // Synchronously restore cached session on frame 0 to prevent landing/onboarding flashes on refresh
+  const [user, setUser] = useState<UserSession | null>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.USER);
+      if (saved) return JSON.parse(saved);
+      const isDemo = localStorage.getItem(STORAGE_KEYS.IS_DEMO) === 'true';
+      if (isDemo) return DEMO_USER;
+    } catch {}
+    return null;
+  });
+
+  const [business, setBusiness] = useState<BusinessProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.BUSINESS);
+      if (saved) return JSON.parse(saved);
+      const isDemo = localStorage.getItem(STORAGE_KEYS.IS_DEMO) === 'true';
+      if (isDemo) return DEMO_BUSINESS;
+    } catch {}
+    return null;
+  });
+
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.IS_DEMO) === 'true';
+    } catch {}
+    return false;
+  });
+
+  // If user & business or demo already cached locally, we are not blocking initial render
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    try {
+      const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
+      const savedDemo = localStorage.getItem(STORAGE_KEYS.IS_DEMO) === 'true';
+      if (savedUser || savedDemo) {
+        return false;
+      }
+    } catch {}
+    return true;
+  });
+
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(true);
 
   // Test Firestore connection on boot & check for referral codes in URL
@@ -116,6 +152,76 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
+  // Helper to fetch user's business profile from Firestore or local cache
+  const fetchBusinessProfile = async (uid: string, userEmail?: string): Promise<BusinessProfile | null> => {
+    try {
+      const userDocRef = doc(db, 'users', uid);
+      const userSnap = await getDoc(userDocRef);
+
+      if (userSnap.exists() && userSnap.data().currentBusinessId) {
+        const bizId = userSnap.data().currentBusinessId;
+        const bizDocRef = doc(db, 'businesses', bizId);
+        const bizSnap = await getDoc(bizDocRef);
+        if (bizSnap.exists()) {
+          const bizData = bizSnap.data() as BusinessProfile;
+          localStorage.setItem(STORAGE_KEYS.BUSINESS, JSON.stringify(bizData));
+          try {
+            const nowIso = new Date().toISOString();
+            setDoc(
+              bizDocRef,
+              {
+                ...bizData,
+                ownerEmail: userEmail || (bizData as any).ownerEmail || '',
+                lastActiveAt: nowIso,
+              },
+              { merge: true }
+            ).catch(() => {});
+          } catch (_) {}
+          return bizData;
+        }
+      }
+
+      // Query businesses where ownerId == uid
+      const bizQuery = query(collection(db, 'businesses'), where('ownerId', '==', uid));
+      const bizQuerySnap = await getDocs(bizQuery);
+      if (!bizQuerySnap.empty) {
+        const firstBiz = bizQuerySnap.docs[0].data() as BusinessProfile;
+        localStorage.setItem(STORAGE_KEYS.BUSINESS, JSON.stringify(firstBiz));
+        try {
+          const nowIso = new Date().toISOString();
+          setDoc(
+            doc(db, 'businesses', firstBiz.id),
+            {
+              ...firstBiz,
+              ownerEmail: userEmail || (firstBiz as any).ownerEmail || '',
+              lastActiveAt: nowIso,
+            },
+            { merge: true }
+          ).catch(() => {});
+        } catch (_) {}
+        return firstBiz;
+      }
+
+      // Check local storage fallback
+      const savedBizStr = localStorage.getItem(STORAGE_KEYS.BUSINESS);
+      if (savedBizStr) {
+        const localBiz = JSON.parse(savedBizStr);
+        if (localBiz.userId === uid || localBiz.ownerId === uid) {
+          return localBiz;
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch cloud business profile (falling back to local cache):', err);
+      const savedBizStr = localStorage.getItem(STORAGE_KEYS.BUSINESS);
+      if (savedBizStr) {
+        try {
+          return JSON.parse(savedBizStr);
+        } catch {}
+      }
+    }
+    return null;
+  };
+
   // Listen to Firebase Auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -124,86 +230,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userObj: UserSession = {
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
-          fullName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || (isSuper ? 'App Owner (Admin)' : 'Merchant'),
+          fullName:
+            firebaseUser.displayName ||
+            firebaseUser.email?.split('@')[0] ||
+            (isSuper ? 'App Owner (Admin)' : 'Merchant'),
           photoURL: firebaseUser.photoURL || undefined,
           isSuperAdmin: isSuper,
         };
 
-        setUser(userObj);
-        setIsDemoMode(false);
         localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userObj));
         localStorage.removeItem(STORAGE_KEYS.IS_DEMO);
 
-        // Fetch user's business profile from Firestore
-        try {
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userSnap = await getDoc(userDocRef);
+        // Fetch business profile BEFORE concluding auth state to prevent Onboarding flash
+        const bizData = await fetchBusinessProfile(firebaseUser.uid, firebaseUser.email || undefined);
 
-          if (userSnap.exists() && userSnap.data().currentBusinessId) {
-            const bizId = userSnap.data().currentBusinessId;
-            const bizDocRef = doc(db, 'businesses', bizId);
-            const bizSnap = await getDoc(bizDocRef);
-            if (bizSnap.exists()) {
-              const bizData = bizSnap.data() as BusinessProfile;
-              setBusiness(bizData);
-              localStorage.setItem(STORAGE_KEYS.BUSINESS, JSON.stringify(bizData));
-              // Update real-time heartbeat and ensure ownerEmail is recorded
-              try {
-                const nowIso = new Date().toISOString();
-                setDoc(
-                  bizDocRef,
-                  {
-                    ...bizData,
-                    ownerEmail: firebaseUser.email || (bizData as any).ownerEmail || '',
-                    lastActiveAt: nowIso,
-                  },
-                  { merge: true }
-                ).catch(() => {});
-              } catch (_) {}
-            }
-          } else {
-            // Query businesses where ownerId == uid
-            const bizQuery = query(collection(db, 'businesses'), where('ownerId', '==', firebaseUser.uid));
-            const bizQuerySnap = await getDocs(bizQuery);
-            if (!bizQuerySnap.empty) {
-              const firstBiz = bizQuerySnap.docs[0].data() as BusinessProfile;
-              setBusiness(firstBiz);
-              localStorage.setItem(STORAGE_KEYS.BUSINESS, JSON.stringify(firstBiz));
-              // Update real-time heartbeat and ensure ownerEmail is recorded
-              try {
-                const nowIso = new Date().toISOString();
-                setDoc(
-                  doc(db, 'businesses', firstBiz.id),
-                  {
-                    ...firstBiz,
-                    ownerEmail: firebaseUser.email || (firstBiz as any).ownerEmail || '',
-                    lastActiveAt: nowIso,
-                  },
-                  { merge: true }
-                ).catch(() => {});
-              } catch (_) {}
-            } else {
-              // Check local storage fallback
-              const savedBizStr = localStorage.getItem(STORAGE_KEYS.BUSINESS);
-              if (savedBizStr) {
-                const localBiz = JSON.parse(savedBizStr);
-                if (localBiz.userId === firebaseUser.uid) {
-                  setBusiness(localBiz);
-                } else {
-                  setBusiness(null);
-                }
-              } else {
-                setBusiness(null);
-              }
-            }
-          }
-        } catch (err) {
-          console.warn('Could not fetch cloud business profile (falling back to local cache):', err);
-          const savedBizStr = localStorage.getItem(STORAGE_KEYS.BUSINESS);
-          if (savedBizStr) {
-            setBusiness(JSON.parse(savedBizStr));
-          }
-        }
+        setUser(userObj);
+        setBusiness(bizData);
+        setIsDemoMode(false);
       } else {
         // No Firebase user logged in
         const savedIsDemo = localStorage.getItem(STORAGE_KEYS.IS_DEMO) === 'true';
@@ -272,7 +315,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('User doc save fallback:', err);
       }
 
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userObj));
+      localStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+      const bizData = await fetchBusinessProfile(fbUser.uid, fbUser.email || undefined);
+
       setUser(userObj);
+      setBusiness(bizData);
       setIsDemoMode(false);
       setIsLoading(false);
       return { success: true };
@@ -319,7 +367,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fullName: fbUser.displayName || email.split('@')[0],
         isSuperAdmin: isSuper,
       };
+
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userObj));
+      localStorage.removeItem(STORAGE_KEYS.IS_DEMO);
+      const bizData = await fetchBusinessProfile(fbUser.uid, fbUser.email || email);
+
       setUser(userObj);
+      setBusiness(bizData);
       setIsDemoMode(false);
       setIsLoading(false);
       return { success: true };

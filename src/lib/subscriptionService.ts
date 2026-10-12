@@ -15,7 +15,7 @@ export const DEFAULT_PLATFORM_BANK: PlatformBankConfig = {
   supportEmail: 'getmarketmate@gmail.com',
 };
 
-const STORAGE_PLATFORM_BANK_KEY = 'marketmate_platform_bank_config_v1';
+const STORAGE_PLATFORM_BANK_KEY = 'marketmate_platform_bank_config_v2';
 const STORAGE_SUBSCRIPTION_REQUESTS_KEY = 'marketmate_subscription_requests_v1';
 
 /**
@@ -36,6 +36,11 @@ export const generatePaymentReference = (businessName: string = 'STORE'): string
  * Fetch official receiving bank account configuration
  */
 export const fetchPlatformBankConfig = async (): Promise<PlatformBankConfig> => {
+  // Purge any stale legacy local caches
+  try {
+    localStorage.removeItem('marketmate_platform_bank_config_v1');
+  } catch {}
+
   try {
     const configDocRef = doc(db, 'platform_config', 'subscription_bank');
     const snap = await getDoc(configDocRef);
@@ -59,6 +64,9 @@ export const fetchPlatformBankConfig = async (): Promise<PlatformBankConfig> => 
       }
       localStorage.setItem(STORAGE_PLATFORM_BANK_KEY, JSON.stringify(normalized));
       return normalized;
+    } else {
+      // Seed Firestore platform config document immediately
+      setDoc(configDocRef, DEFAULT_PLATFORM_BANK, { merge: true }).catch(() => {});
     }
   } catch (err) {
     console.warn('Could not fetch remote platform bank config, checking local fallback:', err);

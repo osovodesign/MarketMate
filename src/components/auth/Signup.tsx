@@ -27,6 +27,7 @@ export const Signup: React.FC<SignupProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
 
@@ -41,6 +42,11 @@ export const Signup: React.FC<SignupProps> = ({
     e.preventDefault();
     setError(null);
 
+    if (!agreedToTerms) {
+      setError('Please review and check the agreement box to accept MarketMate’s Terms of Service, Privacy Policy & Legal Disclaimers.');
+      return;
+    }
+
     const res = await signup(fullName, email, password, referralCode.trim() || undefined);
     if (res.success) {
       onSuccess();
@@ -51,6 +57,12 @@ export const Signup: React.FC<SignupProps> = ({
 
   const handleGoogleSignup = async () => {
     setError(null);
+
+    if (!agreedToTerms) {
+      setError('Please check the agreement box below to accept MarketMate’s Terms & Policies before signing up with Google.');
+      return;
+    }
+
     const res = await loginWithGoogle();
     if (res.success) {
       onSuccess();
@@ -162,6 +174,39 @@ export const Signup: React.FC<SignupProps> = ({
               <span>Free tier includes unlimited offline recording, POS register, and multi-device sync.</span>
             </div>
 
+            {/* Explicit Mandatory Legal Agreement Checkbox */}
+            <div className={`p-3 rounded-xl border transition-colors ${
+              error && !agreedToTerms
+                ? 'border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20'
+                : 'border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850'
+            }`}>
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => {
+                    setAgreedToTerms(e.target.checked);
+                    if (error) setError(null);
+                  }}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600 shrink-0"
+                />
+                <span className="text-xs text-slate-700 dark:text-slate-300 leading-snug">
+                  I agree to MarketMate’s{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsLegalModalOpen(true);
+                    }}
+                    className="font-bold text-emerald-600 dark:text-emerald-400 underline hover:text-emerald-700 cursor-pointer"
+                  >
+                    Terms of Service, Privacy Policy & Legal Disclaimers
+                  </button>
+                  .
+                </span>
+              </label>
+            </div>
+
             <Button
               type="submit"
               fullWidth
@@ -210,18 +255,6 @@ export const Signup: React.FC<SignupProps> = ({
             <span>Sign up with Google</span>
           </button>
 
-          {/* Terms & Disclaimers Agreement Notice */}
-          <p className="mt-4 text-center text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-            By creating an account, you agree to MarketMate’s{' '}
-            <button
-              type="button"
-              onClick={() => setIsLegalModalOpen(true)}
-              className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-            >
-              Terms of Service & Disclaimers
-            </button>.
-          </p>
-
           <div className="mt-5 text-center text-xs text-slate-500 dark:text-slate-400">
             Already have an account?{' '}
             <button
@@ -246,6 +279,10 @@ export const Signup: React.FC<SignupProps> = ({
       <LegalModal
         isOpen={isLegalModalOpen}
         onClose={() => setIsLegalModalOpen(false)}
+        onAccept={() => {
+          setAgreedToTerms(true);
+          if (error) setError(null);
+        }}
       />
     </div>
   );

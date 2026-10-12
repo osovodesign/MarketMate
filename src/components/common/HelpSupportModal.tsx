@@ -603,15 +603,27 @@ export const HelpSupportModal: React.FC<HelpSupportModalProps> = ({
                       International: {SUPPORT_CONFIG.whatsappInternational}
                     </p>
                   </div>
-                  <a
-                    href={getWhatsAppSupportUrl({ businessName, userEmail: user?.email })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:underline"
-                  >
-                    <span>Open WhatsApp</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <a
+                      href={getWhatsAppSupportUrl({ businessName, userEmail: user?.email })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
+                    >
+                      <span>Chat with Admin</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <span className="text-slate-300 dark:text-slate-700">•</span>
+                    <a
+                      href={SUPPORT_CONFIG.whatsappCommunityLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
+                    >
+                      <span>Join Group</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
 
                 {/* Direct Phone Call */}

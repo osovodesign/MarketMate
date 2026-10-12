@@ -24,6 +24,7 @@ export const SUPPORT_CONFIG = {
   whatsappNumber: '2347089238728',
   whatsappDisplay: '0708 923 8728',
   whatsappInternational: '+234 708 923 8728',
+  whatsappCommunityLink: 'https://chat.whatsapp.com/Jy4sdsOqxCf9YMnFsdn1Wm?s=cl&p=a&mlu=4&ilr=4',
   phone: '+234 708 923 8728',
   email: 'getmarketmate@gmail.com',
   adminDirectEmail: 'osovoyoronogheneovo@gmail.com',

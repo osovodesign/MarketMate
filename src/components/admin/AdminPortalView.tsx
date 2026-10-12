@@ -56,6 +56,7 @@ import { useBusinessData } from '../../context/BusinessDataContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { db, collection, getDocs, doc, getDoc, setDoc } from '../../lib/firebase';
 import { SUPER_ADMIN_CONFIG, SUPPORT_CONFIG, getWhatsAppSupportUrl } from '../../lib/adminConfig';
+import { MarketMateLogo } from '../common/MarketMateLogo';
 import {
   MessageTargetType,
   MessageChannel,
@@ -994,9 +995,12 @@ export const AdminPortalView: React.FC = () => {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-semibold">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Owner & Super Admin Portal</span>
+            <div className="flex items-center gap-3">
+              <MarketMateLogo size="sm" variant="dark" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-semibold">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Super Admin Command</span>
+              </div>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               MarketMate Platform Command Center

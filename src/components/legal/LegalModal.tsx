@@ -25,12 +25,14 @@ import {
 interface LegalModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onAccept?: () => void;
   defaultTab?: 'disclaimers' | 'terms' | 'privacy';
 }
 
 export const LegalModal: React.FC<LegalModalProps> = ({
   isOpen,
   onClose,
+  onAccept,
   defaultTab = 'disclaimers',
 }) => {
   const [activeTab, setActiveTab] = useState<'disclaimers' | 'terms' | 'privacy'>(defaultTab);
@@ -305,7 +307,10 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              if (onAccept) onAccept();
+              onClose();
+            }}
             className="w-full sm:w-auto px-6 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs transition-colors cursor-pointer text-center"
           >
             I Understand & Agree

@@ -205,13 +205,17 @@ export const Login: React.FC<LoginProps> = ({
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
-            <button
-              type="button"
-              onClick={() => setIsLegalModalOpen(true)}
-              className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline cursor-pointer"
-            >
-              Terms of Service & Legal Disclaimers
-            </button>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              By signing in, you agree to MarketMate’s{' '}
+              <button
+                type="button"
+                onClick={() => setIsLegalModalOpen(true)}
+                className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+              >
+                Terms of Service, Privacy Policy & Legal Disclaimers
+              </button>
+              .
+            </p>
           </div>
 
           {/* Official Community Handles */}

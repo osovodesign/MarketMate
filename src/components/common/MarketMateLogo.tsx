@@ -1,24 +1,41 @@
-import React from 'react';
+import React, { useId } from 'react';
 
-interface MarketMateLogoProps {
+export interface MarketMateLogoProps {
   mode?: 'full' | 'icon';
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'custom';
   className?: string;
   imageClassName?: string;
   showSubtitle?: boolean;
+  variant?: 'light' | 'dark' | 'auto';
   onClick?: () => void;
 }
 
 /**
  * Official MarketMate SVG Vector Emblem (Retail Bag + Growth Trendline Arrow + Financial Bar Chart)
  */
-export const MarketMateEmblem: React.FC<{ className?: string; roundedClass?: string }> = ({
+export const MarketMateEmblem: React.FC<{
+  className?: string;
+  roundedClass?: string;
+  variant?: 'light' | 'dark' | 'auto';
+}> = ({
   className = 'w-full h-full',
   roundedClass = 'rounded-2xl',
+  variant = 'auto',
 }) => {
+  const rawId = useId().replace(/:/g, '');
+  const bagGradId = `mmBagGrad_${rawId}`;
+  const barGradId = `mmBarGrad_${rawId}`;
+
+  const bgClasses =
+    variant === 'dark'
+      ? 'bg-slate-900 border-slate-800'
+      : variant === 'light'
+      ? 'bg-white border-slate-100 shadow-2xs'
+      : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 shadow-2xs';
+
   return (
     <div
-      className={`relative inline-flex items-center justify-center bg-white dark:bg-slate-900 shadow-2xs border border-slate-100 dark:border-slate-800 overflow-hidden ${roundedClass} ${className}`}
+      className={`relative inline-flex items-center justify-center border overflow-hidden shrink-0 ${bgClasses} ${roundedClass} ${className}`}
     >
       <svg
         viewBox="0 0 100 100"
@@ -28,14 +45,14 @@ export const MarketMateEmblem: React.FC<{ className?: string; roundedClass?: str
       >
         <defs>
           {/* Vibrant Lime-to-Emerald gradient matching official brand asset */}
-          <linearGradient id="mmOfficialBagGrad" x1="15%" y1="10%" x2="85%" y2="90%">
+          <linearGradient id={bagGradId} x1="15%" y1="10%" x2="85%" y2="90%">
             <stop offset="0%" stopColor="#4ade80" />
             <stop offset="45%" stopColor="#22c55e" />
             <stop offset="100%" stopColor="#15803d" />
           </linearGradient>
 
           {/* Deep Teal / Forest Green gradient for financial bar columns */}
-          <linearGradient id="mmOfficialBarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <linearGradient id={barGradId} x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#0f766e" />
             <stop offset="100%" stopColor="#042f2e" />
           </linearGradient>
@@ -45,7 +62,7 @@ export const MarketMateEmblem: React.FC<{ className?: string; roundedClass?: str
         <path
           d="M42 41 C42 27.5 58 27.5 58 41"
           fill="none"
-          stroke="url(#mmOfficialBagGrad)"
+          stroke={`url(#${bagGradId})`}
           strokeWidth="4.8"
           strokeLinecap="round"
         />
@@ -54,7 +71,7 @@ export const MarketMateEmblem: React.FC<{ className?: string; roundedClass?: str
         <path
           d="M42 42.5 L34 42.5 C32 42.5 31 44 30.5 46 L27.5 72 C27 75 29 76.5 32 76.5"
           fill="none"
-          stroke="url(#mmOfficialBagGrad)"
+          stroke={`url(#${bagGradId})`}
           strokeWidth="4.8"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -64,23 +81,23 @@ export const MarketMateEmblem: React.FC<{ className?: string; roundedClass?: str
         <path
           d="M58 42.5 L65.5 42.5 C67.5 42.5 68.5 43.8 68.8 45.5"
           fill="none"
-          stroke="url(#mmOfficialBagGrad)"
+          stroke={`url(#${bagGradId})`}
           strokeWidth="4.8"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
 
         {/* 4 Financial Analytics Bar Columns */}
-        <rect x="36" y="70" width="5.5" height="7" rx="1.8" fill="url(#mmOfficialBarGrad)" />
-        <rect x="44" y="65.5" width="5.5" height="11.5" rx="1.8" fill="url(#mmOfficialBarGrad)" />
-        <rect x="52" y="65.5" width="5.5" height="11.5" rx="1.8" fill="url(#mmOfficialBarGrad)" />
-        <rect x="60" y="56" width="5.5" height="21" rx="1.8" fill="url(#mmOfficialBarGrad)" />
+        <rect x="36" y="70" width="5.5" height="7" rx="1.8" fill={`url(#${barGradId})`} />
+        <rect x="44" y="65.5" width="5.5" height="11.5" rx="1.8" fill={`url(#${barGradId})`} />
+        <rect x="52" y="65.5" width="5.5" height="11.5" rx="1.8" fill={`url(#${barGradId})`} />
+        <rect x="60" y="56" width="5.5" height="21" rx="1.8" fill={`url(#${barGradId})`} />
 
         {/* Dynamic Upward Growth Trendline & Arrow */}
         <path
           d="M28.5 74.5 L47 57 L53.5 64.5 L67.5 49"
           fill="none"
-          stroke="url(#mmOfficialBagGrad)"
+          stroke={`url(#${bagGradId})`}
           strokeWidth="5.2"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -88,8 +105,8 @@ export const MarketMateEmblem: React.FC<{ className?: string; roundedClass?: str
         {/* Growth Arrowhead */}
         <path
           d="M62 48 L71.5 46.5 L69 56.5 Z"
-          fill="url(#mmOfficialBagGrad)"
-          stroke="url(#mmOfficialBagGrad)"
+          fill={`url(#${bagGradId})`}
+          stroke={`url(#${bagGradId})`}
           strokeWidth="1.5"
           strokeLinejoin="round"
         />
@@ -103,6 +120,7 @@ export const MarketMateLogo: React.FC<MarketMateLogoProps> = ({
   size = 'md',
   className = '',
   showSubtitle = false,
+  variant = 'auto',
   onClick,
 }) => {
   // Size mapping for the official logo
@@ -132,10 +150,25 @@ export const MarketMateLogo: React.FC<MarketMateLogoProps> = ({
         <MarketMateEmblem
           className={selectedSize.iconSize}
           roundedClass={selectedSize.roundedClass}
+          variant={variant}
         />
       </div>
     );
   }
+
+  const textColorClass =
+    variant === 'dark'
+      ? 'text-[#FEFEFE]'
+      : variant === 'light'
+      ? 'text-[#001A35]'
+      : 'text-[#001A35] dark:text-[#FEFEFE]';
+
+  const subtitleColorClass =
+    variant === 'dark'
+      ? 'text-slate-400'
+      : variant === 'light'
+      ? 'text-slate-500'
+      : 'text-[#64748B] dark:text-[#94A3B8]';
 
   return (
     <div
@@ -148,11 +181,12 @@ export const MarketMateLogo: React.FC<MarketMateLogoProps> = ({
         <MarketMateEmblem
           className={`${selectedSize.iconSize || 'w-9 h-9'} shrink-0`}
           roundedClass={selectedSize.roundedClass}
+          variant={variant}
         />
         <div>
           <div className="flex items-center gap-1.5">
             <span
-              className={`font-black tracking-tight leading-none text-[#001A35] dark:text-[#FEFEFE] ${
+              className={`font-black tracking-tight leading-none ${textColorClass} ${
                 selectedSize.textClass || 'text-lg'
               }`}
             >
@@ -168,7 +202,7 @@ export const MarketMateLogo: React.FC<MarketMateLogoProps> = ({
 
       {showSubtitle && (
         <span
-          className={`font-medium tracking-tight mt-1 text-[#64748B] dark:text-[#94A3B8] ${
+          className={`font-medium tracking-tight mt-1 ${subtitleColorClass} ${
             selectedSize.subtitleClass || 'text-xs'
           }`}
         >

@@ -13,6 +13,7 @@ import { Sale, CurrencyCode } from '../../types';
 import { formatMoney } from '../../lib/calculations';
 import { CURRENCIES } from '../../lib/currencies';
 import { useAuth } from '../../context/AuthContext';
+import { MarketMateLogo } from '../common/MarketMateLogo';
 
 interface POSReceiptModalProps {
   isOpen: boolean;
@@ -181,13 +182,16 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
             </div>
 
             {/* Barcode & Footer note */}
-            <div className="text-center pt-3 border-t border-dashed border-slate-300 space-y-1">
+            <div className="text-center pt-3 border-t border-dashed border-slate-300 space-y-1.5 flex flex-col items-center">
               <div className="font-mono text-[11px] tracking-widest text-slate-500 font-bold">
                 ||||| | |||| ||| |||||| | ||||
               </div>
               <p className="text-[10px] text-slate-500 font-sans">
                 Thank you for your patronage! Items sold in good condition cannot be returned after 48 hours.
               </p>
+              <div className="pt-1 flex items-center justify-center">
+                <MarketMateLogo size="xs" variant="light" />
+              </div>
             </div>
           </div>
         </div>

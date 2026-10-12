@@ -18,6 +18,7 @@ import { Invoice, PaymentMethod } from '../../types';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
+import { MarketMateLogo } from '../common/MarketMateLogo';
 
 interface InvoicePreviewModalProps {
   isOpen: boolean;
@@ -364,7 +365,12 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
 
             {/* Document Footer Guarantee */}
             <div className="mt-10 pt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 gap-4">
-              <p>Thank you for choosing {business?.businessName || 'Ada Fashion & Fabrics'}!</p>
+              <div className="flex items-center gap-2">
+                <MarketMateLogo size="xs" variant="light" />
+                <span className="text-[11px] text-slate-400">
+                  • Official invoice powered by MarketMate™
+                </span>
+              </div>
               <div className="text-center sm:text-right">
                 <div className="w-36 border-b border-slate-300 mb-1 mx-auto sm:ml-auto"></div>
                 <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">

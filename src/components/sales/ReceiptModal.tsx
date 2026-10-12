@@ -16,6 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { MarketMateLogo } from '../common/MarketMateLogo';
 import { formatCurrency, formatPercent, formatDateFriendly } from '../../lib/formatters';
 import { Sale } from '../../types';
 
@@ -182,9 +183,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sal
           </div>
 
           {/* Footer message */}
-          <p className="text-[11px] text-center text-slate-400 pt-2 border-t border-slate-100">
-            Thank you for your business! Powered by MarketMate.
-          </p>
+          <div className="pt-3 border-t border-slate-100 flex flex-col items-center justify-center gap-1.5">
+            <MarketMateLogo size="xs" variant="light" />
+            <p className="text-[10px] text-center text-slate-400">
+              Thank you for your patronage! Digital store receipt powered by MarketMate™.
+            </p>
+          </div>
         </div>
 
         {/* Action Buttons */}

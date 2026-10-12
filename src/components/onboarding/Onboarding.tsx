@@ -3,6 +3,7 @@ import { Store, ShoppingBag, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-r
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
+import { MarketMateLogo } from '../common/MarketMateLogo';
 import { BusinessCategory, CurrencyCode } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 
@@ -62,15 +63,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onCompleted }) => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-lg text-center">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-700 text-white font-bold text-xl shadow-md mb-3">
-          <Store className="w-6 h-6" />
+      <div className="sm:mx-auto sm:w-full sm:max-w-lg text-center flex flex-col items-center">
+        <div className="mb-4 flex justify-center">
+          <MarketMateLogo size="xl" showSubtitle={true} />
         </div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
           Set up your business profile
         </h2>
         <p className="mt-2 text-sm text-slate-600">
-          Welcome, <span className="font-semibold text-slate-900">{user?.fullName || 'Partner'}</span>! Tell us about your business so MarketMate can tailor your calculations and AI advice.
+          Welcome to MarketMate, <span className="font-semibold text-slate-900">{user?.fullName || 'Partner'}</span>! Tell us about your business so MarketMate can tailor your calculations and AI advice.
         </p>
       </div>
 

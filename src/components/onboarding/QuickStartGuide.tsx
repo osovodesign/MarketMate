@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../ui/Button';
+import { MarketMateLogo } from '../common/MarketMateLogo';
 import { AppView } from '../../types';
 import { useBusinessData } from '../../context/BusinessDataContext';
 
@@ -157,9 +158,7 @@ export const QuickStartGuide: React.FC<QuickStartGuideProps> = ({
       {/* Header bar */}
       <div className="relative z-10 flex items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0">
-            {isAllDone ? <Trophy className="w-5 h-5 text-amber-300" /> : <Sparkles className="w-5 h-5 text-emerald-400" />}
-          </div>
+          <MarketMateLogo size="xs" variant="dark" mode="icon" />
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm sm:text-base font-bold text-white leading-tight">

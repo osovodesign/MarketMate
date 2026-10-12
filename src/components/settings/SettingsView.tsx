@@ -899,15 +899,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </p>
             </div>
 
-            <a
-              href={getWhatsAppSupportUrl(`Hello Admin, I am using MarketMate for "${business?.businessName || 'my store'}". I need assistance.`)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer"
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span>Chat on WhatsApp</span>
-            </a>
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+              <a
+                href={SUPPORT_CONFIG.whatsappCommunityLink}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-emerald-800 dark:text-emerald-300 font-bold text-xs border border-emerald-300 dark:border-emerald-700/60 shadow-2xs transition-colors shrink-0 cursor-pointer"
+              >
+                <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Join Community</span>
+              </a>
+              <a
+                href={getWhatsAppSupportUrl(`Hello Admin, I am using MarketMate for "${business?.businessName || 'my store'}". I need assistance.`)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0 cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>Chat on WhatsApp</span>
+              </a>
+            </div>
           </div>
 
           {/* In-App Ticket & Email Support Grid */}

@@ -2743,7 +2743,7 @@ export const AdminPortalView: React.FC = () => {
                       required
                       min={0}
                       step={100}
-                      value={bankConfigForm.monthlyPlanPrice ?? 7000}
+                      value={bankConfigForm.monthlyPlanPrice ?? 5000}
                       onChange={(e) =>
                         setBankConfigForm({
                           ...bankConfigForm,
@@ -2763,7 +2763,7 @@ export const AdminPortalView: React.FC = () => {
                       required
                       min={0}
                       step={1000}
-                      value={bankConfigForm.annualPlanPrice ?? 70000}
+                      value={bankConfigForm.annualPlanPrice ?? 50000}
                       onChange={(e) =>
                         setBankConfigForm({
                           ...bankConfigForm,
@@ -2818,8 +2818,8 @@ export const AdminPortalView: React.FC = () => {
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">Plan Rates</span>
                   <span className="text-xs font-bold text-emerald-300 block mt-0.5 font-mono">
-                    ₦{(bankConfig?.monthlyPlanPrice || 7000).toLocaleString()}/mo • ₦
-                    {(bankConfig?.annualPlanPrice || 70000).toLocaleString()}/yr
+                    ₦{(bankConfig?.monthlyPlanPrice || 5000).toLocaleString()}/mo • ₦
+                    {(bankConfig?.annualPlanPrice || 50000).toLocaleString()}/yr
                   </span>
                 </div>
               </div>

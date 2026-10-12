@@ -20,14 +20,14 @@ export const LEGAL_CONFIG = {
   founderName: 'Osovoyoron Ogheneovo Daniel',
   location: 'Warri, Delta State, Nigeria',
   country: 'Federal Republic of Nigeria',
-  supportEmail: 'notifications@getmarketmate.online',
+  supportEmail: 'getmarketmate@gmail.com',
   officialGmail: 'getmarketmate@gmail.com',
   supportPhone: '+234 708 923 8728',
   supportWhatsApp: 'https://wa.me/2347089238728',
   officialDomain: 'https://getmarketmate.online',
   effectiveDate: 'October 12, 2026',
   version: '2.0.0',
-  liabilityCapAmount: '₦7,000 (Seven Thousand Naira, or the subscription fee paid in the preceding 30 days)',
+  liabilityCapAmount: '₦5,000 (Five Thousand Naira, or the subscription fee paid in the preceding 30 days)',
 };
 
 export const LEGAL_DISCLAIMERS: LegalSection[] = [
@@ -130,7 +130,7 @@ export const TERMS_OF_SERVICE: LegalSection[] = [
     title: '4. Subscriptions, Fees & Payment Reconciliation',
     summary: 'Pioneer Pro subscription terms, bank transfer verification, and non-refundable service fees.',
     content: [
-      'MarketMate provides a Free Pioneer Tier (core POS, barcode register, offline storage) and Pioneer Pro Tiers (₦7,000/month or ₦70,000/year) unlocking advanced accounting, multi-user cashier PINs, P&L exports, and multi-currency registers.',
+      'MarketMate provides a Free Pioneer Tier (core POS, barcode register, offline storage) and Pioneer Pro Tiers (₦5,000/month or ₦50,000/year) unlocking advanced accounting, multi-user cashier PINs, P&L exports, and multi-currency registers.',
       'Subscription payments made via manual bank transfer are activated upon admin statement reconciliation. Merchants must provide accurate bank transaction references.',
       'Once a subscription tier is activated, subscription fees are non-refundable, as server resources, cloud databases, and software capabilities are provisioned immediately.',
     ],

@@ -98,8 +98,8 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
 
   const basePrice =
     selectedPlan === 'annual'
-      ? bankConfig?.annualPlanPrice || 70000
-      : bankConfig?.monthlyPlanPrice || 7000;
+      ? bankConfig?.annualPlanPrice || 50000
+      : bankConfig?.monthlyPlanPrice || 5000;
 
   const discountAmount = Math.round((basePrice * discountPercent) / 100);
   const finalPrice = Math.max(0, basePrice - discountAmount);
@@ -285,7 +285,7 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
                       </span>
                     </div>
                     <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
-                      ₦{(bankConfig?.monthlyPlanPrice || 7000).toLocaleString()}
+                      ₦{(bankConfig?.monthlyPlanPrice || 5000).toLocaleString()}
                       <span className="text-xs font-medium text-slate-500"> / mo</span>
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
@@ -302,7 +302,7 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
                     }`}
                   >
                     <div className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
-                      Save 17% (₦14,000 off)
+                      Save 17% (₦10,000 off)
                     </div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
@@ -315,7 +315,7 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
                       </span>
                     </div>
                     <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
-                      ₦{(bankConfig?.annualPlanPrice || 70000).toLocaleString()}
+                      ₦{(bankConfig?.annualPlanPrice || 50000).toLocaleString()}
                       <span className="text-xs font-medium text-slate-500"> / yr</span>
                     </div>
                     <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1">

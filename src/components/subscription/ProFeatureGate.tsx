@@ -59,9 +59,9 @@ export const ProFeatureGate: React.FC<ProFeatureGateProps> = ({
         </div>
 
         <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-medium max-w-md mx-auto flex items-center justify-between">
-          <span>Starting at <strong>₦7,000 / month</strong></span>
+          <span>Starting at <strong>₦5,000 / month</strong></span>
           <span className="text-[11px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            ₦70,000 / yr (2 mos free)
+            ₦50,000 / yr (2 mos free)
           </span>
         </div>
 
@@ -145,10 +145,10 @@ export const ProFeatureGate: React.FC<ProFeatureGateProps> = ({
               Transparent Merchant Pricing
             </span>
             <div className="text-xl font-black font-mono text-slate-900 dark:text-white mt-0.5">
-              ₦7,000 <span className="text-xs font-normal text-slate-500">/ month</span>
+              ₦5,000 <span className="text-xs font-normal text-slate-500">/ month</span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              or <strong>₦70,000 / year</strong> (get 2 full months free)
+              or <strong>₦50,000 / year</strong> (get 2 full months free)
             </p>
           </div>
 
@@ -182,7 +182,7 @@ export const ProFeatureGate: React.FC<ProFeatureGateProps> = ({
             className="w-full sm:w-auto font-bold text-sm bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/25 px-8"
             rightIcon={<ArrowRight className="w-4 h-4" />}
           >
-            Activate MarketMate Pro (₦7,000)
+            Activate MarketMate Pro (₦5,000)
           </Button>
         </div>
       </div>

@@ -8,8 +8,8 @@ export const DEFAULT_PLATFORM_BANK: PlatformBankConfig = {
   accountName: 'OGHENEOVO DANIEL OSOVOYORON',
   instructions:
     'Transfer the exact subscription amount to the official MarketMate bank account below. Include your Store Name or Payment Reference in your transfer narration. After paying, submit your sender details below for admin approval.',
-  monthlyPlanPrice: 7000,
-  annualPlanPrice: 70000, // Save ₦14,000 (2 months free)
+  monthlyPlanPrice: 5000,
+  annualPlanPrice: 50000, // Save ₦10,000 (2 months free)
   supportPhone: '+234 708 923 8728',
   supportEmail: 'getmarketmate@gmail.com',
 };
@@ -40,6 +40,20 @@ export const fetchPlatformBankConfig = async (): Promise<PlatformBankConfig> => 
     const snap = await getDoc(configDocRef);
     if (snap.exists()) {
       const data = snap.data() as PlatformBankConfig;
+      // If still set to the old default of 7000 / 70000, automatically upgrade to 5000 / 50000
+      if (
+        data.monthlyPlanPrice === 7000 ||
+        data.annualPlanPrice === 70000 ||
+        !data.monthlyPlanPrice
+      ) {
+        data.monthlyPlanPrice = 5000;
+        data.annualPlanPrice = 50000;
+        setDoc(
+          configDocRef,
+          { monthlyPlanPrice: 5000, annualPlanPrice: 50000 },
+          { merge: true }
+        ).catch(() => {});
+      }
       localStorage.setItem(STORAGE_PLATFORM_BANK_KEY, JSON.stringify(data));
       return { ...DEFAULT_PLATFORM_BANK, ...data };
     }
@@ -54,13 +68,14 @@ export const fetchPlatformBankConfig = async (): Promise<PlatformBankConfig> => 
       if (
         parsed.accountNumber === '0123456789' ||
         parsed.bankName === 'Access Bank PLC' ||
-        parsed.monthlyPlanPrice === 5000
+        parsed.monthlyPlanPrice === 7000 ||
+        parsed.annualPlanPrice === 70000
       ) {
         const updated = {
           ...DEFAULT_PLATFORM_BANK,
           ...parsed,
-          monthlyPlanPrice: 7000,
-          annualPlanPrice: 70000,
+          monthlyPlanPrice: 5000,
+          annualPlanPrice: 50000,
           bankName: 'OPay',
           accountNumber: '6110157178',
           accountName: 'OGHENEOVO DANIEL OSOVOYORON',

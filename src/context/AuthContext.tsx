@@ -30,6 +30,7 @@ import {
   recordReferralSignup,
   recordReferralSubscription,
 } from '../lib/referralService';
+import { triggerWelcomeEmail } from '../lib/emailService';
 
 export interface UserSession {
   id: string;
@@ -259,6 +260,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             referredBusinessName: fbUser.displayName || 'New Merchant',
           }).catch((err) => console.warn('Referral signup record error:', err));
         }
+        // Trigger welcome email for new Google signups
+        if (fbUser.email && fbUser.email.includes('@')) {
+          triggerWelcomeEmail({
+            email: fbUser.email,
+            ownerName: fbUser.displayName || 'Merchant user / Business Owner',
+            userId: fbUser.uid,
+          }).catch((e) => console.warn('Welcome email trigger notice:', e));
+        }
       } catch (err) {
         console.warn('User doc save fallback:', err);
       }
@@ -368,6 +377,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             referredBusinessName: fullName.trim(),
           }).catch((err) => console.warn('Referral signup record error:', err));
         }
+        // Trigger welcome email immediately upon signup
+        if (email && email.includes('@')) {
+          triggerWelcomeEmail({
+            email: email.trim(),
+            ownerName: fullName.trim(),
+            userId: fbUser.uid,
+          }).catch((e) => console.warn('Welcome email trigger notice:', e));
+        }
       } catch (err) {
         console.warn('Could not write user profile doc:', err);
       }
@@ -452,17 +469,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userDocRef = doc(db, 'users', user.id);
         await setDoc(userDocRef, { currentBusinessId: bizId }, { merge: true });
 
-        // Trigger automated branded welcome email from notifications@getmarketmate.online
+        // Update welcome email with newly established business details
         if (user.email && user.email.includes('@')) {
-          fetch('/api/email/welcome', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: user.email,
-              ownerName: user.fullName || newProfile.ownerName,
-              businessName: newProfile.businessName,
-              businessType: newProfile.businessType,
-            }),
+          triggerWelcomeEmail({
+            email: user.email,
+            ownerName: user.fullName || newProfile.ownerName,
+            businessName: newProfile.businessName,
+            businessType: newProfile.businessType,
+            userId: user.id,
           }).catch((e) => console.warn('Welcome email trigger notice:', e));
         }
       } catch (err) {

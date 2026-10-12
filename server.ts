@@ -29,8 +29,9 @@ function buildMarketMateEmailHtml(params: {
   actionLabel?: string;
   actionUrl?: string;
   priority?: string;
+  greeting?: string;
 }): string {
-  const { title, content, recipientName, businessName, actionLabel, actionUrl, priority } = params;
+  const { title, content, recipientName, businessName, actionLabel, actionUrl, priority, greeting } = params;
   const formattedContent = content
     .split('\n\n')
     .map((p) => `<p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.65; color: #334155;">${p.replace(/\n/g, '<br/>')}</p>`)
@@ -54,6 +55,12 @@ function buildMarketMateEmailHtml(params: {
       </div>`
       : '';
 
+  const salutation =
+    greeting ||
+    (recipientName
+      ? `Dear <strong>${recipientName}</strong> (Merchant user & Business owner),`
+      : `Dear <strong>Merchant user, MarketMate user & Business owner</strong>,`);
+
   return `
 <!DOCTYPE html>
 <html>
@@ -65,13 +72,53 @@ function buildMarketMateEmailHtml(params: {
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #0f172a;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
     
-    <!-- Header Banner -->
+    <!-- Header Banner with Official MarketMate Logo Vector Emblem -->
     <div style="background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%); padding: 32px 24px; text-align: center; color: #ffffff;">
-      <div style="font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px;">
-        MarketMate 🛍️
-      </div>
-      <div style="font-size: 13px; color: #a7f3d0; font-weight: 500;">
-        Smart Retail Operating System for Nigerian Merchants
+      <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto 12px auto;">
+        <tr>
+          <td style="vertical-align: middle; padding-right: 12px;">
+            <div style="width: 44px; height: 44px; background: #ffffff; border-radius: 12px; display: inline-block; padding: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.12); box-sizing: border-box;">
+              <svg viewBox="0 0 100 100" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: block; margin: 0 auto;">
+                <defs>
+                  <linearGradient id="emailBagGrad" x1="15%" y1="10%" x2="85%" y2="90%">
+                    <stop offset="0%" stop-color="#4ade80" />
+                    <stop offset="45%" stop-color="#22c55e" />
+                    <stop offset="100%" stop-color="#15803d" />
+                  </linearGradient>
+                  <linearGradient id="emailBarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#0f766e" />
+                    <stop offset="100%" stop-color="#042f2e" />
+                  </linearGradient>
+                </defs>
+                <!-- Bag Handle -->
+                <path d="M42 41 C42 27.5 58 27.5 58 41" fill="none" stroke="url(#emailBagGrad)" stroke-width="4.8" stroke-linecap="round" />
+                <!-- Bag Left Edge -->
+                <path d="M42 42.5 L34 42.5 C32 42.5 31 44 30.5 46 L27.5 72 C27 75 29 76.5 32 76.5" fill="none" stroke="url(#emailBagGrad)" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" />
+                <!-- Bag Right Edge -->
+                <path d="M58 42.5 L65.5 42.5 C67.5 42.5 68.5 43.8 68.8 45.5" fill="none" stroke="url(#emailBagGrad)" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" />
+                <!-- Bar Columns -->
+                <rect x="36" y="70" width="5.5" height="7" rx="1.8" fill="url(#emailBarGrad)" />
+                <rect x="44" y="65.5" width="5.5" height="11.5" rx="1.8" fill="url(#emailBarGrad)" />
+                <rect x="52" y="65.5" width="5.5" height="11.5" rx="1.8" fill="url(#emailBarGrad)" />
+                <rect x="60" y="56" width="5.5" height="21" rx="1.8" fill="url(#emailBarGrad)" />
+                <!-- Growth Arrow -->
+                <path d="M28.5 74.5 L47 57 L53.5 64.5 L67.5 49" fill="none" stroke="url(#emailBagGrad)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M62 48 L71.5 46.5 L69 56.5 Z" fill="url(#emailBagGrad)" stroke="url(#emailBagGrad)" stroke-width="1.5" stroke-linejoin="round" />
+              </svg>
+            </div>
+          </td>
+          <td style="vertical-align: middle; text-align: left;">
+            <div style="font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; color: #ffffff;">
+              MarketMate<span style="color: #4ade80;">.</span>
+            </div>
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #a7f3d0; font-weight: 700;">
+              Retail Operating System
+            </div>
+          </td>
+        </tr>
+      </table>
+      <div style="font-size: 13px; color: #d1fae5; font-weight: 500; max-width: 440px; margin: 0 auto; line-height: 1.45;">
+        Powering Nigerian merchants with instant POS checkouts, inventory control, and real-time profit tracking.
       </div>
     </div>
 
@@ -83,8 +130,8 @@ function buildMarketMateEmailHtml(params: {
         ${title}
       </h1>
 
-      <div style="font-size: 14px; color: #64748b; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9;">
-        Hello <strong>${recipientName || businessName || 'Valued Business Owner'}</strong>,
+      <div style="font-size: 14px; color: #475569; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9;">
+        ${salutation}
       </div>
 
       <div style="color: #334155;">
@@ -95,13 +142,15 @@ function buildMarketMateEmailHtml(params: {
 
       <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; line-height: 1.6;">
         <p style="margin: 0 0 6px 0;"><strong>Need support with your store?</strong></p>
-        <p style="margin: 0;">Reply directly to this email or chat with our founder support desk on WhatsApp: <a href="https://wa.me/2347089238728" style="color: #059669; font-weight: bold; text-decoration: underline;">Direct Founder Support Desk (+234 708 923 8728)</a></p>
+        <p style="margin: 0 0 4px 0;">Official Support Email: <a href="mailto:getmarketmate@gmail.com" style="color: #059669; font-weight: bold; text-decoration: underline;">getmarketmate@gmail.com</a></p>
+        <p style="margin: 0;">WhatsApp Founder Support Desk: <a href="https://wa.me/2347089238728" style="color: #059669; font-weight: bold; text-decoration: underline;">Direct Founder Desk (+234 708 923 8728)</a></p>
       </div>
     </div>
 
     <!-- Footer -->
-    <div style="background-color: #f8fafc; padding: 20px 24px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; line-height: 1.5;">
-      <p style="margin: 0 0 4px 0;"><strong>MarketMate Technologies</strong> • Warri, Nigeria</p>
+    <div style="background-color: #f8fafc; padding: 22px 24px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; line-height: 1.6;">
+      <p style="margin: 0 0 4px 0;"><strong>MarketMate Technologies</strong> • Warri, Delta State, Nigeria</p>
+      <p style="margin: 0 0 4px 0;">Reach out anytime at <strong>getmarketmate@gmail.com</strong></p>
       <p style="margin: 0;">Dispatched from verified domain <strong>getmarketmate.online</strong>. Protected under NDPR standards.</p>
     </div>
   </div>
@@ -726,44 +775,97 @@ Current Business Profile & Grounded Financial Summary:
     }
   });
 
-  // Automated Welcome Email on New Store Setup
+  // Automated Welcome Email on New User Sign-Up and Business Setup
   app.post('/api/email/welcome', async (req, res) => {
     try {
       const { email, ownerName, businessName, businessType } = req.body;
-      const resend = getResendClient();
-      if (!resend || !email || typeof email !== 'string' || !email.includes('@')) {
-        res.status(400).json({ success: false, error: 'Resend not configured or invalid recipient email' });
+
+      if (!email || typeof email !== 'string' || !email.includes('@')) {
+        res.status(400).json({ success: false, error: 'A valid recipient email address is required.' });
         return;
       }
 
+      const cleanEmail = email.trim().toLowerCase();
+      const targetName = ownerName && ownerName.trim() ? ownerName.trim() : '';
+
+      const greeting = targetName
+        ? `Dear <strong>${targetName}</strong> (MarketMate Merchant User & Business Owner),`
+        : `Dear <strong>Merchant user, MarketMate user & Business owner</strong>,`;
+
+      const storeDisplayName = businessName || (targetName ? `${targetName}'s Store` : 'your business');
+
+      const welcomeBody = `Welcome to the MarketMate merchant family! 🛍️✨\n\nWe are thrilled to welcome you as our partner. MarketMate was built specifically for Nigerian business owners and retail merchants to give you 100% control over your sales, stock, and take-home profit without manual bookkeeping headaches.\n\nWhether you operate a boutique, supermarket, provision store, pharmacy, cosmetics shop, electronics store, or wholesale depot, MarketMate is ready to run your entire shop right from your smartphone, tablet, or PC.\n\n💡 **4 Quick Steps to Set Up Your Store Today:**\n\n1. 📦 **Add Your Fast-Moving Products:**\nHead over to your **Products** catalog to input your items, scan barcodes in seconds, and enter your cost vs. selling prices so MarketMate tracks your true profit margins.\n\n2. 🧾 **Issue Instant POS Receipts:**\nLaunch your **POS Register** and test checking out a customer in under 30 seconds with automated receipts (supporting Cash, Bank Transfer, or POS Card).\n\n3. 💸 **Recover Customer Credit & Debts:**\nRecord customer credit in your **Debt Ledger** and send polite 1-click WhatsApp payment reminders complete with your bank transfer details.\n\n4. 🛡️ **Set Cashier Staff PINs & Roles:**\nProtect your profits and cost prices by assigning dedicated cashier logins that lock away sensitive accounting and margin figures.\n\n📞 **We Are Here With You All The Way:**\nIf you need any guidance or want personalized help setting up your store inventory, reach out to us directly:\n• **Official Customer Support Email:** getmarketmate@gmail.com\n• **Direct Founder WhatsApp Desk:** +234 708 923 8728\n\n*(Please note: Our official email for all customer inquiries is **getmarketmate@gmail.com**.)*\n\nHere's to greater sales, zero leakages, and thriving business profits!\n\nWarm regards,\n**Osovoyoron Ogheneovo Daniel & The MarketMate Team**`;
+
       const html = buildMarketMateEmailHtml({
         title: '🎉 Welcome to MarketMate! Your Retail Operating System is Ready',
-        content: `Welcome to the MarketMate merchant community! 🛍️✨\n\nWe are thrilled to partner with you in powering **${businessName || 'your business'}** (${businessType || 'Retail Store'}). MarketMate is built specifically for Nigerian merchants to streamline inventory, speed up POS checkouts, eliminate stock leakages, and track real-time profit.\n\n💡 3 Quick Steps to Set Up Your Store Today:\n1. 📦 **Add Your Top Products:** Navigate to the Products tab to add your fast-moving items or scan barcodes to create items in seconds.\n2. 🧾 **Try the POS Register:** Launch your POS register and test issuing instant receipts (Cash, Transfer, or POS card).\n3. 💸 **Recover Customer Debts:** Use your Debt Ledger to record customer credit and send 1-click WhatsApp payment reminders.\n\nNeed personalized setup assistance or help configuring cashier PINs? Simply reply directly to this email or message our founder support desk on WhatsApp.\n\nHere's to massive retail growth!\n\nThe MarketMate Team`,
-        recipientName: ownerName,
-        businessName,
+        greeting,
+        content: welcomeBody,
+        recipientName: targetName || 'Merchant user / Business Owner',
+        businessName: storeDisplayName,
         actionLabel: 'Launch MarketMate Register',
         actionUrl: 'pos',
         priority: 'important',
       });
 
+      const resend = getResendClient();
+
+      if (!resend) {
+        console.log(`[Welcome Email Simulated] Delivered to: ${cleanEmail} (Recipient: ${targetName || 'Merchant'}). Add RESEND_API_KEY in .env for live dispatch.`);
+        res.json({
+          success: true,
+          simulated: true,
+          delivered: false,
+          message: `Welcome email prepared and simulated for ${cleanEmail}. Add RESEND_API_KEY to send live email inboxes.`,
+          previewHtml: html,
+        });
+        return;
+      }
+
       const response = await resend.emails.send({
         from: 'MarketMate <notifications@getmarketmate.online>',
-        to: email.trim().toLowerCase(),
+        to: cleanEmail,
         replyTo: 'getmarketmate@gmail.com',
-        subject: `Welcome to MarketMate! 🛍️ Let's get ${businessName || 'your store'} started`,
+        subject: `Welcome to MarketMate! 🛍️ Let's get ${storeDisplayName} started`,
         html,
       });
 
       if (response.error) {
+        console.warn('Resend welcome email error:', response.error);
         res.status(400).json({ success: false, error: response.error.message });
         return;
       }
 
-      res.json({ success: true, id: response.data?.id, message: `Welcome email delivered to ${email}` });
+      res.json({
+        success: true,
+        delivered: true,
+        id: response.data?.id,
+        message: `Welcome email delivered to ${cleanEmail} via notifications@getmarketmate.online`,
+      });
     } catch (err: any) {
       console.error('Welcome email error:', err);
       res.status(500).json({ success: false, error: err.message });
     }
+  });
+
+  // Welcome Email HTML Preview Route for Admin Inspection
+  app.get('/api/email/welcome/preview', (req, res) => {
+    const ownerName = typeof req.query.name === 'string' ? req.query.name : 'Chukwuemeka Obi';
+    const businessName = typeof req.query.business === 'string' ? req.query.business : 'Emeka Supermarket & Provisions';
+    const greeting = `Dear <strong>${ownerName}</strong> (MarketMate Merchant User & Business Owner),`;
+    const welcomeBody = `Welcome to the MarketMate merchant family! 🛍️✨\n\nWe are thrilled to welcome you as our partner. MarketMate was built specifically for Nigerian business owners and retail merchants to give you 100% control over your sales, stock, and take-home profit without manual bookkeeping headaches.\n\nWhether you operate a boutique, supermarket, provision store, pharmacy, cosmetics shop, electronics store, or wholesale depot, MarketMate is ready to run your entire shop right from your smartphone, tablet, or PC.\n\n💡 **4 Quick Steps to Set Up Your Store Today:**\n\n1. 📦 **Add Your Fast-Moving Products:**\nHead over to your **Products** catalog to input your items, scan barcodes in seconds, and enter your cost vs. selling prices so MarketMate tracks your true profit margins.\n\n2. 🧾 **Issue Instant POS Receipts:**\nLaunch your **POS Register** and test checking out a customer in under 30 seconds with automated receipts (supporting Cash, Bank Transfer, or POS Card).\n\n3. 💸 **Recover Customer Credit & Debts:**\nRecord customer credit in your **Debt Ledger** and send polite 1-click WhatsApp payment reminders complete with your bank transfer details.\n\n4. 🛡️ **Set Cashier Staff PINs & Roles:**\nProtect your profits and cost prices by assigning dedicated cashier logins that lock away sensitive accounting and margin figures.\n\n📞 **We Are Here With You All The Way:**\nIf you need any guidance or want personalized help setting up your store inventory, reach out to us directly:\n• **Official Customer Support Email:** getmarketmate@gmail.com\n• **Direct Founder WhatsApp Desk:** +234 708 923 8728\n\n*(Please note: Our official email for all customer inquiries is **getmarketmate@gmail.com**.)*\n\nHere's to greater sales, zero leakages, and thriving business profits!\n\nWarm regards,\n**Osovoyoron Ogheneovo Daniel & The MarketMate Team**`;
+
+    const html = buildMarketMateEmailHtml({
+      title: '🎉 Welcome to MarketMate! Your Retail Operating System is Ready',
+      greeting,
+      content: welcomeBody,
+      recipientName: ownerName,
+      businessName,
+      actionLabel: 'Launch MarketMate Register',
+      actionUrl: 'pos',
+      priority: 'important',
+    });
+
+    res.type('html').send(html);
   });
 
   // Automated Subscription Approval Confirmation Email

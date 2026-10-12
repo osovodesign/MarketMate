@@ -296,6 +296,37 @@ export const AdminPortalView: React.FC = () => {
   const [testEmailStatus, setTestEmailStatus] = useState<string | null>(null);
   const [resendStatus, setResendStatus] = useState<{ configured: boolean; domain: string; fromEmail: string } | null>(null);
 
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState<boolean>(false);
+  const [isSendingWelcomeTest, setIsSendingWelcomeTest] = useState<boolean>(false);
+  const [welcomeTestStatus, setWelcomeTestStatus] = useState<string | null>(null);
+
+  const handleSendTestWelcomeEmail = async () => {
+    setIsSendingWelcomeTest(true);
+    setWelcomeTestStatus(null);
+    try {
+      const res = await fetch('/api/email/welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user?.email || 'osovoyoronogheneovo@gmail.com',
+          ownerName: user?.fullName || 'Super Admin',
+          businessName: 'MarketMate HQ Store',
+          businessType: 'Retail & POS Store',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setWelcomeTestStatus(`✓ Welcome email copy dispatched to ${user?.email || 'osovoyoronogheneovo@gmail.com'}!`);
+      } else {
+        setWelcomeTestStatus(`Notice: ${data.error || 'Failed to dispatch'}`);
+      }
+    } catch (err: any) {
+      setWelcomeTestStatus(`Error: ${err.message}`);
+    } finally {
+      setIsSendingWelcomeTest(false);
+    }
+  };
+
   useEffect(() => {
     fetch('/api/admin/resend-status')
       .then((res) => res.json())
@@ -1740,7 +1771,17 @@ export const AdminPortalView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setIsWelcomeModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+                    title="Inspect the automated welcome email sent to every newly signed up merchant"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Preview Welcome Email</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleSendTestEmail}
@@ -3731,6 +3772,101 @@ export const AdminPortalView: React.FC = () => {
                     : `Confirm & Send (${getSelectedSegmentMerchants().length})`}
                 </span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AUTOMATED WELCOME EMAIL PREVIEW & TEST MODAL */}
+      {isWelcomeModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>New User Sign-Up Welcome Email</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300">
+                      ⚡ Automated on Registration
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Dispatched automatically to every merchant when they create an account or set up a store.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsWelcomeModalOpen(false);
+                  setWelcomeTestStatus(null);
+                }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Email Meta Bar */}
+            <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 text-xs flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+                <span>Sender: <strong className="text-slate-900 dark:text-white">MarketMate &lt;notifications@getmarketmate.online&gt;</strong></span>
+                <span>•</span>
+                <span>Reply-To: <strong className="text-emerald-600 dark:text-emerald-400">getmarketmate@gmail.com</strong></span>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500">Official Brand Logo + Vector Emblem</span>
+            </div>
+
+            {/* Live Rendered Email Preview */}
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-100/70 dark:bg-slate-950/70">
+              <div className="bg-white rounded-xl shadow-xs overflow-hidden border border-slate-200/80 max-w-xl mx-auto">
+                <iframe
+                  src="/api/email/welcome/preview"
+                  title="MarketMate Welcome Email Preview"
+                  className="w-full h-[480px] border-none"
+                />
+              </div>
+            </div>
+
+            {/* Footer with Test Send */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+              <div>
+                {welcomeTestStatus ? (
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    {welcomeTestStatus}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-slate-500">
+                    Test dispatch will send to: <strong>{user?.email || 'osovoyoronogheneovo@gmail.com'}</strong>
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsWelcomeModalOpen(false);
+                    setWelcomeTestStatus(null);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs cursor-pointer hover:bg-slate-50"
+                >
+                  Close
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSendTestWelcomeEmail}
+                  disabled={isSendingWelcomeTest}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isSendingWelcomeTest ? 'Dispatching...' : 'Send Test Copy to My Email'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -410,8 +410,13 @@ export interface PlatformBankConfig {
   accountNumber: string;
   accountName: string;
   instructions?: string;
-  monthlyPlanPrice: number; // in NGN
-  annualPlanPrice: number;  // in NGN
+  monthlyPlanPrice: number; // in NGN (₦1,000 promo through Dec 31, 2026)
+  annualPlanPrice: number;  // in NGN (₦3,000 for Q4 3-Month Pass)
+  q4PassPrice?: number;     // ₦3,000 flat (Oct, Nov, Dec 2026)
+  futureStandardMonthly?: number; // ₦7,000 (New merchants from Jan 4, 2027)
+  futureStandardAnnual?: number;  // ₦70,000 (New merchants from Jan 4, 2027)
+  futureEarlyMonthly?: number;    // ₦5,000 (Early signups locked rate for 2027)
+  futureEarlyAnnual?: number;     // ₦50,000 (Early signups locked rate for 2027)
   supportPhone?: string;
   supportEmail?: string;
   updatedAt?: string;
@@ -425,7 +430,7 @@ export interface SubscriptionRequest {
   userEmail: string;
   ownerName?: string;
   phone?: string;
-  planId: 'monthly' | 'annual' | 'pioneer_launch';
+  planId: 'monthly' | 'annual' | 'q4_pass' | 'pioneer_launch';
   planName: string;
   planOriginalPrice: number;
   discountPercent: number;

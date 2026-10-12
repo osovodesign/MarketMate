@@ -40,7 +40,7 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
   const { user, business } = useAuth();
 
   const [bankConfig, setBankConfig] = useState<PlatformBankConfig | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'q4_pass'>('monthly');
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [paymentRef, setPaymentRef] = useState<string>('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -97,9 +97,9 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
   if (!isOpen) return null;
 
   const basePrice =
-    selectedPlan === 'annual'
-      ? bankConfig?.annualPlanPrice || 50000
-      : bankConfig?.monthlyPlanPrice || 5000;
+    selectedPlan === 'q4_pass'
+      ? bankConfig?.q4PassPrice || bankConfig?.annualPlanPrice || 3000
+      : bankConfig?.monthlyPlanPrice || 1000;
 
   const discountAmount = Math.round((basePrice * discountPercent) / 100);
   const finalPrice = Math.max(0, basePrice - discountAmount);
@@ -128,9 +128,9 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
 
     try {
       const planName =
-        selectedPlan === 'annual'
-          ? 'MarketMate Annual Growth Plan'
-          : 'MarketMate Monthly Standard Plan';
+        selectedPlan === 'q4_pass'
+          ? 'MarketMate Q4 2026 Finish Strong Pass (3 Months - Oct/Nov/Dec)'
+          : 'MarketMate 2026 Monthly Launch Promo Plan';
 
       const req = await submitSubscriptionPayment({
         businessId: business.id,
@@ -263,20 +263,23 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
               {/* Plan Selection Cards */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5">
-                  1. Select Subscription Plan
+                  1. Select 2026 Launch Pass (Valid till Dec 31, 2026)
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div
                     onClick={() => setSelectedPlan('monthly')}
                     className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative ${
                       selectedPlan === 'monthly'
-                        ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30'
+                        ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30 shadow-xs'
                         : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-900'
                     }`}
                   >
+                    <div className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs">
+                      2026 Promo
+                    </div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        Monthly Standard
+                        Monthly Launch Pass
                       </span>
                       <span className="w-4 h-4 rounded-full border-2 flex items-center justify-center border-emerald-600">
                         {selectedPlan === 'monthly' && (
@@ -285,44 +288,55 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
                       </span>
                     </div>
                     <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
-                      ₦{(bankConfig?.monthlyPlanPrice || 5000).toLocaleString()}
+                      ₦{(bankConfig?.monthlyPlanPrice || 1000).toLocaleString()}
                       <span className="text-xs font-medium text-slate-500"> / mo</span>
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      Flexible monthly billing for active retailers.
+                      Flexible monthly billing through Dec 31, 2026.
                     </p>
                   </div>
 
                   <div
-                    onClick={() => setSelectedPlan('annual')}
+                    onClick={() => setSelectedPlan('q4_pass')}
                     className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative ${
-                      selectedPlan === 'annual'
-                        ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30'
+                      selectedPlan === 'q4_pass'
+                        ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30 shadow-xs'
                         : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 bg-white dark:bg-slate-900'
                     }`}
                   >
                     <div className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
-                      Save 17% (₦10,000 off)
+                      🔥 Best Q4 Value
                     </div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        Annual Growth
+                        Q4 Pass (3 Months)
                       </span>
                       <span className="w-4 h-4 rounded-full border-2 flex items-center justify-center border-emerald-600">
-                        {selectedPlan === 'annual' && (
+                        {selectedPlan === 'q4_pass' && (
                           <span className="w-2 h-2 rounded-full bg-emerald-600" />
                         )}
                       </span>
                     </div>
                     <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
-                      ₦{(bankConfig?.annualPlanPrice || 50000).toLocaleString()}
-                      <span className="text-xs font-medium text-slate-500"> / yr</span>
+                      ₦{(bankConfig?.q4PassPrice || bankConfig?.annualPlanPrice || 3000).toLocaleString()}
+                      <span className="text-xs font-medium text-slate-500"> / Q4 bundle</span>
                     </div>
                     <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1">
-                      2 months free (pay for 10 months).
+                      Full access for Oct, Nov & Dec 2026 (No renewals till 2027).
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* 2027 Founding Merchant VIP Lock-In Roadmap */}
+              <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 text-xs">
+                <div className="flex items-center gap-2 font-black text-amber-900 dark:text-amber-200 mb-1">
+                  <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span>2027 Founding Merchant Guarantee</span>
+                </div>
+                <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                  On <strong>January 4, 2027</strong>, the standard subscription for new merchants becomes <strong>₦7,000/mo (₦70,000/yr)</strong>. By subscribing today in 2026, you lock in the exclusive <strong>VIP Founding Rate of ₦5,000/mo (₦50,000/yr)</strong> for life — saving your business ₦24,000 every year!
+                </p>
               </div>
 
               {/* Price & Referral Discount Breakdown */}

@@ -8,8 +8,13 @@ export const DEFAULT_PLATFORM_BANK: PlatformBankConfig = {
   accountName: 'OGHENEOVO DANIEL OSOVOYORON',
   instructions:
     'Transfer the exact subscription amount to the official MarketMate bank account below. Include your Store Name or Payment Reference in your transfer narration. After paying, submit your sender details below for admin approval.',
-  monthlyPlanPrice: 5000,
-  annualPlanPrice: 50000, // Save ₦10,000 (2 months free)
+  monthlyPlanPrice: 1000, // ₦1,000 / month promo through Dec 31, 2026
+  annualPlanPrice: 3000,  // ₦3,000 flat for 3-Month Q4 Pass (Oct-Dec 2026)
+  q4PassPrice: 3000,
+  futureStandardMonthly: 7000,
+  futureStandardAnnual: 70000,
+  futureEarlyMonthly: 5000,
+  futureEarlyAnnual: 50000,
   supportPhone: '+234 708 923 8728',
   supportEmail: 'getmarketmate@gmail.com',
 };
@@ -40,17 +45,32 @@ export const fetchPlatformBankConfig = async (): Promise<PlatformBankConfig> => 
     const snap = await getDoc(configDocRef);
     if (snap.exists()) {
       const data = snap.data() as PlatformBankConfig;
-      // If still set to the old default of 7000 / 70000, automatically upgrade to 5000 / 50000
+      // If still set to old 7000 or 5000, auto-upgrade to 2026 Launch Promo rates (1000/mo, 3000 Q4 pass)
       if (
         data.monthlyPlanPrice === 7000 ||
+        data.monthlyPlanPrice === 5000 ||
         data.annualPlanPrice === 70000 ||
+        data.annualPlanPrice === 50000 ||
         !data.monthlyPlanPrice
       ) {
-        data.monthlyPlanPrice = 5000;
-        data.annualPlanPrice = 50000;
+        data.monthlyPlanPrice = 1000;
+        data.annualPlanPrice = 3000;
+        data.q4PassPrice = 3000;
+        data.futureStandardMonthly = 7000;
+        data.futureStandardAnnual = 70000;
+        data.futureEarlyMonthly = 5000;
+        data.futureEarlyAnnual = 50000;
         setDoc(
           configDocRef,
-          { monthlyPlanPrice: 5000, annualPlanPrice: 50000 },
+          {
+            monthlyPlanPrice: 1000,
+            annualPlanPrice: 3000,
+            q4PassPrice: 3000,
+            futureStandardMonthly: 7000,
+            futureStandardAnnual: 70000,
+            futureEarlyMonthly: 5000,
+            futureEarlyAnnual: 50000,
+          },
           { merge: true }
         ).catch(() => {});
       }
@@ -69,13 +89,16 @@ export const fetchPlatformBankConfig = async (): Promise<PlatformBankConfig> => 
         parsed.accountNumber === '0123456789' ||
         parsed.bankName === 'Access Bank PLC' ||
         parsed.monthlyPlanPrice === 7000 ||
-        parsed.annualPlanPrice === 70000
+        parsed.monthlyPlanPrice === 5000 ||
+        parsed.annualPlanPrice === 70000 ||
+        parsed.annualPlanPrice === 50000
       ) {
         const updated = {
           ...DEFAULT_PLATFORM_BANK,
           ...parsed,
-          monthlyPlanPrice: 5000,
-          annualPlanPrice: 50000,
+          monthlyPlanPrice: 1000,
+          annualPlanPrice: 3000,
+          q4PassPrice: 3000,
           bankName: 'OPay',
           accountNumber: '6110157178',
           accountName: 'OGHENEOVO DANIEL OSOVOYORON',
@@ -265,6 +288,9 @@ export const approveSubscriptionPayment = async (
     await updateDoc(bizDocRef, {
       isSubscribed: true,
       subscriptionPlan: request.planName,
+      isFoundingMerchant: true,
+      lockedFoundingMonthlyPrice: 5000,
+      lockedFoundingAnnualPrice: 50000,
       subscribedAt: now,
       subscriptionDiscountPercent: request.discountPercent,
       updatedAt: now,

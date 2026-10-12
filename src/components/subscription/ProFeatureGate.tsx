@@ -59,9 +59,9 @@ export const ProFeatureGate: React.FC<ProFeatureGateProps> = ({
         </div>
 
         <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-medium max-w-md mx-auto flex items-center justify-between">
-          <span>Starting at <strong>₦5,000 / month</strong></span>
+          <span>Starting at <strong>₦1,000 / month</strong></span>
           <span className="text-[11px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            ₦50,000 / yr (2 mos free)
+            ₦3,000 Q4 3-Mo Pass
           </span>
         </div>
 
@@ -78,7 +78,7 @@ export const ProFeatureGate: React.FC<ProFeatureGateProps> = ({
             className="text-xs font-bold shadow-md bg-emerald-600 hover:bg-emerald-700"
             rightIcon={<ArrowRight className="w-4 h-4" />}
           >
-            Upgrade to Pro Now
+            Upgrade to Pro Now (From ₦1,000)
           </Button>
         </div>
       </div>
@@ -141,14 +141,17 @@ export const ProFeatureGate: React.FC<ProFeatureGateProps> = ({
         {/* Pricing Callout Card */}
         <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-slate-800/60 border border-emerald-200 dark:border-emerald-800/80 max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-left">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400 block">
-              Transparent Merchant Pricing
-            </span>
-            <div className="text-xl font-black font-mono text-slate-900 dark:text-white mt-0.5">
-              ₦5,000 <span className="text-xs font-normal text-slate-500">/ month</span>
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider mb-1">
+              2026 Launch Promo
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              or <strong>₦50,000 / year</strong> (get 2 full months free)
+            <div className="text-xl font-black font-mono text-slate-900 dark:text-white mt-0.5">
+              ₦1,000 <span className="text-xs font-normal text-slate-500">/ month</span>
+            </div>
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
+              or <strong>₦3,000 for 3-Month Q4 Pass</strong> (Oct–Dec 2026)
+            </p>
+            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold mt-1">
+              ✨ Locks in ₦5,000/mo Founding Rate for 2027 (vs. ₦7,000 new price)
             </p>
           </div>
 
@@ -182,7 +185,7 @@ export const ProFeatureGate: React.FC<ProFeatureGateProps> = ({
             className="w-full sm:w-auto font-bold text-sm bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/25 px-8"
             rightIcon={<ArrowRight className="w-4 h-4" />}
           >
-            Activate MarketMate Pro (₦5,000)
+            Activate MarketMate Pro (from ₦1,000)
           </Button>
         </div>
       </div>

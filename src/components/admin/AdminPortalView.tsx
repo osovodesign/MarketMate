@@ -150,6 +150,15 @@ export function getWhatsAppOutreachUrl(phone?: string, ownerName?: string, busin
 
 const MESSAGE_TEMPLATES = [
   {
+    id: 'launch_q4_promo',
+    name: '🏷️ 2026 Launch Promo & VIP Founding Merchant Rate',
+    title: '🔥 Special 2026 Launch Offer: MarketMate Pro at ₦1,000/mo (Lock in ₦5,000 for 2027!)',
+    content: `Dear Merchant & Business Owner,\n\nWe have exciting news! To help you finish 2026 strong during the busy Q4 shopping season, MarketMate Pro is now available for just ₦1,000/month (or ₦3,000 for the full Q4 3-Month Pass) through December 31, 2026.\n\n🌟 VIP Founding Merchant Privilege:\nBy subscribing today, you lock in our permanent Founding Merchant rate of ₦5,000/month (or ₦50,000/year) starting January 4, 2027. New merchants joining in 2027 will pay the standard ₦7,000/month (₦70,000/year).\n\nUnlock unlimited invoices, cashier PINs, detailed P&L exports, and multi-currency registers today!\n\nBest regards,\nThe MarketMate Team`,
+    priority: 'important' as MessagePriority,
+    actionLabel: 'Upgrade to Pro',
+    actionUrl: 'settings',
+  },
+  {
     id: 'october_welcome',
     name: '🎉 Happy New Month (October & Independence)',
     title: 'Happy New Month from MarketMate! 🇳🇬 Here\'s to Record Sales in October',
@@ -2777,14 +2786,14 @@ export const AdminPortalView: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Monthly Plan Price (₦)
+                      Monthly Launch Plan Price (₦)
                     </label>
                     <input
                       type="number"
                       required
                       min={0}
                       step={100}
-                      value={bankConfigForm.monthlyPlanPrice ?? 5000}
+                      value={bankConfigForm.monthlyPlanPrice ?? 1000}
                       onChange={(e) =>
                         setBankConfigForm({
                           ...bankConfigForm,
@@ -2797,14 +2806,14 @@ export const AdminPortalView: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Annual Plan Price (₦)
+                      Q4 Pass (3-Month) Price (₦)
                     </label>
                     <input
                       type="number"
                       required
                       min={0}
-                      step={1000}
-                      value={bankConfigForm.annualPlanPrice ?? 50000}
+                      step={100}
+                      value={bankConfigForm.annualPlanPrice ?? 3000}
                       onChange={(e) =>
                         setBankConfigForm({
                           ...bankConfigForm,
@@ -2857,10 +2866,10 @@ export const AdminPortalView: React.FC = () => {
                 </div>
 
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Plan Rates</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">2026 Plan Rates</span>
                   <span className="text-xs font-bold text-emerald-300 block mt-0.5 font-mono">
-                    ₦{(bankConfig?.monthlyPlanPrice || 5000).toLocaleString()}/mo • ₦
-                    {(bankConfig?.annualPlanPrice || 50000).toLocaleString()}/yr
+                    ₦{(bankConfig?.monthlyPlanPrice || 1000).toLocaleString()}/mo • ₦
+                    {(bankConfig?.annualPlanPrice || 3000).toLocaleString()} (Q4 Pass)
                   </span>
                 </div>
               </div>

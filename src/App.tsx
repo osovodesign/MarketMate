@@ -38,6 +38,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import { ProFeatureGate } from './components/subscription/ProFeatureGate';
 import { SubscribeModal } from './components/subscription/SubscribeModal';
 import { HelpSupportModal } from './components/common/HelpSupportModal';
+import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { AppView } from './types';
 import {
   Sparkles,
@@ -484,6 +485,7 @@ export default function App() {
         <BusinessDataProvider>
           <NotificationProvider>
             <AppContent />
+            <OfflineIndicator />
           </NotificationProvider>
         </BusinessDataProvider>
       </AuthProvider>

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { MarketMateLogo } from '../common/MarketMateLogo';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 
 interface LandingPageProps {
   onStartFree: () => void;
@@ -35,6 +36,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <PWAInstallButton variant="compact" />
             <button
               onClick={onLogin}
               className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-3 py-2 transition-colors cursor-pointer"

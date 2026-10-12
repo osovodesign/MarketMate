@@ -30,6 +30,7 @@ import { useAuth } from '../../context/AuthContext';
 import { isSuperAdminEmail } from '../../lib/adminConfig';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { SocialMediaLinks } from '../common/SocialMediaLinks';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 
 interface SidebarProps {
   currentView: AppView;
@@ -354,6 +355,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Footer Support & Brand Tray */}
       <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-2">
+        {/* PWA Install Trigger */}
+        <PWAInstallButton variant="primary" className="w-full justify-center text-xs py-2 shadow-xs" />
+
         {/* Help & Support Desk Trigger */}
         {onOpenSupportModal && (
           <button

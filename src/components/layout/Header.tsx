@@ -31,6 +31,7 @@ import { useAuth } from '../../context/AuthContext';
 import { isSuperAdminEmail } from '../../lib/adminConfig';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { useNotifications } from '../../context/NotificationContext';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 
 interface HeaderProps {
   currentView: AppView;
@@ -231,6 +232,9 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
+        {/* PWA Install Button (Desktop & Mobile Chrome/Edge/Safari) */}
+        <PWAInstallButton variant="compact" className="hidden sm:inline-flex" />
+
         {/* Notifications & Announcements Bell */}
         {onOpenNotificationDrawer && (
           <button
@@ -340,6 +344,11 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {/* Quick Actions List */}
                 <div className="py-1.5 px-1 space-y-0.5">
+                  {/* PWA Install App Trigger in Dropdown */}
+                  <div className="px-1.5 pb-1">
+                    <PWAInstallButton variant="primary" className="w-full justify-center text-xs py-2 rounded-xl" />
+                  </div>
+
                   {/* Switch Staff / Role */}
                   {onOpenStaffModal && (
                     <button

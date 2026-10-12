@@ -31,6 +31,7 @@ import { useAuth } from '../../context/AuthContext';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { SUPPORT_CONFIG } from '../../lib/adminConfig';
 import { SocialMediaLinks } from '../common/SocialMediaLinks';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 
 interface MobileNavDrawerProps {
   isOpen: boolean;
@@ -171,6 +172,11 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   {businessType}
                 </p>
               </div>
+            </div>
+
+            {/* PWA Mobile 1-Tap App Install Trigger */}
+            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/20">
+              <PWAInstallButton variant="primary" className="w-full justify-center text-xs py-2 shadow-xs" />
             </div>
 
             {/* Scrollable Navigation Sections */}

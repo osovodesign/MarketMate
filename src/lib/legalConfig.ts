@@ -130,7 +130,7 @@ export const TERMS_OF_SERVICE: LegalSection[] = [
     title: '4. Subscriptions, Fees & Payment Reconciliation',
     summary: 'Pioneer Pro subscription terms, bank transfer verification, and non-refundable service fees.',
     content: [
-      'MarketMate provides a Free Pioneer Tier (core POS, barcode register, offline storage) and Pioneer Pro Tiers (promotional launch rate of ₦1,000/month or ₦3,000 for the full 3-Month Q4 2026 Pass). Commencing January 4, 2027, the standard subscription for new merchants shall be ₦7,000/month (₦70,000/year), whereas early merchants registered during 2026 retain the grandfathered VIP Founding Merchant rate of ₦5,000/month (₦50,000/year).',
+      'MarketMate provides a Free Pioneer Tier (core POS, barcode register, offline storage) and Pioneer Pro Tiers (promotional launch rate of ₦1,000/month or ₦3,000 for the full 3-Month Q4 Pass covering October, November, and December 2026).',
       'Subscription payments made via manual bank transfer are activated upon admin statement reconciliation. Merchants must provide accurate bank transaction references.',
       'Once a subscription tier is activated, subscription fees are non-refundable, as server resources, cloud databases, and software capabilities are provisioned immediately.',
     ],

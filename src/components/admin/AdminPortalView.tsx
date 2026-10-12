@@ -151,9 +151,9 @@ export function getWhatsAppOutreachUrl(phone?: string, ownerName?: string, busin
 const MESSAGE_TEMPLATES = [
   {
     id: 'launch_q4_promo',
-    name: '🏷️ 2026 Launch Promo & VIP Founding Merchant Rate',
-    title: '🔥 Special 2026 Launch Offer: MarketMate Pro at ₦1,000/mo (Lock in ₦5,000 for 2027!)',
-    content: `Dear Merchant & Business Owner,\n\nWe have exciting news! To help you finish 2026 strong during the busy Q4 shopping season, MarketMate Pro is now available for just ₦1,000/month (or ₦3,000 for the full Q4 3-Month Pass) through December 31, 2026.\n\n🌟 VIP Founding Merchant Privilege:\nBy subscribing today, you lock in our permanent Founding Merchant rate of ₦5,000/month (or ₦50,000/year) starting January 4, 2027. New merchants joining in 2027 will pay the standard ₦7,000/month (₦70,000/year).\n\nUnlock unlimited invoices, cashier PINs, detailed P&L exports, and multi-currency registers today!\n\nBest regards,\nThe MarketMate Team`,
+    name: '🏷️ 2026 Launch Promo (₦1,000/mo & ₦3,000 Q4 Pass)',
+    title: '🔥 Special 2026 Launch Offer: MarketMate Pro at ₦1,000/mo (or ₦3,000 for Q4 Pass)',
+    content: `Dear Merchant & Business Owner,\n\nWe have exciting news! To help you finish 2026 strong during the busy Q4 shopping season, MarketMate Pro is now available for just ₦1,000/month (or ₦3,000 for the full Q4 3-Month Pass) through December 31, 2026.\n\nUnlock unlimited invoices, cashier PINs, detailed P&L exports, and multi-currency registers today!\n\nBest regards,\nThe MarketMate Team`,
     priority: 'important' as MessagePriority,
     actionLabel: 'Upgrade to Pro',
     actionUrl: 'settings',

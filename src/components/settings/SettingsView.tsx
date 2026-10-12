@@ -30,7 +30,9 @@ import {
   MessageCircle,
   Phone,
   Scale,
+  Smartphone,
 } from 'lucide-react';
+import { PWAInstallButton } from '../common/PWAInstallButton';
 import { useAuth } from '../../context/AuthContext';
 import { useBusinessData } from '../../context/BusinessDataContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -970,6 +972,56 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Official Community & Social Media Channels Card */}
       <Card padding="lg" className="border-slate-200 dark:border-slate-800">
         <SocialMediaLinks variant="cards" showTitle={true} />
+      </Card>
+
+      {/* Progressive Web App (PWA) Offline Installation Card */}
+      <Card padding="lg" className="border-slate-200 dark:border-slate-800">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 shadow-2xs">
+                <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>MarketMate App &amp; Offline Installation</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    PWA Ready
+                  </span>
+                </CardTitle>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Install MarketMate onto your phone home screen or computer to run 100% offline like a native app.
+                </p>
+              </div>
+            </div>
+
+            <PWAInstallButton
+              variant="primary"
+              label="Install App / Get Instructions"
+              className="self-start sm:self-auto shrink-0 shadow-md"
+            />
+          </div>
+        </CardHeader>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Offline POS</span>
+            <p className="text-xs font-semibold text-slate-900 dark:text-white">Full Offline Cache</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">Record sales &amp; print receipts even when network or NEPA is down.</p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Storage</span>
+            <p className="text-xs font-semibold text-slate-900 dark:text-white">&lt; 2 MB Instant App</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">No heavy 50MB Play Store downloads; updates happen seamlessly.</p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 space-y-1">
+            <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Platforms</span>
+            <p className="text-xs font-semibold text-slate-900 dark:text-white">Android, iOS &amp; PC</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">One tap home screen icon across smartphones, tablets, and laptops.</p>
+          </div>
+        </div>
       </Card>
 
       {/* Legal Disclaimers, Terms & NDPA Compliance Card */}

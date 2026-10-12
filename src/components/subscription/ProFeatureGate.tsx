@@ -150,9 +150,6 @@ export const ProFeatureGate: React.FC<ProFeatureGateProps> = ({
             <p className="text-[11px] text-slate-600 dark:text-slate-400">
               or <strong>₦3,000 for 3-Month Q4 Pass</strong> (Oct–Dec 2026)
             </p>
-            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold mt-1">
-              ✨ Locks in ₦5,000/mo Founding Rate for 2027 (vs. ₦7,000 new price)
-            </p>
           </div>
 
           <div className="text-left sm:text-right border-t sm:border-t-0 sm:border-l border-emerald-200 dark:border-emerald-800/80 pt-2 sm:pt-0 sm:pl-4">

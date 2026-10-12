@@ -96,10 +96,8 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
 
   if (!isOpen) return null;
 
-  const basePrice =
-    selectedPlan === 'q4_pass'
-      ? bankConfig?.q4PassPrice || bankConfig?.annualPlanPrice || 3000
-      : bankConfig?.monthlyPlanPrice || 1000;
+  // Strict pricing for 2026: ₦1,000 monthly or ₦3,000 for Q4 3-month pass
+  const basePrice = selectedPlan === 'q4_pass' ? 3000 : 1000;
 
   const discountAmount = Math.round((basePrice * discountPercent) / 100);
   const finalPrice = Math.max(0, basePrice - discountAmount);
@@ -129,8 +127,8 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
     try {
       const planName =
         selectedPlan === 'q4_pass'
-          ? 'MarketMate Q4 2026 Finish Strong Pass (3 Months - Oct/Nov/Dec)'
-          : 'MarketMate 2026 Monthly Launch Promo Plan';
+          ? 'MarketMate Q4 Finish Strong Pass (3 Months - Oct/Nov/Dec)'
+          : 'MarketMate Monthly Plan (₦1,000)';
 
       const req = await submitSubscriptionPayment({
         businessId: business.id,
@@ -288,7 +286,7 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
                       </span>
                     </div>
                     <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
-                      ₦{(bankConfig?.monthlyPlanPrice || 1000).toLocaleString()}
+                      ₦1,000
                       <span className="text-xs font-medium text-slate-500"> / mo</span>
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
@@ -318,25 +316,14 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
                       </span>
                     </div>
                     <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
-                      ₦{(bankConfig?.q4PassPrice || bankConfig?.annualPlanPrice || 3000).toLocaleString()}
-                      <span className="text-xs font-medium text-slate-500"> / Q4 bundle</span>
+                      ₦3,000
+                      <span className="text-xs font-medium text-slate-500"> / 3-mo pass</span>
                     </div>
                     <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1">
-                      Full access for Oct, Nov & Dec 2026 (No renewals till 2027).
+                      Full access for Oct, Nov &amp; Dec 2026 inclusive.
                     </p>
                   </div>
                 </div>
-              </div>
-
-              {/* 2027 Founding Merchant VIP Lock-In Roadmap */}
-              <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 text-xs">
-                <div className="flex items-center gap-2 font-black text-amber-900 dark:text-amber-200 mb-1">
-                  <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <span>2027 Founding Merchant Guarantee</span>
-                </div>
-                <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-                  On <strong>January 4, 2027</strong>, the standard subscription for new merchants becomes <strong>₦7,000/mo (₦70,000/yr)</strong>. By subscribing today in 2026, you lock in the exclusive <strong>VIP Founding Rate of ₦5,000/mo (₦50,000/yr)</strong> for life — saving your business ₦24,000 every year!
-                </p>
               </div>
 
               {/* Price & Referral Discount Breakdown */}

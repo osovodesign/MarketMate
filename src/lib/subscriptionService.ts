@@ -11,10 +11,6 @@ export const DEFAULT_PLATFORM_BANK: PlatformBankConfig = {
   monthlyPlanPrice: 1000, // ₦1,000 / month promo through Dec 31, 2026
   annualPlanPrice: 3000,  // ₦3,000 flat for 3-Month Q4 Pass (Oct-Dec 2026)
   q4PassPrice: 3000,
-  futureStandardMonthly: 7000,
-  futureStandardAnnual: 70000,
-  futureEarlyMonthly: 5000,
-  futureEarlyAnnual: 50000,
   supportPhone: '+234 708 923 8728',
   supportEmail: 'getmarketmate@gmail.com',
 };
@@ -45,37 +41,24 @@ export const fetchPlatformBankConfig = async (): Promise<PlatformBankConfig> => 
     const snap = await getDoc(configDocRef);
     if (snap.exists()) {
       const data = snap.data() as PlatformBankConfig;
-      // If still set to old 7000 or 5000, auto-upgrade to 2026 Launch Promo rates (1000/mo, 3000 Q4 pass)
+      // Always enforce 1,000 monthly and 3,000 Q4 pass
+      const normalized: PlatformBankConfig = {
+        ...DEFAULT_PLATFORM_BANK,
+        ...data,
+        monthlyPlanPrice: 1000,
+        annualPlanPrice: 3000,
+        q4PassPrice: 3000,
+      };
+
       if (
-        data.monthlyPlanPrice === 7000 ||
-        data.monthlyPlanPrice === 5000 ||
-        data.annualPlanPrice === 70000 ||
-        data.annualPlanPrice === 50000 ||
-        !data.monthlyPlanPrice
+        data.monthlyPlanPrice !== 1000 ||
+        data.annualPlanPrice !== 3000 ||
+        data.q4PassPrice !== 3000
       ) {
-        data.monthlyPlanPrice = 1000;
-        data.annualPlanPrice = 3000;
-        data.q4PassPrice = 3000;
-        data.futureStandardMonthly = 7000;
-        data.futureStandardAnnual = 70000;
-        data.futureEarlyMonthly = 5000;
-        data.futureEarlyAnnual = 50000;
-        setDoc(
-          configDocRef,
-          {
-            monthlyPlanPrice: 1000,
-            annualPlanPrice: 3000,
-            q4PassPrice: 3000,
-            futureStandardMonthly: 7000,
-            futureStandardAnnual: 70000,
-            futureEarlyMonthly: 5000,
-            futureEarlyAnnual: 50000,
-          },
-          { merge: true }
-        ).catch(() => {});
+        setDoc(configDocRef, normalized, { merge: true }).catch(() => {});
       }
-      localStorage.setItem(STORAGE_PLATFORM_BANK_KEY, JSON.stringify(data));
-      return { ...DEFAULT_PLATFORM_BANK, ...data };
+      localStorage.setItem(STORAGE_PLATFORM_BANK_KEY, JSON.stringify(normalized));
+      return normalized;
     }
   } catch (err) {
     console.warn('Could not fetch remote platform bank config, checking local fallback:', err);
@@ -85,31 +68,19 @@ export const fetchPlatformBankConfig = async (): Promise<PlatformBankConfig> => 
     const localStr = localStorage.getItem(STORAGE_PLATFORM_BANK_KEY);
     if (localStr) {
       const parsed = JSON.parse(localStr);
-      if (
-        parsed.accountNumber === '0123456789' ||
-        parsed.bankName === 'Access Bank PLC' ||
-        parsed.monthlyPlanPrice === 7000 ||
-        parsed.monthlyPlanPrice === 5000 ||
-        parsed.annualPlanPrice === 70000 ||
-        parsed.annualPlanPrice === 50000
-      ) {
-        const updated = {
-          ...DEFAULT_PLATFORM_BANK,
-          ...parsed,
-          monthlyPlanPrice: 1000,
-          annualPlanPrice: 3000,
-          q4PassPrice: 3000,
-          bankName: 'OPay',
-          accountNumber: '6110157178',
-          accountName: 'OGHENEOVO DANIEL OSOVOYORON',
-        };
-        localStorage.setItem(STORAGE_PLATFORM_BANK_KEY, JSON.stringify(updated));
-        return updated;
-      }
-      return { ...DEFAULT_PLATFORM_BANK, ...parsed };
+      const normalized: PlatformBankConfig = {
+        ...DEFAULT_PLATFORM_BANK,
+        ...parsed,
+        monthlyPlanPrice: 1000,
+        annualPlanPrice: 3000,
+        q4PassPrice: 3000,
+      };
+      localStorage.setItem(STORAGE_PLATFORM_BANK_KEY, JSON.stringify(normalized));
+      return normalized;
     }
   } catch {}
 
+  localStorage.setItem(STORAGE_PLATFORM_BANK_KEY, JSON.stringify(DEFAULT_PLATFORM_BANK));
   return DEFAULT_PLATFORM_BANK;
 };
 
@@ -289,8 +260,6 @@ export const approveSubscriptionPayment = async (
       isSubscribed: true,
       subscriptionPlan: request.planName,
       isFoundingMerchant: true,
-      lockedFoundingMonthlyPrice: 5000,
-      lockedFoundingAnnualPrice: 50000,
       subscribedAt: now,
       subscriptionDiscountPercent: request.discountPercent,
       updatedAt: now,

@@ -111,11 +111,11 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const matchSearch =
-        search === '' ||
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         (p.category && p.category.toLowerCase().includes(search.toLowerCase())) ||
-        (p.sku && p.sku.toLowerCase().includes(search.toLowerCase())) ||
-        (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()));
+        (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase())) ||
+        (p.sku && p.sku.toLowerCase().includes(search.toLowerCase()));
+
       return matchSearch;
     });
   }, [products, search]);
@@ -232,9 +232,9 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
               size="md"
               onClick={() => setIsBulkImportOpen(true)}
               leftIcon={<FileSpreadsheet className="w-4 h-4 text-emerald-600" />}
-              className="border-emerald-300 text-emerald-800 hover:bg-emerald-50 bg-white"
+              className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900 text-xs font-bold"
             >
-              Bulk Import (Excel/CSV)
+              Bulk Import (CSV)
             </Button>
             {products.length > 0 && (
               <Button
@@ -243,7 +243,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
                 size="md"
                 onClick={handleExportCatalog}
                 leftIcon={<Download className="w-4 h-4 text-slate-600" />}
-                className="hidden sm:inline-flex bg-white"
+                className="hidden sm:inline-flex bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-bold"
                 title="Download current catalog as Excel/CSV"
               >
                 Export CSV
@@ -251,10 +251,9 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
             )}
             <Button
               type="button"
-              onClick={handleOpenAdd}
               size="md"
+              onClick={handleOpenAdd}
               leftIcon={<PlusCircle className="w-4 h-4" />}
-              className="shadow-xs"
             >
               + Add Product
             </Button>
@@ -264,17 +263,15 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card padding="md" className="bg-white">
+        <Card padding="md">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Catalog Items</p>
-          <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-            {products.length}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">Products & services configured</p>
+          <p className="text-2xl font-extrabold text-slate-900 mt-1">{products.length}</p>
+          <p className="text-xs text-slate-500 mt-1">Configured items & inventory</p>
         </Card>
 
-        <Card padding="md" className="bg-emerald-50/60 border-emerald-200">
-          <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Average Catalog Margin</p>
-          <p className="text-2xl sm:text-3xl font-extrabold text-emerald-800 mt-1">
+        <Card padding="md">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Average Catalog Margin</p>
+          <p className="text-2xl font-extrabold text-emerald-700 mt-1">
             {canShowMargins ? (
               products.length > 0
                 ? formatPercent(
@@ -285,38 +282,33 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
                   )
                 : '0%'
             ) : (
-              <span className="flex items-center gap-1.5 text-lg font-mono text-emerald-700">
+              <span className="flex items-center gap-1.5 text-base font-normal text-emerald-700">
                 <Lock className="w-4 h-4" />
-                <span>Confidential</span>
+                <span>Protected</span>
               </span>
             )}
           </p>
-          <p className="text-xs text-emerald-700 mt-1">
-            {canShowMargins ? 'Target profitability per item' : 'Restricted for current staff role'}
-          </p>
+          <p className="text-xs text-slate-500 mt-1">Target profitability per item</p>
         </Card>
 
-        <Card padding="md" className="bg-white">
+        <Card padding="md">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Lifetime Units Sold</p>
-          <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-            {sales.reduce((acc, s) => acc + s.quantity, 0)}
+          <p className="text-2xl font-extrabold text-slate-900 mt-1">
+            {sales.reduce((sum, s) => sum + s.quantity, 0)}
           </p>
-          <p className="text-xs text-slate-500 mt-1">Across all recorded customer sales</p>
+          <p className="text-xs text-slate-500 mt-1">Total units moved across all sales</p>
         </Card>
       </div>
 
-      {/* Search Input */}
-      <div className="p-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
-        <div className="w-full sm:w-80 relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search items or categories..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9.5 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
-          />
-        </div>
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search items by name, category, or barcode..."
+          className="pl-9"
+        />
       </div>
 
       {/* Add / Edit Product Modal or Slide-in Form */}
@@ -524,21 +516,21 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4">Item Name / Code</th>
+                <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4">Item Name / SKU</th>
                   <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4 text-center">Stock</th>
+                  <th className="py-3 px-4 text-center">Current Stock</th>
                   <th className="py-3 px-4 text-right">
-                    {canShowCost ? 'Cost Price' : 'Cost (Shielded)'}
+                    {canShowCost ? 'Cost Price' : 'Cost'}
                   </th>
                   <th className="py-3 px-4 text-right">Selling Price</th>
                   {canShowMargins && <th className="py-3 px-4 text-right">Unit Profit</th>}
                   {canShowMargins && <th className="py-3 px-4 text-right">Margin</th>}
-                  <th className="py-3 px-4 text-center">Historical Sales</th>
+                  <th className="py-3 px-4 text-center">Sales</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
                 {filteredProducts.map((prod) => {
                   const profit = prod.defaultSellingPrice - prod.defaultCostPrice;
                   const margin =
@@ -551,14 +543,14 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
                     totalProfit: 0,
                   };
 
-                  const isLowStock =
-                    prod.stockQuantity !== undefined &&
-                    prod.stockQuantity <= (prod.lowStockThreshold || 5);
+                  const qty = prod.stockQuantity ?? 0;
+                  const isOutOfStock = qty <= 0;
+                  const isLowStock = !isOutOfStock && qty <= (prod.lowStockThreshold || 5);
 
                   return (
-                    <tr key={prod.id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr key={prod.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="py-3 px-4">
-                        <span className="font-bold text-slate-900 block">{prod.name}</span>
+                        <span className="font-bold text-slate-900 dark:text-white block">{prod.name}</span>
                         {(prod.sku || prod.barcode) && (
                           <span className="text-[10px] text-slate-400 font-mono">
                             {prod.sku ? `SKU: ${prod.sku}` : ''}
@@ -567,31 +559,29 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300">
                         {prod.category ? (
-                          <Badge variant="neutral" size="sm">
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                             {prod.category}
-                          </Badge>
+                          </span>
                         ) : (
                           '—'
                         )}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        {prod.stockQuantity !== undefined ? (
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                              isLowStock
-                                ? 'bg-rose-100 text-rose-800'
-                                : 'bg-emerald-100 text-emerald-800'
-                            }`}
-                          >
-                            {prod.stockQuantity} in stock
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-[11px]">—</span>
-                        )}
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            isOutOfStock
+                              ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                              : isLowStock
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                              : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          }`}
+                        >
+                          {isOutOfStock ? 'Out of stock' : `${qty} in stock`}
+                        </span>
                       </td>
-                      <td className="py-3 px-4 text-right text-slate-500 font-medium">
+                      <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-400 font-mono">
                         {canShowCost ? (
                           <>
                             {formatCurrency(prod.defaultCostPrice, currency)}
@@ -608,28 +598,28 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-slate-900">
+                      <td className="py-3 px-4 text-right font-bold font-mono text-slate-900 dark:text-white">
                         {formatCurrency(prod.defaultSellingPrice, currency)}
                       </td>
                       {canShowMargins && (
-                        <td className="py-3 px-4 text-right font-semibold text-emerald-700">
+                        <td className="py-3 px-4 text-right font-semibold font-mono text-emerald-700 dark:text-emerald-400">
                           +{formatCurrency(profit, currency)}
                         </td>
                       )}
                       {canShowMargins && (
-                        <td className="py-3 px-4 text-right font-bold text-emerald-800">
+                        <td className="py-3 px-4 text-right font-bold font-mono text-emerald-700 dark:text-emerald-400">
                           {formatPercent(margin)}
                         </td>
                       )}
-                      <td className="py-3 px-4 text-center text-slate-600">
-                        <span className="font-semibold text-slate-800">{hist.totalSold}</span> units
+                      <td className="py-3 px-4 text-center text-slate-600 dark:text-slate-300 font-mono">
+                        <span className="font-semibold text-slate-900 dark:text-white">{hist.totalSold}</span> units
                       </td>
                       <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5">
+                        <div className="inline-flex items-center gap-1">
                           {canEditProduct ? (
                             <button
                               onClick={() => handleOpenEdit(prod)}
-                              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+                              className="p-1.5 text-slate-400 hover:text-emerald-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                               title="Edit Item"
                             >
                               <Edit2 className="w-4 h-4" />
@@ -642,7 +632,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
                           {canEditProduct && deleteProduct && (
                             <button
                               onClick={() => deleteProduct(prod.id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
                               title="Delete Item"
                             >
                               <Trash2 className="w-4 h-4" />

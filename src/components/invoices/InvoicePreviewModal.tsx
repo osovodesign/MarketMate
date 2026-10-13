@@ -206,6 +206,12 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                       {business?.businessName || 'Ada Fashion & Fabrics'}
                     </h3>
                     <p className="text-xs text-slate-500 font-medium">{business?.businessType || 'Micro Enterprise'}</p>
+                    {business?.cacNumber && (
+                      <p className="text-[11px] font-semibold text-emerald-800 flex items-center gap-1 pt-0.5">
+                        <CheckCircle className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span>CAC Reg No: {business.cacNumber}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -368,7 +374,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
               <div className="flex items-center gap-2">
                 <MarketMateLogo size="xs" variant="light" />
                 <span className="text-[11px] text-slate-400">
-                  • Official invoice powered by MarketMate™
+                  • Powered by MarketMate Technologies (CAC Reg. No: 9931755)
                 </span>
               </div>
               <div className="text-center sm:text-right">

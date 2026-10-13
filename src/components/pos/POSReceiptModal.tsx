@@ -126,7 +126,11 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
                 {business?.businessName || 'Ada Fashion & Fabrics'}
               </h3>
               <p className="text-[11px] text-slate-500 font-sans">{business?.businessType || 'Retail & Wholesale'}</p>
-              <p className="text-[10px] text-slate-400 font-sans">Lagos, Nigeria</p>
+              {business?.cacNumber ? (
+                <p className="text-[10px] text-emerald-700 font-sans font-semibold">CAC Reg No: {business.cacNumber}</p>
+              ) : (
+                <p className="text-[10px] text-slate-400 font-sans">Nigeria</p>
+              )}
             </div>
 
             {/* Receipt Meta */}
@@ -189,8 +193,9 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
               <p className="text-[10px] text-slate-500 font-sans">
                 Thank you for your patronage! Items sold in good condition cannot be returned after 48 hours.
               </p>
-              <div className="pt-1 flex items-center justify-center">
+              <div className="pt-1 flex flex-col items-center justify-center gap-0.5">
                 <MarketMateLogo size="xs" variant="light" />
+                <span className="text-[9px] text-slate-400 font-sans">Powered by MarketMate™ (CAC Reg: 9931755)</span>
               </div>
             </div>
           </div>

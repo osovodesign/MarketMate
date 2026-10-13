@@ -110,12 +110,16 @@ export const LegalModal: React.FC<LegalModalProps> = ({
           </div>
         </div>
 
-        {/* Founder & Jurisdiction Banner */}
+        {/* Founder, Entity & CAC Registration Banner */}
         <div className="px-5 py-3 bg-emerald-50/60 dark:bg-emerald-950/30 border-b border-emerald-100 dark:border-emerald-900/50 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-700 dark:text-slate-300 shrink-0">
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
             <span className="flex items-center gap-1 font-semibold text-emerald-900 dark:text-emerald-200">
               <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               {LEGAL_CONFIG.entityName}
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-700">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              {LEGAL_CONFIG.cacDisplay}
             </span>
             <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
               <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />

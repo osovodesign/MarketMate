@@ -98,6 +98,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sal
               {business?.businessName || 'Business Receipt'}
             </h3>
             <p className="text-xs text-slate-500">{business?.businessType}</p>
+            {business?.cacNumber && (
+              <p className="text-[11px] font-semibold text-emerald-700">CAC Reg No: {business.cacNumber}</p>
+            )}
             {business?.phone && <p className="text-xs text-slate-500">Tel: {business.phone}</p>}
           </div>
 
@@ -186,7 +189,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sal
           <div className="pt-3 border-t border-slate-100 flex flex-col items-center justify-center gap-1.5">
             <MarketMateLogo size="xs" variant="light" />
             <p className="text-[10px] text-center text-slate-400">
-              Thank you for your patronage! Digital store receipt powered by MarketMate™.
+              Thank you for your patronage! Digital store receipt powered by MarketMate™ (CAC Reg: 9931755).
             </p>
           </div>
         </div>

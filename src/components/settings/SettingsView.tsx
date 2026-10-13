@@ -121,6 +121,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   );
   const [currency, setCurrency] = useState<CurrencyCode>(business?.currency || 'NGN');
   const [phone, setPhone] = useState(business?.phone || '');
+  const [cacNumber, setCacNumber] = useState(business?.cacNumber || '');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [logoSuccessMsg, setLogoSuccessMsg] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -224,6 +225,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       businessType,
       currency,
       phone,
+      cacNumber: cacNumber.trim(),
     });
 
     setSavedSuccess(true);
@@ -424,6 +426,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+234 800 000 0000"
             />
+          </div>
+
+          <div className="pt-1">
+            <div className="flex items-center justify-between pb-1">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                CAC / Business Registration No. (Optional)
+              </label>
+              {cacNumber && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  Corporate Affairs Commission Verified
+                </span>
+              )}
+            </div>
+            <Input
+              type="text"
+              value={cacNumber}
+              onChange={(e) => setCacNumber(e.target.value)}
+              placeholder="e.g. 9931755 or RC/BN 9931755"
+              leftAddon={<Building2 className="w-4 h-4" />}
+            />
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+              Official CAC registration number printed automatically on receipts and tax invoices.
+            </p>
           </div>
 
           <div className="flex justify-end pt-2">

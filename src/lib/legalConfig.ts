@@ -17,6 +17,8 @@ export interface LegalSection {
 export const LEGAL_CONFIG = {
   appName: 'MarketMate',
   entityName: 'MarketMate Technologies',
+  cacRegNo: '9931755',
+  cacDisplay: 'CAC Reg No: 9931755',
   founderName: 'Osovoyoron Ogheneovo Daniel',
   location: 'Warri, Delta State, Nigeria',
   country: 'Federal Republic of Nigeria',
@@ -25,8 +27,8 @@ export const LEGAL_CONFIG = {
   supportPhone: '+234 708 923 8728',
   supportWhatsApp: 'https://wa.me/2347089238728',
   officialDomain: 'https://getmarketmate.online',
-  effectiveDate: 'October 12, 2026',
-  version: '2.0.0',
+  effectiveDate: 'October 13, 2026',
+  version: '2.1.0',
   liabilityCapAmount: '₦1,000 (One Thousand Naira, or the subscription fee paid in the preceding 30 days)',
 };
 
@@ -97,7 +99,7 @@ export const TERMS_OF_SERVICE: LegalSection[] = [
     title: '1. Acceptance of Terms & Eligibility',
     summary: 'By registering, accessing, or using MarketMate, you enter a legally binding contract.',
     content: [
-      'These Terms of Service ("Terms") constitute a legally binding agreement between you (the "Merchant", "User", or "Business Owner") and MarketMate Technologies, founded and operated by Osovoyoron Ogheneovo Daniel in Warri, Delta State, Nigeria ("MarketMate", "we", "us", or "our").',
+      'These Terms of Service ("Terms") constitute a legally binding agreement between you (the "Merchant", "User", or "Business Owner") and MarketMate Technologies (CAC Reg. No: 9931755), founded and operated by Osovoyoron Ogheneovo Daniel in Warri, Delta State, Nigeria ("MarketMate", "we", "us", or "our").',
       'By clicking "Get Started", registering an account, subscribing, or using the MarketMate POS register, you agree to comply with and be bound by these Terms and all incorporated Disclaimers.',
       'If you do not agree to these Terms, you must immediately cease accessing and using the software.',
     ],

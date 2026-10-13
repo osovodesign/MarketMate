@@ -133,6 +133,8 @@ export interface BusinessProfile {
   phone?: string;
   ownerName?: string;
   address?: string;
+  email?: string;
+  cacNumber?: string;
   logoUrl?: string;
   logoDarkUrl?: string;
   bankDetails?: BankDetails;

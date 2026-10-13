@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { Resend } from 'resend';
 
 dotenv.config();
+process.env.DISABLE_HMR = 'true';
 
 // Lazy initialization for Resend email client
 let resendClient: Resend | null = null;

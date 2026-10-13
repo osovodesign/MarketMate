@@ -324,7 +324,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               getmarketmate.online
             </a>
             <span className="text-slate-300 dark:text-slate-700">•</span>
-            <p>© 2026 MarketMate. Built for Nigerian Micro and Small Businesses.</p>
+            <span className="font-semibold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/60">
+              CAC Reg No: 9931755
+            </span>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <p>© 2026 MarketMate Technologies. Built for Nigerian Micro and Small Businesses.</p>
           </div>
         </div>
       </footer>

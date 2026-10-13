@@ -16,7 +16,7 @@ import { usePWAInstall } from '../../hooks/usePWAInstall';
 
 interface PWAInstallButtonProps {
   className?: string;
-  variant?: 'primary' | 'subtle' | 'compact' | 'pill' | 'outline';
+  variant?: 'primary' | 'subtle' | 'compact' | 'pill' | 'outline' | 'icon';
   showLabel?: boolean;
   label?: string;
 }
@@ -88,6 +88,9 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   } else if (variant === 'outline') {
     buttonStyle +=
       ' px-3 py-1.5 text-xs rounded-xl bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700';
+  } else if (variant === 'icon') {
+    buttonStyle =
+      'p-1.5 sm:p-2 text-slate-500 hover:text-[#059669] dark:text-slate-400 dark:hover:text-[#34D399] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer shrink-0 flex items-center justify-center';
   } else {
     // subtle
     buttonStyle +=
@@ -101,13 +104,20 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         onClick={handleInstallClick}
         disabled={isInstalling}
         title="Download / Install MarketMate App"
+        aria-label="Install MarketMate App"
         className={`${buttonStyle} ${className}`}
       >
-        <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-        {showLabel && (
-          <span className="truncate">
-            {isInstalling ? 'Installing...' : label}
-          </span>
+        {variant === 'icon' ? (
+          <Download className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+        ) : (
+          <>
+            <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            {showLabel && (
+              <span className="truncate">
+                {isInstalling ? 'Installing...' : label}
+              </span>
+            )}
+          </>
         )}
       </button>
 

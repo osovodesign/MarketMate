@@ -94,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, [isDropdownOpen]);
 
   const titles: Record<AppView, { title: string; subtitle: string }> = {
-    landing: { title: 'MarketMate', subtitle: 'Know Your Numbers' },
+    landing: { title: 'MarketMate', subtitle: 'Know Your Numbers, Grow Your Business' },
     login: { title: 'Login', subtitle: 'Access your account' },
     signup: { title: 'Sign Up', subtitle: 'Start free with MarketMate' },
     onboarding: { title: 'Setup Business', subtitle: 'Tell us about your business' },
@@ -127,26 +127,39 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-[#FEFEFE]/95 dark:bg-[#001A35]/95 backdrop-blur-xs border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between transition-colors">
-      {/* Title / Current View */}
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-        {/* Mobile Menu Toggle & Brand Logo */}
+    <header className="sticky top-0 z-30 bg-[#FEFEFE] dark:bg-[#082F4B] border-b border-slate-200/80 dark:border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between transition-colors">
+      {/* Brand & Current View */}
+      <div className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1">
+        {/* Mobile: Hamburger Menu Toggle & Brand Logo */}
         <div className="lg:hidden flex items-center gap-1.5 shrink-0">
           {onOpenMobileMenu && (
             <button
               onClick={onOpenMobileMenu}
-              className="p-1.5 rounded-lg text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl bg-[#001A35] text-white hover:bg-[#082F4B] active:scale-95 border border-[#001A35] dark:border-slate-700 shadow-2xs transition-all cursor-pointer flex items-center justify-center"
               aria-label="Open navigation menu"
               title="All Menus & Features"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-4.5 h-4.5" />
             </button>
           )}
-          <button onClick={() => onNavigate('dashboard')} className="cursor-pointer">
-            <MarketMateLogo size="sm" />
+          <button onClick={() => onNavigate('dashboard')} className="cursor-pointer" aria-label="Go to Dashboard">
+            <MarketMateLogo size="sm" mode="icon" variant="auto" />
           </button>
         </div>
 
+        {/* Desktop: Official MarketMate Logo & Name */}
+        <div className="hidden lg:flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => onNavigate('dashboard')}
+            className="flex items-center text-left focus:outline-none cursor-pointer group hover:opacity-95 transition-opacity"
+            aria-label="MarketMate Dashboard"
+          >
+            <MarketMateLogo size="md" showSubtitle={false} variant="auto" />
+          </button>
+          <div className="h-6 w-px bg-slate-200 dark:bg-slate-700/80 mr-1" aria-hidden="true" />
+        </div>
+
+        {/* Current View Title & Subtitle */}
         <div className="min-w-0">
           <h1 className="text-sm sm:text-lg font-bold text-[#001A35] dark:text-[#FEFEFE] leading-tight truncate">
             {viewMeta.title}
@@ -220,20 +233,6 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        {/* Refer & Earn 5% Discount Quick Button */}
-        {onOpenReferralModal && (
-          <button
-            onClick={onOpenReferralModal}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-[#ECFDF5] dark:bg-[#064E3B]/40 text-[#059669] dark:text-[#34D399] border border-[#059669]/30 hover:bg-[#D1FAE5] transition-all cursor-pointer shrink-0"
-            title="Refer a Business - Earn 5% Off Subscription (Oct 12-30)"
-          >
-            <Gift className="w-3.5 h-3.5 text-[#059669] dark:text-[#34D399] shrink-0" />
-            <span>Refer & Earn 5%</span>
-          </button>
-        )}
-
-        {/* PWA Install Button (Desktop & Mobile Chrome/Edge/Safari) */}
-        <PWAInstallButton variant="compact" className="hidden sm:inline-flex" />
 
         {/* Notifications & Announcements Bell */}
         {onOpenNotificationDrawer && (

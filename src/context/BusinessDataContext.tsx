@@ -838,8 +838,17 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // If authenticated in cloud, attach Firestore real-time onSnapshot listeners!
     if (user?.id && business?.id && !isDemoMode) {
-      setIsCloudSyncing(true);
+      // If local cache already populated the store, cloud sync is background non-blocking
+      const hasLocalCache = Boolean(localStorage.getItem(storageKeySales));
+      if (!hasLocalCache) {
+        setIsCloudSyncing(true);
+      }
       const unsubscribers: (() => void)[] = [];
+
+      // Safety timeout guard so Cloud Syncing spinner never lingers indefinitely
+      const syncTimeout = setTimeout(() => {
+        setIsCloudSyncing(false);
+      }, 600);
 
       try {
         // 1. Sales
@@ -853,10 +862,12 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
               setSales(cloudSales);
               saveLocal(storageKeySales, cloudSales);
             }
+            clearTimeout(syncTimeout);
             setIsCloudSyncing(false);
           },
           (err) => {
             console.warn('Sales Firestore onSnapshot notice:', err);
+            clearTimeout(syncTimeout);
             setIsCloudSyncing(false);
           }
         );
@@ -1011,6 +1022,7 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
 
       return () => {
+        clearTimeout(syncTimeout);
         unsubscribers.forEach((u) => u());
       };
     }

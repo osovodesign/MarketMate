@@ -126,26 +126,26 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
             className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs"
           />
 
-          {/* Slide-out Drawer Menu */}
+          {/* Slide-out Drawer Menu (MarketMate Deep Midnight Navy Theme) */}
           <motion.div
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 260 }}
-            className="relative w-80 max-w-[85vw] h-full bg-[#FEFEFE] dark:bg-[#001A35] border-r border-slate-200 dark:border-slate-800 flex flex-col z-50 shadow-2xl overflow-hidden"
+            className="relative w-80 max-w-[85vw] h-full bg-[#001A35] text-white border-r border-slate-800 flex flex-col z-50 shadow-2xl overflow-hidden"
           >
             {/* Header with Brand and Close Button */}
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-800/40">
+            <div className="p-4 border-b border-slate-800/80 flex items-center justify-between bg-[#082F4B]/90 backdrop-blur-xs">
               <button
                 onClick={() => handleSelectView('dashboard')}
                 className="flex items-center text-left focus:outline-none cursor-pointer"
               >
-                <MarketMateLogo size="md" showSubtitle={true} />
+                <MarketMateLogo size="md" showSubtitle={true} variant="dark" />
               </button>
 
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 aria-label="Close navigation drawer"
               >
                 <X className="w-5 h-5" />
@@ -153,29 +153,29 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
             </div>
 
             {/* Business Badge */}
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#059669] text-[#FEFEFE] font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="px-4 py-3 border-b border-slate-800/80 bg-[#0F2744]/70 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#059669] text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-2xs">
                 {businessName.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate leading-tight">
+                  <p className="text-xs font-bold text-white truncate leading-tight">
                     {businessName}
                   </p>
                   {isCashier && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 rounded border border-amber-200 dark:border-amber-800">
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 bg-amber-950/90 text-amber-300 rounded border border-amber-700/70">
                       Cashier
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate leading-tight mt-0.5">
+                <p className="text-[11px] text-slate-300 truncate leading-tight mt-0.5">
                   {businessType}
                 </p>
               </div>
             </div>
 
             {/* PWA Mobile 1-Tap App Install Trigger */}
-            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 bg-emerald-50/50 dark:bg-emerald-950/20">
+            <div className="px-4 py-2 border-b border-slate-800/80 bg-[#064E3B]/20">
               <PWAInstallButton variant="primary" className="w-full justify-center text-xs py-2 shadow-xs" />
             </div>
 
@@ -183,7 +183,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
             <div className="flex-1 overflow-y-auto p-3 space-y-4">
               {/* Core Operations */}
               <div>
-                <p className="px-2 pb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <p className="px-2 pb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                   Core Management
                 </p>
                 <div className="space-y-0.5">
@@ -196,24 +196,24 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                         <button
                           key={item.id}
                           onClick={() => handleSelectView(item.id)}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
                             isActive
-                              ? 'bg-[#ECFDF5] dark:bg-[#064E3B]/40 text-[#059669] dark:text-[#34D399] font-bold border border-[#059669]/30 shadow-2xs'
-                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                              ? 'bg-[#059669]/20 text-[#34D399] font-bold border border-[#059669]/60 shadow-[0_0_12px_rgba(5,150,105,0.25)]'
+                              : 'text-slate-200 hover:text-white hover:bg-white/5'
                           }`}
                         >
                           <div className="flex items-center gap-3">
                             <Icon
-                              className={`w-4 h-4 ${
+                              className={`w-4 h-4 shrink-0 transition-colors ${
                                 isActive
-                                  ? 'text-[#059669] dark:text-[#34D399]'
-                                  : 'text-slate-500 dark:text-slate-400'
+                                  ? 'text-[#34D399]'
+                                  : 'text-slate-400 group-hover:text-slate-200'
                               }`}
                             />
                             <span>{item.label}</span>
                           </div>
                           {item.isPro && !isSubscribed && (
-                            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
                               PRO
                             </span>
                           )}
@@ -225,7 +225,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
 
               {/* Financial Records, Ledger & P&L */}
               <div>
-                <p className="px-2 pb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <p className="px-2 pb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                   Financial Records & Books
                 </p>
                 <div className="space-y-0.5">
@@ -238,30 +238,30 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                         <button
                           key={item.id}
                           onClick={() => handleSelectView(item.id)}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
                             isActive
-                              ? 'bg-[#ECFDF5] dark:bg-[#064E3B]/40 text-[#059669] dark:text-[#34D399] font-bold border border-[#059669]/30 shadow-2xs'
-                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                              ? 'bg-[#059669]/20 text-[#34D399] font-bold border border-[#059669]/60 shadow-[0_0_12px_rgba(5,150,105,0.25)]'
+                              : 'text-slate-200 hover:text-white hover:bg-white/5'
                           }`}
                         >
                           <div className="flex items-center gap-3">
                             <Icon
-                              className={`w-4 h-4 ${
+                              className={`w-4 h-4 shrink-0 transition-colors ${
                                 isActive
-                                  ? 'text-[#059669] dark:text-[#34D399]'
-                                  : 'text-slate-500 dark:text-slate-400'
+                                  ? 'text-[#34D399]'
+                                  : 'text-slate-400 group-hover:text-slate-200'
                               }`}
                             />
                             <span className="text-left">{item.label}</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             {item.badge !== undefined && item.badge > 0 && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
                                 {item.badge}
                               </span>
                             )}
                             {item.isPro && !isSubscribed && (
-                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
                                 PRO
                               </span>
                             )}
@@ -274,21 +274,21 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
 
               {/* Smart Financial Tools */}
               <div>
-                <p className="px-2 pb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <p className="px-2 pb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                   Smart Financial Calculators
                 </p>
                 <div className="space-y-0.5">
                   {onOpenPricingCalculator && (
                     <button
                       onClick={() => handleOpenTool(onOpenPricingCalculator)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3">
-                        <Calculator className="w-4 h-4 text-[#059669] dark:text-[#34D399]" />
+                        <Calculator className="w-4 h-4 text-[#34D399]" />
                         <span>Interactive Pricing Calculator</span>
                       </div>
                       {!isSubscribed && (
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
                           PRO
                         </span>
                       )}
@@ -298,14 +298,14 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   {onOpenProfitSimulator && (
                     <button
                       onClick={() => handleOpenTool(onOpenProfitSimulator)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3">
-                        <Sliders className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        <Sliders className="w-4 h-4 text-amber-400" />
                         <span>Profit Stress-Test Simulator</span>
                       </div>
                       {!isSubscribed && (
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
                           PRO
                         </span>
                       )}
@@ -315,14 +315,14 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   {onOpenGoalsModal && (
                     <button
                       onClick={() => handleOpenTool(onOpenGoalsModal)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3">
-                        <Target className="w-4 h-4 text-[#059669] dark:text-[#34D399]" />
+                        <Target className="w-4 h-4 text-[#34D399]" />
                         <span>Financial Goals & Targets</span>
                       </div>
                       {!isSubscribed && (
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
                           PRO
                         </span>
                       )}
@@ -332,14 +332,14 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   {onOpenFxModal && (
                     <button
                       onClick={() => handleOpenTool(onOpenFxModal)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3">
-                        <Ship className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <Ship className="w-4 h-4 text-blue-400" />
                         <span>FX & Landed Cost Import</span>
                       </div>
                       {!isSubscribed && (
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
                           PRO
                         </span>
                       )}
@@ -349,14 +349,14 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   {onOpenStaffModal && (
                     <button
                       onClick={() => handleOpenTool(onOpenStaffModal)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3">
-                        <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <Shield className="w-4 h-4 text-purple-400" />
                         <span>Staff Roles & Cashier PINs</span>
                       </div>
                       {!isSubscribed && (
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
                           PRO
                         </span>
                       )}
@@ -366,14 +366,14 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   {onOpenBackupModal && (
                     <button
                       onClick={() => handleOpenTool(onOpenBackupModal)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-center gap-3">
-                        <Database className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                        <Database className="w-4 h-4 text-slate-400" />
                         <span>Encrypted Data Vault & Backup</span>
                       </div>
                       {!isSubscribed && (
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
                           PRO
                         </span>
                       )}
@@ -384,7 +384,7 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
 
               {/* AI & Preferences */}
               <div>
-                <p className="px-2 pb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <p className="px-2 pb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                   Intelligence & Preferences
                 </p>
                 <div className="space-y-0.5">
@@ -397,24 +397,24 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                         <button
                           key={item.id}
                           onClick={() => handleSelectView(item.id)}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
                             isActive
-                              ? 'bg-[#ECFDF5] dark:bg-[#064E3B]/40 text-[#059669] dark:text-[#34D399] font-bold border border-[#059669]/30 shadow-2xs'
-                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                              ? 'bg-[#059669]/20 text-[#34D399] font-bold border border-[#059669]/60 shadow-[0_0_12px_rgba(5,150,105,0.25)]'
+                              : 'text-slate-200 hover:text-white hover:bg-white/5'
                           }`}
                         >
                           <div className="flex items-center gap-3">
                             <Icon
-                              className={`w-4 h-4 ${
+                              className={`w-4 h-4 shrink-0 transition-colors ${
                                 isActive
-                                  ? 'text-[#059669] dark:text-[#34D399]'
-                                  : 'text-slate-500 dark:text-slate-400'
+                                  ? 'text-[#34D399]'
+                                  : 'text-slate-400 group-hover:text-slate-200'
                               }`}
                             />
                             <span>{item.label}</span>
                           </div>
                           {item.isPro && !isSubscribed && (
-                            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60">
+                            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
                               PRO
                             </span>
                           )}
@@ -425,10 +425,10 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   {onOpenReferralModal && (
                     <button
                       onClick={() => handleOpenTool(onOpenReferralModal)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-900 dark:text-white bg-[#ECFDF5] dark:bg-[#064E3B]/40 border border-[#059669]/25 hover:bg-[#D1FAE5] dark:hover:bg-[#064E3B]/70 transition-colors cursor-pointer mt-1"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-[#34D399] bg-[#059669]/20 border border-[#059669]/40 hover:bg-[#059669]/30 transition-colors cursor-pointer mt-1 shadow-2xs"
                     >
                       <div className="flex items-center gap-3">
-                        <Gift className="w-4 h-4 text-[#059669] dark:text-[#34D399]" />
+                        <Gift className="w-4 h-4 text-[#34D399]" />
                         <span className="font-bold">Refer & Earn 5% Off</span>
                       </div>
                       <span className="text-[9px] bg-[#059669] text-[#FEFEFE] px-1.5 py-0.5 rounded font-bold">
@@ -440,10 +440,10 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                   {onOpenSupportModal && (
                     <button
                       onClick={() => handleOpenTool(onOpenSupportModal)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors cursor-pointer mt-1"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 bg-[#082F4B] hover:bg-[#0F2744] border border-slate-700/70 transition-colors cursor-pointer mt-1"
                     >
                       <div className="flex items-center gap-3">
-                        <Headphones className="w-4 h-4 text-[#059669] dark:text-[#34D399]" />
+                        <Headphones className="w-4 h-4 text-[#34D399]" />
                         <span className="font-bold">Contact Admin & Support</span>
                       </div>
                       <span className="text-[9px] bg-[#059669] text-[#FEFEFE] px-1.5 py-0.5 rounded font-bold">
@@ -454,8 +454,8 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
                 </div>
 
                 {/* Official Community Handles */}
-                <div className="pt-2 px-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">
+                <div className="pt-2 px-1 text-slate-300 [&_a]:text-slate-300 [&_a:hover]:text-[#34D399] [&_a:hover]:bg-white/10">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Official Community
                   </p>
                   <SocialMediaLinks variant="sidebar" />
@@ -464,9 +464,9 @@ export const MobileNavDrawer: React.FC<MobileNavDrawerProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+            <div className="p-3 border-t border-slate-800 bg-[#082F4B]/90 flex items-center justify-between text-[11px] text-slate-300">
               <span className="font-medium">MarketMate™ • Financial OS</span>
-              <span className="text-[10px] bg-[#ECFDF5] text-[#059669] dark:bg-[#064E3B] dark:text-[#34D399] px-2 py-0.5 rounded-full font-bold border border-[#059669]/20">
+              <span className="text-[10px] bg-[#064E3B] text-[#34D399] px-2 py-0.5 rounded-full font-bold border border-[#059669]/40">
                 {isDemoMode ? 'Demo Pro Unlocked' : isSubscribed ? 'Pro Active' : 'Free Tier'}
               </span>
             </div>

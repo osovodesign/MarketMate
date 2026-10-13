@@ -216,7 +216,7 @@ const MESSAGE_TEMPLATES = [
 
 export const AdminPortalView: React.FC = () => {
   const { user, isSuperAdmin, business, isCloudConnected } = useAuth();
-  const { sales, expenses, invoices } = useBusinessData();
+  const { sales, expenses, invoices, products } = useBusinessData();
   const { allAnnouncements, sendAnnouncement, deleteAnnouncement } = useNotifications();
 
   // Navigation tab
@@ -230,12 +230,25 @@ export const AdminPortalView: React.FC = () => {
   const [adminReplyText, setAdminReplyText] = useState<string>('');
   const [isUpdatingTicket, setIsUpdatingTicket] = useState<boolean>(false);
 
-  // Loading & refresh
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // Loading & refresh (Instant cache hydration via localStorage + sessionStorage)
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    try {
+      return !localStorage.getItem('mm_admin_cache_merchants') && !sessionStorage.getItem('mm_admin_cache_merchants');
+    } catch {
+      return true;
+    }
+  });
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [merchants, setMerchants] = useState<MerchantSummary[]>([]);
+  const [merchants, setMerchants] = useState<MerchantSummary[]>(() => {
+    try {
+      const saved = localStorage.getItem('mm_admin_cache_merchants') || sessionStorage.getItem('mm_admin_cache_merchants');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedMerchant, setSelectedMerchant] = useState<MerchantSummary | null>(null);
   const [referralsList, setReferralsList] = useState<ReferralRecord[]>([]);
 
@@ -250,18 +263,24 @@ export const AdminPortalView: React.FC = () => {
   const [isEditingBankConfig, setIsEditingBankConfig] = useState<boolean>(false);
   const [bankConfigForm, setBankConfigForm] = useState<Partial<PlatformBankConfig>>({});
 
-  // Platform metrics
-  const [overview, setOverview] = useState<PlatformOverview>({
-    totalMerchants: 1,
-    totalVolumeNGN: 0,
-    totalSalesCount: 0,
-    totalExpensesCount: 0,
-    totalInvoicesCount: 0,
-    activeTransactingStores: 0,
-    zeroSalesStores: 0,
-    dormantStores: 0,
-    aiQueriesEstimated: 24,
-    cloudSyncStatus: 'online',
+  // Platform metrics (Instantly hydrated from cache)
+  const [overview, setOverview] = useState<PlatformOverview>(() => {
+    try {
+      const saved = localStorage.getItem('mm_admin_cache_overview') || sessionStorage.getItem('mm_admin_cache_overview');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      totalMerchants: 1,
+      totalVolumeNGN: 0,
+      totalSalesCount: 0,
+      totalExpensesCount: 0,
+      totalInvoicesCount: 0,
+      activeTransactingStores: 0,
+      zeroSalesStores: 0,
+      dormantStores: 0,
+      aiQueriesEstimated: 24,
+      cloudSyncStatus: 'online',
+    };
   });
 
   // Segmentation Filter for Merchant Directory
@@ -373,28 +392,42 @@ export const AdminPortalView: React.FC = () => {
   const fetchPlatformData = async () => {
     setIsRefreshing(true);
     try {
-      const bizList: MerchantSummary[] = [];
-      let totalGMV = 0;
-      let totalSales = 0;
+      // 1. Fetch top-level collections concurrently
+      const [usersSnapResult, bizSnapResult, refsResult, bankConfigResult] = await Promise.allSettled([
+        getDocs(collection(db, 'users')),
+        getDocs(collection(db, 'businesses')),
+        fetchAllReferrals(),
+        fetchPlatformBankConfig(),
+      ]);
 
-      // Pre-fetch user emails map so all store owners have their verified emails mapped
       const userEmailMap = new Map<string, string>();
-      try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        usersSnap.forEach((uDoc) => {
+      if (usersSnapResult.status === 'fulfilled') {
+        usersSnapResult.value.forEach((uDoc) => {
           const uData = uDoc.data();
           if (uData.email) {
             userEmailMap.set(uDoc.id, uData.email);
           }
         });
-      } catch (uErr) {
-        console.warn('Listing users for email resolution notice:', uErr);
       }
 
-      try {
-        const bizSnap = await getDocs(collection(db, 'businesses'));
-        if (!bizSnap.empty) {
-          for (const docSnap of bizSnap.docs) {
+      if (refsResult.status === 'fulfilled') {
+        setReferralsList(refsResult.value);
+      }
+      if (bankConfigResult.status === 'fulfilled' && bankConfigResult.value) {
+        setBankConfig(bankConfigResult.value);
+        setBankConfigForm(bankConfigResult.value);
+      }
+
+      let bizList: MerchantSummary[] = [];
+      let totalGMV = 0;
+      let totalSales = 0;
+
+      if (bizSnapResult.status === 'fulfilled' && !bizSnapResult.value.empty) {
+        const docs = bizSnapResult.value.docs;
+
+        // Process all businesses concurrently with Promise.all
+        const summaries = await Promise.all(
+          docs.map(async (docSnap) => {
             const data = docSnap.data();
             const bId = docSnap.id;
             const isCurr = business?.id === bId;
@@ -405,14 +438,26 @@ export const AdminPortalView: React.FC = () => {
             let bProductsCount = 0;
             let bExpensesCount = 0;
 
-            // 1. Fetch real sales subcollection
-            try {
-              const salesSnap = await getDocs(collection(db, 'businesses', bId, 'sales'));
-              if (!salesSnap.empty) {
-                bSalesCount = salesSnap.size;
+            if (isCurr) {
+              // Current store metrics are already live in local memory - zero network delay!
+              bSalesCount = sales.length;
+              bSalesVolume = sales.reduce((acc, s) => acc + (s.revenue || s.totalAmount || 0), 0);
+              bLastSaleAt = sales[0]?.createdAt || sales[0]?.saleDate;
+              bProductsCount = products.length;
+              bExpensesCount = expenses.length;
+            } else {
+              // Fetch sales, products, and expenses in parallel for other merchants
+              const [salesRes, prodRes, expRes] = await Promise.allSettled([
+                getDocs(collection(db, 'businesses', bId, 'sales')),
+                getDocs(collection(db, 'businesses', bId, 'products')),
+                getDocs(collection(db, 'businesses', bId, 'expenses')),
+              ]);
+
+              if (salesRes.status === 'fulfilled' && !salesRes.value.empty) {
+                bSalesCount = salesRes.value.size;
                 let vol = 0;
                 let latestSale: string | undefined = undefined;
-                salesSnap.forEach((sDoc) => {
+                salesRes.value.forEach((sDoc) => {
                   const s = sDoc.data();
                   const amt = Number(
                     s.revenue ??
@@ -428,32 +473,15 @@ export const AdminPortalView: React.FC = () => {
                 });
                 bSalesVolume = vol;
                 if (latestSale) bLastSaleAt = latestSale;
-              } else if (isCurr && sales.length > 0) {
-                bSalesCount = sales.length;
-                bSalesVolume = sales.reduce((acc, s) => acc + (s.revenue || s.totalAmount || 0), 0);
-                bLastSaleAt = sales[0]?.createdAt || sales[0]?.saleDate;
               }
-            } catch (err) {
-              console.warn(`Sales fetch notice for ${bId}:`, err);
-              if (isCurr) {
-                bSalesCount = sales.length;
-                bSalesVolume = sales.reduce((acc, s) => acc + (s.revenue || s.totalAmount || 0), 0);
-                bLastSaleAt = sales[0]?.createdAt || sales[0]?.saleDate;
+
+              if (prodRes.status === 'fulfilled') {
+                bProductsCount = prodRes.value.size;
               }
-            }
 
-            // 2. Fetch products count
-            try {
-              const prodSnap = await getDocs(collection(db, 'businesses', bId, 'products'));
-              bProductsCount = prodSnap.size;
-            } catch (err) {}
-
-            // 3. Fetch expenses count
-            try {
-              const expSnap = await getDocs(collection(db, 'businesses', bId, 'expenses'));
-              bExpensesCount = expSnap.size;
-            } catch (err) {
-              if (isCurr) bExpensesCount = expenses.length;
+              if (expRes.status === 'fulfilled') {
+                bExpensesCount = expRes.value.size;
+              }
             }
 
             // Determine relative activity status
@@ -491,20 +519,17 @@ export const AdminPortalView: React.FC = () => {
               txStatus = 'zero_sales';
             }
 
-            totalGMV += bSalesVolume;
-            totalSales += bSalesCount;
-
             const resolvedOwnerEmail =
               data.ownerEmail ||
               (data.ownerId ? userEmailMap.get(data.ownerId) : undefined) ||
               (data.ownerId === user?.id ? user.email : undefined);
 
-            // Auto-heal missing ownerEmail on business doc
+            // Auto-heal missing ownerEmail on business doc asynchronously
             if (resolvedOwnerEmail && !data.ownerEmail) {
               setDoc(doc(db, 'businesses', bId), { ownerEmail: resolvedOwnerEmail }, { merge: true }).catch(() => {});
             }
 
-            bizList.push({
+            return {
               id: bId,
               businessName: data.businessName || 'Unnamed Business',
               businessType: data.businessType || 'General Merchant',
@@ -523,14 +548,16 @@ export const AdminPortalView: React.FC = () => {
               activityStatus: actStatus,
               transactionStatus: txStatus,
               isCurrentStore: isCurr,
-            });
-          }
-        }
-      } catch (err) {
-        console.warn('Direct business collection fetch:', err);
+            } as MerchantSummary;
+          })
+        );
+
+        bizList = summaries;
+        totalGMV = summaries.reduce((acc, m) => acc + m.totalSalesVolume, 0);
+        totalSales = summaries.reduce((acc, m) => acc + m.salesCount, 0);
       }
 
-      // If no remote businesses or single tenant fallback, include current store + active tenant metrics
+      // If no remote businesses or single tenant fallback, include current store
       if (bizList.length === 0 && business) {
         const currentSalesTotal = sales.reduce((acc, s) => acc + (s.revenue || s.totalAmount || 0), 0);
         bizList.push({
@@ -562,7 +589,7 @@ export const AdminPortalView: React.FC = () => {
         setSelectedRecipientId(bizList[0].id);
       }
 
-      setOverview({
+      const updatedOverview: PlatformOverview = {
         totalMerchants: Math.max(bizList.length, 1),
         totalVolumeNGN: totalGMV,
         totalSalesCount: totalSales,
@@ -573,26 +600,19 @@ export const AdminPortalView: React.FC = () => {
         dormantStores: bizList.filter((m) => m.activityStatus === 'dormant' || m.activityStatus === 'inactive').length,
         aiQueriesEstimated: 42,
         cloudSyncStatus: isCloudConnected ? 'online' : 'degraded',
-      });
+      };
+      setOverview(updatedOverview);
 
+      // Save to cache for instant rendering next time
       try {
-        const refs = await fetchAllReferrals();
-        setReferralsList(refs);
-      } catch (err) {
-        console.warn('Referrals fetch notice:', err);
-      }
+        localStorage.setItem('mm_admin_cache_merchants', JSON.stringify(bizList));
+        localStorage.setItem('mm_admin_cache_overview', JSON.stringify(updatedOverview));
+        sessionStorage.setItem('mm_admin_cache_merchants', JSON.stringify(bizList));
+        sessionStorage.setItem('mm_admin_cache_overview', JSON.stringify(updatedOverview));
+      } catch {}
 
-      try {
-        await loadSubscriptionData();
-      } catch (err) {
-        console.warn('Subscriptions fetch notice:', err);
-      }
-
-      try {
-        await loadSupportData();
-      } catch (err) {
-        console.warn('Support tickets fetch notice:', err);
-      }
+      // Fire subscriptions and support tickets in background
+      Promise.allSettled([loadSubscriptionData(), loadSupportData()]).catch(() => {});
     } catch (error) {
       console.error('Error fetching admin overview:', error);
     } finally {
@@ -1035,18 +1055,22 @@ export const AdminPortalView: React.FC = () => {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               <MarketMateLogo size="sm" variant="dark" />
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-semibold">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Super Admin Command</span>
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-400/10 text-emerald-200 border border-emerald-400/20 text-xs font-bold">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>CAC Reg No: 9931755</span>
               </div>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
               MarketMate Platform Command Center
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              Super Admin dashboard for <span className="font-semibold text-white">{SUPER_ADMIN_CONFIG.email}</span>. Broadcast announcements, send direct merchant notices, monitor stores, and inspect cloud health.
+              Super Admin dashboard for <span className="font-semibold text-white">{SUPER_ADMIN_CONFIG.email}</span>. Registered Corporate Entity: <span className="text-emerald-300 font-semibold">{SUPER_ADMIN_CONFIG.companyName} (CAC Reg. No: 9931755)</span>. Broadcast announcements, send direct merchant notices, monitor stores, and inspect cloud health.
             </p>
           </div>
 

@@ -65,51 +65,53 @@ export const Shell: React.FC<ShellProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#FEFEFE] dark:bg-[#082F4B] flex text-[#001A35] dark:text-[#FEFEFE] font-sans antialiased selection:bg-[#059669]/20 selection:text-[#001A35] transition-colors">
-      {/* Desktop Persistent Sidebar */}
-      <Sidebar
+    <div className="min-h-screen bg-[#FEFEFE] dark:bg-[#082F4B] flex flex-col text-[#001A35] dark:text-[#FEFEFE] font-sans antialiased selection:bg-[#059669]/20 selection:text-[#001A35] transition-colors">
+      {/* Urgent/Important Announcement Banner */}
+      <AnnouncementBanner onNavigate={onNavigate} />
+
+      {/* Global App Full-Width Top Navbar */}
+      <Header
         currentView={currentView}
         onNavigate={onNavigate}
-        onOpenAddSale={onOpenAddSale}
-        onOpenAddExpense={onOpenAddExpense}
-        onOpenPricingCalculator={onOpenPricingCalculator}
-        onOpenProfitSimulator={onOpenProfitSimulator}
-        onOpenGoalsModal={onOpenGoalsModal}
-        onOpenBackupModal={onOpenBackupModal}
-        onOpenFxModal={onOpenFxModal}
+        businessName={businessName}
+        currency={currency}
+        onLogout={onLogout}
         onOpenStaffModal={onOpenStaffModal}
         onOpenLogoExportModal={onOpenLogoExportModal}
+        onOpenNotificationDrawer={onOpenNotificationDrawer}
+        onOpenTourModal={onOpenTourModal}
         onOpenReferralModal={onOpenReferralModal}
+        onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
         onOpenSupportModal={handleOpenSupport}
-        businessName={businessName}
-        businessType={businessType}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 pb-24 lg:pb-8">
-        {/* Urgent/Important Announcement Banner */}
-        <AnnouncementBanner onNavigate={onNavigate} />
-
-        {/* Global App Header */}
-        <Header
+      {/* Body Area with Left Sidebar and Main Content */}
+      <div className="flex-1 flex min-w-0 w-full relative">
+        {/* Desktop Persistent Sidebar */}
+        <Sidebar
           currentView={currentView}
           onNavigate={onNavigate}
-          businessName={businessName}
-          currency={currency}
-          onLogout={onLogout}
+          onOpenAddSale={onOpenAddSale}
+          onOpenAddExpense={onOpenAddExpense}
+          onOpenPricingCalculator={onOpenPricingCalculator}
+          onOpenProfitSimulator={onOpenProfitSimulator}
+          onOpenGoalsModal={onOpenGoalsModal}
+          onOpenBackupModal={onOpenBackupModal}
+          onOpenFxModal={onOpenFxModal}
           onOpenStaffModal={onOpenStaffModal}
           onOpenLogoExportModal={onOpenLogoExportModal}
-          onOpenNotificationDrawer={onOpenNotificationDrawer}
-          onOpenTourModal={onOpenTourModal}
           onOpenReferralModal={onOpenReferralModal}
-          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           onOpenSupportModal={handleOpenSupport}
+          businessName={businessName}
+          businessType={businessType}
         />
 
         {/* Viewport Content Container */}
-        <main className="flex-1 w-full max-w-7xl mx-auto p-3.5 sm:p-6 lg:p-8">
-          {children}
-        </main>
+        <div className="flex-1 flex flex-col min-w-0 pb-24 lg:pb-8">
+          <main className="flex-1 w-full max-w-7xl mx-auto p-3.5 sm:p-6 lg:p-8">
+            {children}
+          </main>
+        </div>
       </div>
 
       {/* Mobile Full Navigation Drawer */}

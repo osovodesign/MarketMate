@@ -14,6 +14,7 @@ import { formatMoney } from '../../lib/calculations';
 import { CURRENCIES } from '../../lib/currencies';
 import { useAuth } from '../../context/AuthContext';
 import { MarketMateLogo } from '../common/MarketMateLogo';
+import { printThermalReceipt } from '../../lib/printUtils';
 
 interface POSReceiptModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
 }) => {
   const { business } = useAuth();
   const [copied, setCopied] = React.useState(false);
+  const [isPrinting, setIsPrinting] = React.useState(false);
 
   if (!isOpen || sales.length === 0) return null;
 
@@ -49,8 +51,13 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
   const cashierName = sales[0]?.staffName || 'Cashier';
   const currMeta = CURRENCIES[currency] || CURRENCIES.NGN;
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    await printThermalReceipt('marketmate-printable-receipt', {
+      title: `Receipt-${receiptNumber}`,
+      width: '80mm',
+    });
+    setIsPrinting(false);
   };
 
   const generateReceiptText = (): string => {
@@ -118,84 +125,108 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
         <div className="p-6 bg-slate-50 overflow-y-auto flex-1 flex flex-col items-center">
           <div
             id="marketmate-printable-receipt"
-            className="w-full bg-white p-5 rounded-xl border border-slate-200 shadow-2xs font-mono text-xs text-slate-800 space-y-3"
+            className="w-full bg-white p-5 rounded-xl border border-slate-200 shadow-2xs font-mono text-xs text-slate-900 space-y-3"
           >
             {/* Store Header */}
-            <div className="text-center space-y-0.5 pb-2 border-b border-dashed border-slate-300">
-              <h3 className="font-bold text-sm tracking-tight text-slate-900 uppercase">
+            <div className="text-center space-y-1 pb-3 border-b border-dashed border-slate-400">
+              {business?.logoUrl ? (
+                <div className="flex justify-center pb-1">
+                  <img
+                    src={business.logoUrl}
+                    alt={business.businessName || 'Store Logo'}
+                    className="max-h-14 max-w-[160px] object-contain mx-auto"
+                  />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white font-bold flex items-center justify-center mx-auto mb-1 text-sm">
+                  {business?.businessName?.charAt(0) || 'M'}
+                </div>
+              )}
+              <h3 className="font-extrabold text-sm tracking-tight text-slate-950 uppercase">
                 {business?.businessName || 'Ada Fashion & Fabrics'}
               </h3>
-              <p className="text-[11px] text-slate-500 font-sans">{business?.businessType || 'Retail & Wholesale'}</p>
-              {business?.cacNumber ? (
-                <p className="text-[10px] text-emerald-700 font-sans font-semibold">CAC Reg No: {business.cacNumber}</p>
-              ) : (
-                <p className="text-[10px] text-slate-400 font-sans">Nigeria</p>
+              <p className="text-[11px] text-slate-600 font-sans font-medium">{business?.businessType || 'Retail & Wholesale'}</p>
+              {business?.cacNumber && (
+                <p className="text-[10px] text-emerald-800 font-sans font-bold">CAC Reg No: {business.cacNumber}</p>
+              )}
+              {business?.phone && (
+                <p className="text-[10px] text-slate-600 font-sans">Tel: {business.phone}</p>
+              )}
+              {business?.address && (
+                <p className="text-[10px] text-slate-500 font-sans">{business.address}</p>
               )}
             </div>
 
             {/* Receipt Meta */}
-            <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-600 py-1">
-              <span>Receipt: <strong className="text-slate-900">{receiptNumber}</strong></span>
+            <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-700 py-1 border-b border-dashed border-slate-300">
+              <span>Receipt: <strong className="text-slate-950 font-bold">{receiptNumber}</strong></span>
               <span className="text-right">Date: {saleDate}</span>
               <span>Cashier: {cashierName}</span>
               <span className="text-right">Method: {paymentMethod}</span>
-              <span className="col-span-2 text-slate-700">Customer: <strong>{customerName}</strong></span>
+              <span className="col-span-2 text-slate-800 pt-0.5">Customer: <strong>{customerName}</strong></span>
             </div>
 
             {/* Items List */}
-            <div className="border-t border-b border-dashed border-slate-300 py-2 space-y-1.5">
-              <div className="flex justify-between font-bold text-[11px] text-slate-700">
-                <span>ITEM / QTY</span>
-                <span>AMOUNT</span>
+            <div className="py-1 space-y-2">
+              <div className="flex justify-between font-bold text-[11px] text-slate-800 pb-1 border-b border-slate-300">
+                <span className="text-left">ITEM / QTY</span>
+                <span className="text-right">AMOUNT</span>
               </div>
               {sales.map((s, idx) => (
-                <div key={s.id || idx} className="space-y-0.5">
-                  <div className="flex justify-between text-slate-900 font-semibold">
-                    <span className="truncate pr-2">{s.productName}</span>
-                    <span>{currMeta.symbol}{s.revenue.toLocaleString()}</span>
+                <div key={s.id || idx} className="space-y-0.5 pb-1 border-b border-dotted border-slate-200">
+                  <div className="flex justify-between text-slate-950 font-bold">
+                    <span className="truncate pr-2">{idx + 1}. {s.productName}</span>
+                    <span className="tabular-nums shrink-0">{currMeta.symbol}{s.revenue.toLocaleString()}</span>
                   </div>
-                  <div className="text-[10px] text-slate-500">
-                    {s.quantity} x {currMeta.symbol}{s.sellingPrice.toLocaleString()}
+                  <div className="text-[10px] text-slate-500 flex justify-between">
+                    <span>{s.quantity} @ {currMeta.symbol}{s.sellingPrice.toLocaleString()}</span>
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Calculations & Totals */}
-            <div className="space-y-1 pt-1 text-xs">
-              <div className="flex justify-between text-slate-600">
+            <div className="space-y-1.5 pt-1 text-xs border-t border-dashed border-slate-400">
+              <div className="flex justify-between text-slate-700">
                 <span>Total Items:</span>
-                <span>{totalItems}</span>
+                <span className="font-bold tabular-nums">{totalItems}</span>
               </div>
-              <div className="flex justify-between font-bold text-sm text-slate-900 pt-1 border-t border-slate-200">
+              <div className="flex justify-between font-black text-sm text-slate-950 pt-1 border-t border-slate-400">
                 <span>TOTAL AMOUNT:</span>
-                <span>{currMeta.symbol}{totalRevenue.toLocaleString()}</span>
+                <span className="tabular-nums">{currMeta.symbol}{totalRevenue.toLocaleString()}</span>
               </div>
               {amountTendered > 0 && (
                 <>
-                  <div className="flex justify-between text-[11px] text-slate-600">
-                    <span>Tendered:</span>
-                    <span>{currMeta.symbol}{amountTendered.toLocaleString()}</span>
+                  <div className="flex justify-between text-[11px] text-slate-700">
+                    <span>Amount Tendered:</span>
+                    <span className="tabular-nums">{currMeta.symbol}{amountTendered.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-[11px] font-bold text-emerald-700">
+                  <div className="flex justify-between text-[11px] font-bold text-emerald-800">
                     <span>Change Returned:</span>
-                    <span>{currMeta.symbol}{change.toLocaleString()}</span>
+                    <span className="tabular-nums">{currMeta.symbol}{change.toLocaleString()}</span>
                   </div>
                 </>
               )}
             </div>
 
             {/* Barcode & Footer note */}
-            <div className="text-center pt-3 border-t border-dashed border-slate-300 space-y-1.5 flex flex-col items-center">
-              <div className="font-mono text-[11px] tracking-widest text-slate-500 font-bold">
+            <div className="text-center pt-3 border-t border-dashed border-slate-400 space-y-2 flex flex-col items-center">
+              <div className="font-mono text-[11px] tracking-widest text-slate-600 font-bold select-none">
                 ||||| | |||| ||| |||||| | ||||
               </div>
-              <p className="text-[10px] text-slate-500 font-sans">
-                Thank you for your patronage! Items sold in good condition cannot be returned after 48 hours.
+              <p className="text-[10px] text-slate-600 font-sans leading-tight">
+                Thank you for your patronage! Items in good condition are covered under store policy.
               </p>
-              <div className="pt-1 flex flex-col items-center justify-center gap-0.5">
-                <MarketMateLogo size="xs" variant="light" />
-                <span className="text-[9px] text-slate-400 font-sans">Powered by MarketMate™ (CAC Reg: 9931755)</span>
+              <div className="pt-2 flex flex-col items-center justify-center gap-1 border-t border-dotted border-slate-300 w-full">
+                <MarketMateLogo size="xs" variant="light" mode="icon" />
+                <div className="text-center font-sans">
+                  <p className="text-[9px] font-bold text-slate-800 tracking-tight">
+                    Powered by MarketMate Technologies Limited
+                  </p>
+                  <p className="text-[8px] text-slate-500 font-medium">
+                    CAC Reg. No: 9931755 • getmarketmate.online
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -206,10 +237,11 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
           <button
             type="button"
             onClick={handlePrint}
-            className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold transition-colors"
+            disabled={isPrinting}
+            className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-colors disabled:opacity-50 cursor-pointer"
           >
-            <Printer className="w-3.5 h-3.5 text-slate-600" />
-            <span>Print</span>
+            <Printer className={`w-3.5 h-3.5 ${isPrinting ? 'animate-spin' : ''}`} />
+            <span>{isPrinting ? 'Printing...' : 'Print'}</span>
           </button>
           <button
             type="button"

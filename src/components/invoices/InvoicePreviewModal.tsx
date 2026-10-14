@@ -19,6 +19,7 @@ import { formatCurrency, formatDate } from '../../lib/formatters';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { MarketMateLogo } from '../common/MarketMateLogo';
+import { printThermalReceipt } from '../../lib/printUtils';
 
 interface InvoicePreviewModalProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
 }) => {
   const { business } = useAuth();
   const printableRef = useRef<HTMLDivElement>(null);
+  const [isPrinting, setIsPrinting] = React.useState(false);
 
   if (!isOpen || !invoice) return null;
 
@@ -44,8 +46,17 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
   const isPaid = invoice.status === 'paid';
   const isPartial = invoice.status === 'partial';
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    if (printableRef.current) {
+      setIsPrinting(true);
+      await printThermalReceipt(printableRef.current, {
+        title: `Invoice-${invoice.invoiceNumber}`,
+        width: '210mm',
+      });
+      setIsPrinting(false);
+    } else {
+      window.print();
+    }
   };
 
   // Generate WhatsApp message copy
@@ -172,10 +183,11 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
               variant="outline"
               size="sm"
               onClick={handlePrint}
+              disabled={isPrinting}
               className="text-slate-700"
             >
-              <Printer className="w-3.5 h-3.5 mr-1" />
-              <span className="hidden sm:inline">Print / PDF</span>
+              <Printer className={`w-3.5 h-3.5 mr-1 ${isPrinting ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isPrinting ? 'Printing...' : 'Print / PDF'}</span>
             </Button>
 
             <button
@@ -197,10 +209,18 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
             {/* Header: Business & Invoice Details */}
             <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b border-slate-200 pb-8">
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-800 text-white font-bold flex items-center justify-center text-lg">
-                    {business?.businessName?.charAt(0) || 'M'}
-                  </div>
+                <div className="flex items-center gap-3">
+                  {business?.logoUrl ? (
+                    <img
+                      src={business.logoUrl}
+                      alt={business.businessName || 'Store Logo'}
+                      className="max-h-12 max-w-[150px] object-contain rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white font-bold flex items-center justify-center text-lg shadow-2xs">
+                      {business?.businessName?.charAt(0) || 'M'}
+                    </div>
+                  )}
                   <div>
                     <h3 className="text-xl font-bold text-slate-900 tracking-tight">
                       {business?.businessName || 'Ada Fashion & Fabrics'}
@@ -374,7 +394,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
               <div className="flex items-center gap-2">
                 <MarketMateLogo size="xs" variant="light" />
                 <span className="text-[11px] text-slate-400">
-                  • Powered by MarketMate Technologies (CAC Reg. No: 9931755)
+                  • Powered by MarketMate Technologies Limited (CAC Reg. No: 9931755)
                 </span>
               </div>
               <div className="text-center sm:text-right">

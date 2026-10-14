@@ -16,7 +16,7 @@ export interface LegalSection {
 
 export const LEGAL_CONFIG = {
   appName: 'MarketMate',
-  entityName: 'MarketMate Technologies',
+  entityName: 'MarketMate Technologies Limited',
   cacRegNo: '9931755',
   cacDisplay: 'CAC Reg No: 9931755',
   founderName: 'Osovoyoron Ogheneovo Daniel',

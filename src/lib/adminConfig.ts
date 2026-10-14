@@ -1,6 +1,6 @@
 // Super Admin Configuration for MarketMate Owner & Company Administration
 export const SUPER_ADMIN_CONFIG = {
-  companyName: 'MarketMate Technologies',
+  companyName: 'MarketMate Technologies Limited',
   cacRegNo: '9931755',
   cacDisplay: 'CAC Reg No: 9931755',
   email: 'getmarketmate@gmail.com',

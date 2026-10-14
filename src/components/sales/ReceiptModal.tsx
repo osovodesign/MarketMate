@@ -19,6 +19,7 @@ import { Badge } from '../ui/Badge';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { formatCurrency, formatPercent, formatDateFriendly } from '../../lib/formatters';
 import { Sale } from '../../types';
+import { printThermalReceipt } from '../../lib/printUtils';
 
 interface ReceiptModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sal
   const currency = business?.currency || 'NGN';
   const [copied, setCopied] = useState(false);
   const [showProfitNote, setShowProfitNote] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   if (!sale) return null;
 
@@ -71,8 +73,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sal
     window.open(waUrl, '_blank');
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    await printThermalReceipt('marketmate-receipt', {
+      title: `Receipt-${receiptNumber}`,
+      width: '80mm',
+    });
+    setIsPrinting(false);
   };
 
   return (
@@ -87,21 +94,32 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sal
         {/* Printable Receipt Card */}
         <div
           id="marketmate-receipt"
-          className="p-6 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-5 text-slate-800"
+          className="p-6 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-4 text-slate-900 font-mono text-xs"
         >
           {/* Header */}
-          <div className="text-center border-b border-dashed border-slate-300 pb-4 space-y-1">
-            <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto mb-2">
-              <Store className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">
+          <div className="text-center border-b border-dashed border-slate-300 pb-3 space-y-1">
+            {business?.logoUrl ? (
+              <div className="flex justify-center pb-1">
+                <img
+                  src={business.logoUrl}
+                  alt={business.businessName || 'Store Logo'}
+                  className="max-h-14 max-w-[160px] object-contain mx-auto"
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white font-bold flex items-center justify-center mx-auto mb-2 text-sm">
+                {business?.businessName?.charAt(0) || 'M'}
+              </div>
+            )}
+            <h3 className="text-base font-black text-slate-950 tracking-tight uppercase">
               {business?.businessName || 'Business Receipt'}
             </h3>
-            <p className="text-xs text-slate-500">{business?.businessType}</p>
+            <p className="text-xs text-slate-600 font-sans font-medium">{business?.businessType}</p>
             {business?.cacNumber && (
-              <p className="text-[11px] font-semibold text-emerald-700">CAC Reg No: {business.cacNumber}</p>
+              <p className="text-[11px] font-bold text-emerald-800 font-sans">CAC Reg No: {business.cacNumber}</p>
             )}
-            {business?.phone && <p className="text-xs text-slate-500">Tel: {business.phone}</p>}
+            {business?.phone && <p className="text-xs text-slate-600 font-sans">Tel: {business.phone}</p>}
+            {business?.address && <p className="text-xs text-slate-500 font-sans">{business.address}</p>}
           </div>
 
           {/* Metadata Grid */}
@@ -162,8 +180,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sal
             </div>
           </div>
 
-          {/* Private Merchant Margin Note */}
-          <div className="pt-2 border-t border-slate-100">
+          {/* Private Merchant Margin Note (Hidden on Print) */}
+          <div className="pt-2 border-t border-slate-100 print:hidden">
             <div className="flex items-center justify-between">
               <button
                 type="button"
@@ -186,11 +204,21 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sal
           </div>
 
           {/* Footer message */}
-          <div className="pt-3 border-t border-slate-100 flex flex-col items-center justify-center gap-1.5">
-            <MarketMateLogo size="xs" variant="light" />
-            <p className="text-[10px] text-center text-slate-400">
-              Thank you for your patronage! Digital store receipt powered by MarketMate™ (CAC Reg: 9931755).
+          <div className="pt-3 border-t border-dashed border-slate-300 flex flex-col items-center justify-center gap-2">
+            <p className="text-[10px] text-center text-slate-600 font-sans leading-tight">
+              Thank you for your patronage! Items in good condition are covered under store policy.
             </p>
+            <div className="pt-2 flex flex-col items-center justify-center gap-1 border-t border-dotted border-slate-300 w-full">
+              <MarketMateLogo size="xs" variant="light" mode="icon" />
+              <div className="text-center font-sans">
+                <p className="text-[9px] font-bold text-slate-800 tracking-tight">
+                  Powered by MarketMate Technologies Limited
+                </p>
+                <p className="text-[8px] text-slate-500 font-medium">
+                  CAC Reg. No: 9931755 • getmarketmate.online
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -222,10 +250,11 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sal
             variant="secondary"
             size="md"
             onClick={handlePrint}
-            leftIcon={<Printer className="w-4 h-4" />}
+            disabled={isPrinting}
+            leftIcon={<Printer className={`w-4 h-4 ${isPrinting ? 'animate-spin' : ''}`} />}
             className="w-full bg-white border border-slate-200 hover:bg-slate-50"
           >
-            Print Receipt
+            {isPrinting ? 'Printing...' : 'Print Receipt'}
           </Button>
         </div>
       </div>

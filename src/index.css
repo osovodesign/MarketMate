@@ -68,3 +68,41 @@ html.dark body {
   background-color: #082F4B;
   color: #FEFEFE;
 }
+
+/* High-Precision Print & POS Thermal Receipt Rules */
+@media print {
+  @page {
+    margin: 6mm;
+    size: auto;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide navigation, toolbars, and action buttons during print */
+  header,
+  aside,
+  nav,
+  .print\:hidden,
+  button:not(.print\:inline) {
+    display: none !important;
+  }
+
+  /* Ensure printable receipts expand cleanly without scrollbars or clipping */
+  #marketmate-printable-receipt,
+  #marketmate-receipt {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 2mm 0 !important;
+    background: transparent !important;
+    color: #000000 !important;
+  }
+}

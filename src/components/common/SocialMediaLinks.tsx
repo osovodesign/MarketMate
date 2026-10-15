@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
 import {
-  Instagram,
-  MessageCircle,
-  Facebook,
-  Youtube,
-  Linkedin,
-  Video,
   ExternalLink,
   Sparkles,
   Clock,
   X as CloseIcon,
   CheckCircle2,
+  MessageCircle,
+  Instagram,
 } from 'lucide-react';
+import {
+  WhatsAppIcon,
+  TikTokIcon,
+  LinkedInIcon,
+  InstagramIcon,
+  TwitterXIcon,
+  FacebookIcon,
+  YouTubeIcon,
+} from './SocialIcons';
 import {
   SOCIAL_LINKS,
   SocialLink,
@@ -37,24 +42,19 @@ export const SocialMediaLinks: React.FC<SocialMediaLinksProps> = ({
   const getSocialIcon = (id: SocialLink['id'], iconClass = 'w-4 h-4') => {
     switch (id) {
       case 'instagram':
-        return <Instagram className={iconClass} />;
+        return <InstagramIcon className={iconClass} />;
       case 'twitter':
-        // Custom X logo path for accuracy
-        return (
-          <svg className={iconClass} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-        );
+        return <TwitterXIcon className={iconClass} />;
       case 'whatsapp':
-        return <MessageCircle className={iconClass} />;
+        return <WhatsAppIcon className={iconClass} />;
       case 'facebook':
-        return <Facebook className={iconClass} />;
+        return <FacebookIcon className={iconClass} />;
       case 'youtube':
-        return <Youtube className={iconClass} />;
+        return <YouTubeIcon className={iconClass} />;
       case 'linkedin':
-        return <Linkedin className={iconClass} />;
+        return <LinkedInIcon className={iconClass} />;
       case 'tiktok':
-        return <Video className={iconClass} />;
+        return <TikTokIcon className={iconClass} />;
       default:
         return <ExternalLink className={iconClass} />;
     }

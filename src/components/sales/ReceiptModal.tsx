@@ -211,10 +211,10 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, sal
             <div className="pt-2 flex flex-col items-center justify-center gap-1 border-t border-dotted border-slate-300 w-full">
               <MarketMateLogo size="xs" variant="light" mode="icon" />
               <div className="text-center font-sans">
-                <p className="text-[9px] font-bold text-slate-800 tracking-tight">
+                <p className="text-[9px] font-bold text-slate-800 tracking-tight whitespace-nowrap">
                   Powered by MarketMate Technologies Limited
                 </p>
-                <p className="text-[8px] text-slate-500 font-medium">
+                <p className="text-[8px] text-slate-500 font-medium whitespace-nowrap">
                   CAC Reg. No: 9931755 • getmarketmate.online
                 </p>
               </div>

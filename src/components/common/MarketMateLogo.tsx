@@ -6,6 +6,7 @@ export interface MarketMateLogoProps {
   className?: string;
   imageClassName?: string;
   showSubtitle?: boolean;
+  hideSubtitleOnMobile?: boolean;
   variant?: 'light' | 'dark' | 'auto';
   onClick?: () => void;
 }
@@ -153,6 +154,7 @@ export const MarketMateLogo: React.FC<MarketMateLogoProps> = ({
   size = 'md',
   className = '',
   showSubtitle = false,
+  hideSubtitleOnMobile = false,
   variant = 'auto',
   onClick,
 }) => {
@@ -230,7 +232,7 @@ export const MarketMateLogo: React.FC<MarketMateLogoProps> = ({
             <span
               className={`font-medium tracking-tight mt-1 ${subtitleColorClass} ${
                 selectedSize.subtitleClass || 'text-xs'
-              } whitespace-nowrap leading-tight`}
+              } whitespace-nowrap leading-tight ${hideSubtitleOnMobile ? 'hidden sm:block' : ''}`}
             >
               Know Your Numbers, Grow Your Business
             </span>

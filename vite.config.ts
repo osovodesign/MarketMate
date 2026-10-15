@@ -11,6 +11,16 @@ export default defineConfig(() => {
       tailwindcss(),
       {
         name: 'suppress-vite-hmr-ws',
+        enforce: 'post',
+        transform(code, id) {
+          if (id.includes('client.mjs') || id.includes('@vite/client')) {
+            return code
+              .replace('reject(new Error("WebSocket closed without opened."));', 'resolve();')
+              .replace('console.error(`[vite] failed to connect to websocket (${e}). `);', 'console.debug(`[vite] HMR disabled in AI Studio environment`);')
+              .replace('throw e;', '/* HMR disabled in AI Studio */ return;')
+              .replace('error: (err) => console.error("[vite]", err)', 'error: (err) => console.debug("[vite]", err)');
+          }
+        },
         transformIndexHtml: {
           order: 'pre',
           handler() {

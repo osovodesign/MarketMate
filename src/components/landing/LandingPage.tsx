@@ -10,6 +10,7 @@ import {
   Smartphone,
   Sparkles,
   HelpCircle,
+  Globe,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { MarketMateLogo } from '../common/MarketMateLogo';
@@ -29,21 +30,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   return (
     <div className="min-h-screen bg-white text-slate-900 selection:bg-emerald-100 selection:text-emerald-900">
       {/* Navigation Header */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center">
-            <MarketMateLogo size="md" showSubtitle={true} />
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-100/90 shadow-2xs">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-3">
+          {/* Logo with tagline visible on desktop/tablet and hidden on mobile */}
+          <div className="flex items-center min-w-0 shrink">
+            <MarketMateLogo size="md" showSubtitle={true} hideSubtitleOnMobile={true} />
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <PWAInstallButton variant="compact" />
+          {/* Action Buttons arranged properly with zero mobile overflow */}
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Install App: compact icon on mobile, full labeled badge on desktop */}
+            <div className="hidden sm:block">
+              <PWAInstallButton variant="compact" />
+            </div>
+            <div className="sm:hidden">
+              <PWAInstallButton
+                variant="icon"
+                className="w-8 h-8 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 flex items-center justify-center shrink-0"
+              />
+            </div>
+
             <button
               onClick={onLogin}
-              className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-3 py-2 transition-colors cursor-pointer"
+              className="text-xs sm:text-sm font-semibold text-slate-700 hover:text-slate-950 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer whitespace-nowrap"
             >
               Log In
             </button>
-            <Button onClick={onStartFree} size="sm">
+            <Button
+              onClick={onStartFree}
+              size="sm"
+              className="px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0"
+            >
               Start Free
             </Button>
           </div>
@@ -311,24 +328,49 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       {/* Footer */}
       <footer className="py-8 bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <MarketMateLogo size="sm" />
-            <span>— Know Your Numbers. Grow Your Business.</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+          {/* Top Row: Website link at top-left, CAC Reg. No. in a straight line at top-right */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            {/* Top Left: Website link & Logo */}
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+              <a
+                href="https://getmarketmate.online"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-400 font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors whitespace-nowrap text-xs shadow-2xs"
+                title="Official MarketMate Website"
+              >
+                <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>getmarketmate.online</span>
+              </a>
+              <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+              <div className="flex items-center gap-2">
+                <MarketMateLogo size="sm" />
+                <span className="text-slate-500 dark:text-slate-400 text-xs hidden md:inline">
+                  — Know Your Numbers. Grow Your Business.
+                </span>
+              </div>
+            </div>
+
+            {/* Top Right: CAC Reg No in a guaranteed straight line */}
+            <div className="flex items-center shrink-0">
+              <span className="whitespace-nowrap font-semibold text-emerald-900 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 px-3 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800 text-xs inline-flex items-center gap-1.5 shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                <span className="whitespace-nowrap">CAC Reg. No: 9931755</span>
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <a
-              href="https://getmarketmate.online"
-              className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
-            >
-              getmarketmate.online
-            </a>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
-            <span className="font-semibold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/60">
-              CAC Reg No: 9931755
-            </span>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
-            <p>© 2026 MarketMate Technologies. Built for Nigerian Micro and Small Businesses.</p>
+
+          {/* Bottom Row: © 2026 arranged properly */}
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs text-center sm:text-left flex-wrap justify-center sm:justify-start">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">© 2026</span>
+              <span className="font-medium text-slate-700 dark:text-slate-300">MarketMate Technologies Limited.</span>
+              <span className="text-slate-400 dark:text-slate-500">All rights reserved.</span>
+            </p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center sm:text-right">
+              Built for Nigerian Micro, Small, and Growing Businesses.
+            </p>
           </div>
         </div>
       </footer>

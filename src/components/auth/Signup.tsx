@@ -73,16 +73,17 @@ export const Signup: React.FC<SignupProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
-      {/* Top Exit / Cancel Button */}
+      {/* Top Back and Exit Buttons */}
       {onExit && (
         <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-10">
           <button
             type="button"
             onClick={onExit}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl shadow-2xs transition-colors cursor-pointer"
+            className="p-2 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors shadow-2xs cursor-pointer flex items-center justify-center"
+            title="Back"
+            aria-label="Back"
           >
-            <ArrowLeft className="w-4 h-4 text-slate-500" />
-            <span>Back to Home</span>
+            <ArrowLeft className="w-5 h-5" />
           </button>
         </div>
       )}

@@ -65,6 +65,7 @@ interface SettingsViewProps {
   onOpenTour?: () => void;
   onOpenReferralModal?: () => void;
   onOpenSupportModal?: () => void;
+  onNavigateToFx?: () => void;
 }
 
 const BUSINESS_CATEGORIES: { value: BusinessCategory; label: string }[] = [
@@ -96,6 +97,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onOpenTour,
   onOpenReferralModal,
   onOpenSupportModal,
+  onNavigateToFx,
 }) => {
   const { user, business, updateBusiness, activateSubscription, isDemoMode, isSubscribed } = useAuth();
   const {
@@ -133,8 +135,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [copiedField, setCopiedField] = useState<'link' | 'code' | null>(null);
   const [subscribing, setSubscribing] = useState(false);
   const [subSuccess, setSubSuccess] = useState(false);
+  const [guideRestoredSuccess, setGuideRestoredSuccess] = useState(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [legalModalTab, setLegalModalTab] = useState<'disclaimers' | 'terms' | 'privacy'>('disclaimers');
+
+  const handleRestoreGuide = async () => {
+    if (user?.id) {
+      try {
+        localStorage.removeItem(`marketmate_guide_dismissed_${user.id}`);
+      } catch {}
+    }
+    if (updateBusiness) {
+      await updateBusiness({ hasDismissedGuide: false, hasCompletedTour: false });
+    }
+    setGuideRestoredSuccess(true);
+    setTimeout(() => setGuideRestoredSuccess(false), 3000);
+  };
 
   const checkSubRequests = async () => {
     if (!user?.id) return;
@@ -531,7 +547,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setIsFxModalOpen(true)}
+              onClick={() => {
+                if (onNavigateToFx) {
+                  onNavigateToFx();
+                } else {
+                  setIsFxModalOpen(true);
+                }
+              }}
               leftIcon={<Ship className="w-3.5 h-3.5 text-emerald-700" />}
             >
               FX & Landed Cost Tool
@@ -637,17 +659,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               Learn how to record sales, track expenses, and use cashier permissions.
             </p>
           </div>
-          {onOpenTour && (
+          <div className="flex flex-wrap items-center gap-2">
+            {onOpenTour && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onOpenTour}
+                leftIcon={<Compass className="w-3.5 h-3.5 text-emerald-600" />}
+              >
+                Replay App Tour
+              </Button>
+            )}
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={onOpenTour}
-              leftIcon={<Compass className="w-3.5 h-3.5 text-emerald-600" />}
+              onClick={handleRestoreGuide}
+              className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             >
-              Start Interactive Tour
+              {guideRestoredSuccess ? 'Checklist Restored!' : 'Restore Checklist on Dashboard'}
             </Button>
-          )}
+          </div>
         </CardHeader>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">

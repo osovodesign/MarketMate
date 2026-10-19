@@ -20,6 +20,14 @@ import { SettingsView } from './components/settings/SettingsView';
 import { AdminPortalView } from './components/admin/AdminPortalView';
 import { InvoicesView } from './components/invoices/InvoicesView';
 import { ContactsView } from './components/contacts/ContactsView';
+import { RecordSaleView } from './components/sales/RecordSaleView';
+import { RecordExpenseView } from './components/expenses/RecordExpenseView';
+import { PricingCalculatorView } from './components/tools/PricingCalculatorView';
+import { ProfitSimulatorView } from './components/tools/ProfitSimulatorView';
+import { MultiCurrencyView } from './components/currency/MultiCurrencyView';
+import { InvoiceCreateView } from './components/invoices/InvoiceCreateView';
+import { RecordDebtView } from './components/debts/RecordDebtView';
+import { ContactCreateView } from './components/contacts/ContactCreateView';
 import { RecordSaleModal } from './components/sales/RecordSaleModal';
 import { RecordExpenseModal } from './components/expenses/RecordExpenseModal';
 import { PricingCalculatorModal } from './components/tools/PricingCalculatorModal';
@@ -39,7 +47,7 @@ import { ProFeatureGate } from './components/subscription/ProFeatureGate';
 import { SubscribeModal } from './components/subscription/SubscribeModal';
 import { HelpSupportModal } from './components/common/HelpSupportModal';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
-import { AppView } from './types';
+import { AppView, Product, Invoice, InvoiceType, Customer, Supplier } from './types';
 import {
   Sparkles,
   FileText,
@@ -64,7 +72,21 @@ function AppContent() {
     activateDemoMode,
     isSuperAdmin,
     isSubscribed,
+    updateBusiness,
   } = useAuth();
+
+  const isTransientCreationView = (view: AppView) => {
+    return (
+      view === 'record-sale' ||
+      view === 'record-expense' ||
+      view === 'pricing-calc' ||
+      view === 'profit-sim' ||
+      view === 'fx-calc' ||
+      view === 'create-invoice' ||
+      view === 'record-debt' ||
+      view === 'create-contact'
+    );
+  };
 
   const [currentView, setCurrentView] = useState<AppView>(() => {
     try {
@@ -74,7 +96,8 @@ function AppContent() {
         saved !== 'landing' &&
         saved !== 'login' &&
         saved !== 'signup' &&
-        saved !== 'onboarding'
+        saved !== 'onboarding' &&
+        !isTransientCreationView(saved as AppView)
       ) {
         return saved as AppView;
       }
@@ -87,18 +110,88 @@ function AppContent() {
     return 'landing';
   });
 
+  const [previousView, setPreviousView] = useState<AppView>('dashboard');
+  const [salePrefillCustomer, setSalePrefillCustomer] = useState<string | undefined>(undefined);
+  const [salePrefillProduct, setSalePrefillProduct] = useState<Product | undefined>(undefined);
+
+  const [invoicePrefillType, setInvoicePrefillType] = useState<InvoiceType>('invoice');
+  const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
+
+  const [contactPrefillType, setContactPrefillType] = useState<'customer' | 'supplier'>('customer');
+  const [contactCustomerToEdit, setContactCustomerToEdit] = useState<Customer | null>(null);
+  const [contactSupplierToEdit, setContactSupplierToEdit] = useState<Supplier | null>(null);
+
   const navigateTo = (view: AppView) => {
+    if (!isTransientCreationView(view) && !isTransientCreationView(currentView)) {
+      setPreviousView(currentView);
+    }
     setCurrentView(view);
     try {
       if (
         view !== 'landing' &&
         view !== 'login' &&
         view !== 'signup' &&
-        view !== 'onboarding'
+        view !== 'onboarding' &&
+        !isTransientCreationView(view)
       ) {
         localStorage.setItem('marketmate_current_view', view);
       }
     } catch {}
+  };
+
+  const openRecordSale = (options?: { customer?: string; product?: Product }) => {
+    if (!isTransientCreationView(currentView)) {
+      setPreviousView(currentView);
+    }
+    setSalePrefillCustomer(options?.customer);
+    setSalePrefillProduct(options?.product);
+    setCurrentView('record-sale');
+  };
+
+  const openRecordExpense = () => {
+    if (!isTransientCreationView(currentView)) {
+      setPreviousView(currentView);
+    }
+    setCurrentView('record-expense');
+  };
+
+  const openCreateInvoice = (defaultType?: InvoiceType, invoice?: Invoice | null) => {
+    if (!isTransientCreationView(currentView)) {
+      setPreviousView(currentView);
+    }
+    setInvoicePrefillType(defaultType || 'invoice');
+    setInvoiceToEdit(invoice || null);
+    setCurrentView('create-invoice');
+  };
+
+  const openRecordDebt = () => {
+    if (!isTransientCreationView(currentView)) {
+      setPreviousView(currentView);
+    }
+    setCurrentView('record-debt');
+  };
+
+  const openCreateContact = (
+    type?: 'customer' | 'supplier',
+    customer?: Customer | null,
+    supplier?: Supplier | null
+  ) => {
+    if (!isTransientCreationView(currentView)) {
+      setPreviousView(currentView);
+    }
+    setContactPrefillType(type || (supplier ? 'supplier' : 'customer'));
+    setContactCustomerToEdit(customer || null);
+    setContactSupplierToEdit(supplier || null);
+    setCurrentView('create-contact');
+  };
+
+  const handleCloseRecordScreen = () => {
+    setSalePrefillCustomer(undefined);
+    setSalePrefillProduct(undefined);
+    setInvoiceToEdit(null);
+    setContactCustomerToEdit(null);
+    setContactSupplierToEdit(null);
+    setCurrentView(previousView || 'dashboard');
   };
 
   const [isAddSaleOpen, setIsAddSaleOpen] = useState(false);
@@ -207,10 +300,10 @@ function AppContent() {
         return (
           <DashboardView
             onNavigate={(view) => navigateTo(view)}
-            onOpenAddSale={() => setIsAddSaleOpen(true)}
-            onOpenAddExpense={() => setIsAddExpenseOpen(true)}
-            onOpenPricingCalculator={() => setIsPricingCalcOpen(true)}
-            onOpenProfitSimulator={() => setIsProfitSimOpen(true)}
+            onOpenAddSale={() => openRecordSale()}
+            onOpenAddExpense={() => openRecordExpense()}
+            onOpenPricingCalculator={() => navigateTo('pricing-calc')}
+            onOpenProfitSimulator={() => navigateTo('profit-sim')}
             onOpenGoalsModal={() => setIsGoalsModalOpen(true)}
             onOpenTourModal={() => setIsTourModalOpen(true)}
           />
@@ -219,13 +312,76 @@ function AppContent() {
         return (
           <POSView
             onOpenStaffManagement={() => setIsStaffModalOpen(true)}
-            onOpenFxCalculator={() => setIsFxModalOpen(true)}
+            onOpenFxCalculator={() => navigateTo('fx-calc')}
           />
         );
       case 'sales':
-        return <SalesView onOpenAddSale={() => setIsAddSaleOpen(true)} />;
+        return <SalesView onOpenAddSale={() => openRecordSale()} />;
       case 'expenses':
-        return <ExpensesView onOpenAddExpense={() => setIsAddExpenseOpen(true)} />;
+        return <ExpensesView onOpenAddExpense={() => openRecordExpense()} />;
+      case 'record-sale':
+        return (
+          <RecordSaleView
+            onBack={handleCloseRecordScreen}
+            onSuccess={handleCloseRecordScreen}
+            prefillCustomer={salePrefillCustomer}
+            prefillProduct={salePrefillProduct}
+          />
+        );
+      case 'record-expense':
+        return (
+          <RecordExpenseView
+            onBack={handleCloseRecordScreen}
+            onSuccess={handleCloseRecordScreen}
+          />
+        );
+      case 'pricing-calc':
+        return (
+          <PricingCalculatorView
+            onBack={handleCloseRecordScreen}
+            onUpgrade={() => setIsSubscribeModalOpen(true)}
+          />
+        );
+      case 'profit-sim':
+        return (
+          <ProfitSimulatorView
+            onBack={handleCloseRecordScreen}
+            onUpgrade={() => setIsSubscribeModalOpen(true)}
+          />
+        );
+      case 'fx-calc':
+        return (
+          <MultiCurrencyView
+            onBack={handleCloseRecordScreen}
+            onUpgrade={() => setIsSubscribeModalOpen(true)}
+          />
+        );
+      case 'create-invoice':
+        return (
+          <InvoiceCreateView
+            onBack={handleCloseRecordScreen}
+            onSuccess={handleCloseRecordScreen}
+            defaultType={invoicePrefillType}
+            initialInvoice={invoiceToEdit}
+          />
+        );
+      case 'record-debt':
+        return (
+          <RecordDebtView
+            onBack={handleCloseRecordScreen}
+            onSuccess={handleCloseRecordScreen}
+          />
+        );
+      case 'create-contact':
+        return (
+          <ContactCreateView
+            onBack={handleCloseRecordScreen}
+            onSuccess={handleCloseRecordScreen}
+            initialType={contactPrefillType}
+            initialCustomer={contactCustomerToEdit}
+            initialSupplier={contactSupplierToEdit}
+          />
+        );
       case 'invoices':
         if (!isSubscribed) {
           return (
@@ -244,7 +400,7 @@ function AppContent() {
             />
           );
         }
-        return <InvoicesView />;
+        return <InvoicesView onOpenCreateInvoice={openCreateInvoice} />;
       case 'contacts':
         if (!isSubscribed) {
           return (
@@ -265,8 +421,11 @@ function AppContent() {
         }
         return (
           <ContactsView
-            onOpenRecordExpense={(desc) => setIsAddExpenseOpen(true)}
-            onOpenRecordSale={(cust) => setIsAddSaleOpen(true)}
+            onOpenRecordExpense={() => openRecordExpense()}
+            onOpenRecordSale={(cust) => openRecordSale({ customer: cust })}
+            onOpenRecordDebt={() => openRecordDebt()}
+            onOpenCreateContact={openCreateContact}
+            onOpenCreateInvoice={openCreateInvoice}
           />
         );
       case 'debts':
@@ -287,7 +446,7 @@ function AppContent() {
             />
           );
         }
-        return <DebtsView />;
+        return <DebtsView onOpenRecordDebt={openRecordDebt} />;
       case 'products':
         if (!isSubscribed) {
           return (
@@ -306,7 +465,11 @@ function AppContent() {
             />
           );
         }
-        return <ProductsView />;
+        return (
+          <ProductsView
+            onOpenAddSaleWithProduct={(prod) => openRecordSale({ product: prod })}
+          />
+        );
       case 'transactions':
         return <TransactionsView />;
       case 'reports':
@@ -356,6 +519,7 @@ function AppContent() {
             onOpenTour={() => setIsTourModalOpen(true)}
             onOpenReferralModal={() => setIsReferralModalOpen(true)}
             onOpenSupportModal={() => setIsSupportModalOpen(true)}
+            onNavigateToFx={() => navigateTo('fx-calc')}
           />
         );
       case 'admin':
@@ -383,10 +547,10 @@ function AppContent() {
         return (
           <DashboardView
             onNavigate={(view) => setCurrentView(view)}
-            onOpenAddSale={() => setIsAddSaleOpen(true)}
-            onOpenAddExpense={() => setIsAddExpenseOpen(true)}
-            onOpenPricingCalculator={() => setIsPricingCalcOpen(true)}
-            onOpenProfitSimulator={() => setIsProfitSimOpen(true)}
+            onOpenAddSale={() => openRecordSale()}
+            onOpenAddExpense={() => openRecordExpense()}
+            onOpenPricingCalculator={() => navigateTo('pricing-calc')}
+            onOpenProfitSimulator={() => navigateTo('profit-sim')}
             onOpenGoalsModal={() => setIsGoalsModalOpen(true)}
             onOpenTourModal={() => setIsTourModalOpen(true)}
           />
@@ -398,13 +562,13 @@ function AppContent() {
     <Shell
       currentView={currentView}
       onNavigate={(view) => navigateTo(view)}
-      onOpenAddSale={() => setIsAddSaleOpen(true)}
-      onOpenAddExpense={() => setIsAddExpenseOpen(true)}
-      onOpenPricingCalculator={() => setIsPricingCalcOpen(true)}
-      onOpenProfitSimulator={() => setIsProfitSimOpen(true)}
+      onOpenAddSale={() => openRecordSale()}
+      onOpenAddExpense={() => openRecordExpense()}
+      onOpenPricingCalculator={() => navigateTo('pricing-calc')}
+      onOpenProfitSimulator={() => navigateTo('profit-sim')}
       onOpenGoalsModal={() => setIsGoalsModalOpen(true)}
       onOpenBackupModal={() => setIsBackupModalOpen(true)}
-      onOpenFxModal={() => setIsFxModalOpen(true)}
+      onOpenFxModal={() => navigateTo('fx-calc')}
       onOpenStaffModal={() => setIsStaffModalOpen(true)}
       onOpenLogoExportModal={() => setIsLogoExportOpen(true)}
       onOpenNotificationDrawer={() => setIsNotificationDrawerOpen(true)}
@@ -469,8 +633,18 @@ function AppContent() {
         isOpen={isTourModalOpen}
         onClose={() => setIsTourModalOpen(false)}
         onNavigate={(view) => setCurrentView(view)}
-        onOpenAddSale={() => setIsAddSaleOpen(true)}
-        onOpenAddExpense={() => setIsAddExpenseOpen(true)}
+        onOpenAddSale={() => openRecordSale()}
+        onOpenAddExpense={() => openRecordExpense()}
+        onCompleteTour={() => {
+          if (updateBusiness) {
+            updateBusiness({ hasCompletedTour: true, hasDismissedGuide: true });
+          }
+          if (user?.id) {
+            try {
+              localStorage.setItem(`marketmate_guide_dismissed_${user.id}`, 'true');
+            } catch {}
+          }
+        }}
         businessName={business?.businessName}
       />
       <NotificationDrawer

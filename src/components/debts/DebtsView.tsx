@@ -28,7 +28,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-export const DebtsView: React.FC = () => {
+interface DebtsViewProps {
+  onOpenRecordDebt?: () => void;
+}
+
+export const DebtsView: React.FC<DebtsViewProps> = ({ onOpenRecordDebt }) => {
   const { debts, deleteDebt, totalOutstandingReceivables } = useBusinessData();
   const { business } = useAuth();
   const currency = business?.currency || 'NGN';
@@ -108,7 +112,13 @@ export const DebtsView: React.FC = () => {
         </div>
 
         <Button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => {
+            if (onOpenRecordDebt) {
+              onOpenRecordDebt();
+            } else {
+              setIsAddModalOpen(true);
+            }
+          }}
           variant="primary"
           leftIcon={<Plus className="w-4 h-4" />}
           className="shadow-2xs"
@@ -245,7 +255,13 @@ export const DebtsView: React.FC = () => {
                 : 'Try adjusting your search query or add a new customer credit sale.'}
             </p>
             <Button
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={() => {
+                if (onOpenRecordDebt) {
+                  onOpenRecordDebt();
+                } else {
+                  setIsAddModalOpen(true);
+                }
+              }}
               variant="primary"
               size="sm"
               leftIcon={<Plus className="w-4 h-4" />}

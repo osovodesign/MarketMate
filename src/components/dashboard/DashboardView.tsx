@@ -133,17 +133,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Interactive Getting Started / Quick-Start Checklist */}
-      <QuickStartGuide
-        onNavigate={onNavigate}
-        onOpenAddSale={onOpenAddSale}
-        onOpenAddExpense={onOpenAddExpense}
-        onOpenTourModal={onOpenTourModal || (() => {})}
-      />
-
-      {/* Top Greeting & Action Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-5">
+      {/* 1. Top Greeting & Period Switcher Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
@@ -151,38 +143,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Here is what happened in <span className="font-semibold text-slate-900 dark:text-white">{business?.businessName}</span>
+            Live financial overview for <span className="font-semibold text-slate-900 dark:text-white">{business?.businessName}</span>
           </p>
         </div>
 
-        {/* Quick Action Button Group */}
-        <div className="flex items-center gap-2.5">
-          <Button
-            onClick={onOpenAddSale}
-            size="md"
-            leftIcon={<PlusCircle className="w-4 h-4" />}
-            className="flex-1 sm:flex-none shadow-xs"
-          >
-            + Record Sale
-          </Button>
-          <Button
-            onClick={onOpenAddExpense}
-            variant="outline"
-            size="md"
-            leftIcon={<Receipt className="w-4 h-4" />}
-            className="flex-1 sm:flex-none"
-          >
-            + Record Expense
-          </Button>
-        </div>
-      </div>
-
-      {/* Period Selection Filter Tabs */}
-      <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-3">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+        {/* Period Selection Filter Tabs (Today / This Week / This Month) */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60 self-start sm:self-auto">
           <button
             onClick={() => setActivePeriod('today')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activePeriod === 'today'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -192,7 +161,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
           <button
             onClick={() => setActivePeriod('thisWeek')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activePeriod === 'thisWeek'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -202,7 +171,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
           <button
             onClick={() => setActivePeriod('thisMonth')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activePeriod === 'thisMonth'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -211,10 +180,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             This Month
           </button>
         </div>
-
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 hidden sm:block">
-          {periodLabels[activePeriod]}
-        </span>
       </div>
 
       {/* 3 Core Metric Cards (Today / This Week / This Month based on Tab) */}
@@ -376,6 +341,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </Card>
       </div>
+
+      {/* 3. Primary Action Strip: One-click transition directly into Record Sale and Record Expense */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-white to-slate-50 dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900 border border-emerald-200/70 dark:border-emerald-800/50 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-2xs">
+            <PlusCircle className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-900 dark:text-white">
+              Log Today's Store Transactions
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Enter sales or expenses to immediately update your take-home profit & cash balances
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <Button
+            onClick={onOpenAddSale}
+            size="md"
+            leftIcon={<PlusCircle className="w-4 h-4" />}
+            className="flex-1 sm:flex-none bg-[#059669] hover:bg-[#047857] text-white font-bold shadow-xs cursor-pointer"
+          >
+            + Record Sale
+          </Button>
+          <Button
+            onClick={onOpenAddExpense}
+            variant="outline"
+            size="md"
+            leftIcon={<Receipt className="w-4 h-4" />}
+            className="flex-1 sm:flex-none border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold cursor-pointer"
+          >
+            + Record Expense
+          </Button>
+        </div>
+      </div>
+
+      {/* 4. Getting Started Checklist Guide (Sits below numbers & action strip) */}
+      <QuickStartGuide
+        onNavigate={onNavigate}
+        onOpenAddSale={onOpenAddSale}
+        onOpenAddExpense={onOpenAddExpense}
+        onOpenTourModal={onOpenTourModal || (() => {})}
+      />
 
       {/* AI Business Insight Highlight Callout & Smart Tools */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

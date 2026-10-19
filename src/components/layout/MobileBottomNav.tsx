@@ -231,7 +231,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {/* Home & Sales */}
           {leftNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id;
+            const isActive =
+              currentView === item.id ||
+              (item.id === 'sales' && currentView === 'record-sale');
             return (
               <button
                 key={item.id}
@@ -265,10 +267,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </button>
           </div>
 
-          {/* Reports */}
+          {/* Reports & Expenses */}
           {rightNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id;
+            const isActive =
+              currentView === item.id ||
+              (item.id === 'expenses' && currentView === 'record-expense');
             return (
               <button
                 key={item.id}

@@ -29,7 +29,11 @@ import { InvoiceModal } from './InvoiceModal';
 import { InvoicePreviewModal } from './InvoicePreviewModal';
 import { RecordInvoicePaymentModal } from './RecordInvoicePaymentModal';
 
-export const InvoicesView: React.FC = () => {
+interface InvoicesViewProps {
+  onOpenCreateInvoice?: (defaultType?: InvoiceType, invoiceToEdit?: Invoice | null) => void;
+}
+
+export const InvoicesView: React.FC<InvoicesViewProps> = ({ onOpenCreateInvoice }) => {
   const { invoices, deleteInvoice, updateInvoice, addInvoice } = useBusinessData();
 
   const [activeTypeFilter, setActiveTypeFilter] = useState<'all' | 'invoice' | 'quote'>('all');
@@ -180,9 +184,13 @@ export const InvoicesView: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => {
-              setEditingInvoice(null);
-              setCreateDefaultType('quote');
-              setIsCreateModalOpen(true);
+              if (onOpenCreateInvoice) {
+                onOpenCreateInvoice('quote', null);
+              } else {
+                setEditingInvoice(null);
+                setCreateDefaultType('quote');
+                setIsCreateModalOpen(true);
+              }
             }}
             className="text-amber-800 border-amber-300 hover:bg-amber-50"
           >
@@ -194,9 +202,13 @@ export const InvoicesView: React.FC = () => {
             variant="primary"
             size="sm"
             onClick={() => {
-              setEditingInvoice(null);
-              setCreateDefaultType('invoice');
-              setIsCreateModalOpen(true);
+              if (onOpenCreateInvoice) {
+                onOpenCreateInvoice('invoice', null);
+              } else {
+                setEditingInvoice(null);
+                setCreateDefaultType('invoice');
+                setIsCreateModalOpen(true);
+              }
             }}
             className="bg-emerald-700 hover:bg-emerald-800 shadow-sm"
           >
@@ -328,9 +340,13 @@ export const InvoicesView: React.FC = () => {
           }
           actionLabel="Create First Invoice"
           onAction={() => {
-            setEditingInvoice(null);
-            setCreateDefaultType('invoice');
-            setIsCreateModalOpen(true);
+            if (onOpenCreateInvoice) {
+              onOpenCreateInvoice('invoice', null);
+            } else {
+              setEditingInvoice(null);
+              setCreateDefaultType('invoice');
+              setIsCreateModalOpen(true);
+            }
           }}
         />
       ) : (
@@ -465,10 +481,14 @@ export const InvoicesView: React.FC = () => {
 
                   <button
                     onClick={() => {
-                      setEditingInvoice(inv);
-                      setIsCreateModalOpen(true);
+                      if (onOpenCreateInvoice) {
+                        onOpenCreateInvoice(inv.type, inv);
+                      } else {
+                        setEditingInvoice(inv);
+                        setIsCreateModalOpen(true);
+                      }
                     }}
-                    className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                    className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                     title="Edit Invoice"
                   >
                     <Edit2 className="w-4 h-4" />

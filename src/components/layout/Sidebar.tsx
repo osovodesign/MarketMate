@@ -159,7 +159,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           .filter((item) => !item.hideForCashier)
           .map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id;
+            const isActive =
+              currentView === item.id ||
+              (item.id === 'sales' && currentView === 'record-sale') ||
+              (item.id === 'expenses' && currentView === 'record-expense') ||
+              (item.id === 'invoices' && currentView === 'create-invoice') ||
+              (item.id === 'debts' && currentView === 'record-debt') ||
+              (item.id === 'contacts' && currentView === 'create-contact');
             return (
               <button
                 key={item.id}
@@ -204,10 +210,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenFxModal && (
           <button
             onClick={onOpenFxModal}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
+              currentView === 'fx-calc'
+                ? 'bg-blue-600/25 text-blue-300 font-bold border border-blue-500/60 shadow-[0_0_12px_rgba(59,130,246,0.25)]'
+                : 'text-slate-200 hover:text-white hover:bg-white/5'
+            }`}
           >
             <div className="flex items-center gap-2.5">
-              <Ship className="w-4 h-4 text-blue-400" />
+              <Ship className={`w-4 h-4 ${currentView === 'fx-calc' ? 'text-blue-300' : 'text-blue-400'}`} />
               <span>FX & Landed Cost Import</span>
             </div>
             {!isSubscribed && (
@@ -221,10 +231,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenStaffModal && (
           <button
             onClick={onOpenStaffModal}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
+              currentView === 'staff'
+                ? 'bg-purple-600/25 text-purple-300 font-bold border border-purple-500/60 shadow-[0_0_12px_rgba(168,85,247,0.25)]'
+                : 'text-slate-200 hover:text-white hover:bg-white/5'
+            }`}
           >
             <div className="flex items-center gap-2.5">
-              <Shield className="w-4 h-4 text-purple-400" />
+              <Shield className={`w-4 h-4 ${currentView === 'staff' ? 'text-purple-300' : 'text-purple-400'}`} />
               <span>Staff & Cashier PINs</span>
             </div>
             {!isSubscribed && (
@@ -255,10 +269,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenPricingCalculator && (
           <button
             onClick={onOpenPricingCalculator}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
+              currentView === 'pricing-calc'
+                ? 'bg-[#059669]/20 text-[#34D399] font-bold border border-[#059669]/60 shadow-[0_0_12px_rgba(5,150,105,0.25)]'
+                : 'text-slate-200 hover:text-white hover:bg-white/5'
+            }`}
           >
             <div className="flex items-center gap-2.5">
-              <Calculator className="w-4 h-4 text-[#34D399]" />
+              <Calculator className={`w-4 h-4 ${currentView === 'pricing-calc' ? 'text-[#34D399]' : 'text-[#34D399]'}`} />
               <span>Pricing Calculator</span>
             </div>
             {!isSubscribed && (
@@ -272,10 +290,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenProfitSimulator && (
           <button
             onClick={onOpenProfitSimulator}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
+              currentView === 'profit-sim'
+                ? 'bg-amber-600/25 text-amber-300 font-bold border border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                : 'text-slate-200 hover:text-white hover:bg-white/5'
+            }`}
           >
             <div className="flex items-center gap-2.5">
-              <Sliders className="w-4 h-4 text-amber-400" />
+              <Sliders className={`w-4 h-4 ${currentView === 'profit-sim' ? 'text-amber-300' : 'text-amber-400'}`} />
               <span>Profit Simulator</span>
             </div>
             {!isSubscribed && (

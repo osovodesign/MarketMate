@@ -75,6 +75,7 @@ import {
   fetchSubscriptionRequests,
   approveSubscriptionPayment,
   rejectSubscriptionPayment,
+  DEFAULT_PLATFORM_BANK,
 } from '../../lib/subscriptionService';
 import {
   fetchAllSupportTickets,
@@ -2749,7 +2750,7 @@ export const AdminPortalView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setBankConfigForm(bankConfig || {});
+                  setBankConfigForm(bankConfig || DEFAULT_PLATFORM_BANK);
                   setIsEditingBankConfig(!isEditingBankConfig);
                 }}
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-colors cursor-pointer self-start sm:self-auto"
@@ -2768,7 +2769,7 @@ export const AdminPortalView: React.FC = () => {
                     <input
                       type="text"
                       required
-                      value={bankConfigForm.bankName || ''}
+                      value={bankConfigForm.bankName ?? DEFAULT_PLATFORM_BANK.bankName}
                       onChange={(e) =>
                         setBankConfigForm({ ...bankConfigForm, bankName: e.target.value })
                       }
@@ -2783,7 +2784,7 @@ export const AdminPortalView: React.FC = () => {
                     <input
                       type="text"
                       required
-                      value={bankConfigForm.accountNumber || ''}
+                      value={bankConfigForm.accountNumber ?? DEFAULT_PLATFORM_BANK.accountNumber}
                       onChange={(e) =>
                         setBankConfigForm({ ...bankConfigForm, accountNumber: e.target.value })
                       }
@@ -2798,7 +2799,7 @@ export const AdminPortalView: React.FC = () => {
                     <input
                       type="text"
                       required
-                      value={bankConfigForm.accountName || ''}
+                      value={bankConfigForm.accountName ?? DEFAULT_PLATFORM_BANK.accountName}
                       onChange={(e) =>
                         setBankConfigForm({ ...bankConfigForm, accountName: e.target.value })
                       }
@@ -2871,21 +2872,21 @@ export const AdminPortalView: React.FC = () => {
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">Bank Name</span>
                   <span className="text-sm font-bold text-white block mt-0.5">
-                    {bankConfig?.bankName || 'OPay'}
+                    {bankConfig?.bankName || DEFAULT_PLATFORM_BANK.bankName}
                   </span>
                 </div>
 
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">Account Number</span>
                   <span className="text-base font-black font-mono text-emerald-400 block mt-0.5">
-                    {bankConfig?.accountNumber || '6110157178'}
+                    {bankConfig?.accountNumber || DEFAULT_PLATFORM_BANK.accountNumber}
                   </span>
                 </div>
 
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">Account Name</span>
                   <span className="text-xs font-bold text-white block mt-0.5 truncate">
-                    {bankConfig?.accountName || 'OGHENEOVO DANIEL OSOVOYORON'}
+                    {bankConfig?.accountName || DEFAULT_PLATFORM_BANK.accountName}
                   </span>
                 </div>
 

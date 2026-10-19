@@ -143,6 +143,8 @@ export interface BusinessProfile {
   subscriptionPlan?: string;
   subscribedAt?: string;
   subscriptionDiscountPercent?: number;
+  hasDismissedGuide?: boolean;
+  hasCompletedTour?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -497,6 +499,14 @@ export type AppView =
   | 'ai'
   | 'settings'
   | 'admin'
-  | 'staff';
+  | 'staff'
+  | 'record-sale'
+  | 'record-expense'
+  | 'pricing-calc'
+  | 'profit-sim'
+  | 'fx-calc'
+  | 'create-invoice'
+  | 'record-debt'
+  | 'create-contact';
 
 

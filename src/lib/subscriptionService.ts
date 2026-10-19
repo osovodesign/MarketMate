@@ -3,11 +3,11 @@ import { db, collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where, 
 import { recordReferralSubscription } from './referralService';
 
 export const DEFAULT_PLATFORM_BANK: PlatformBankConfig = {
-  bankName: 'OPay',
-  accountNumber: '6110157178',
-  accountName: 'OGHENEOVO DANIEL OSOVOYORON',
+  bankName: 'MONIEPOINT',
+  accountNumber: '3006119131',
+  accountName: 'MARKET-MATE TECHNOLOGIES LIMITED',
   instructions:
-    'Transfer the exact subscription amount to the official MarketMate bank account below. Include your Store Name or Payment Reference in your transfer narration. After paying, submit your sender details below for admin approval.',
+    'Transfer the exact subscription amount to the official MarketMate corporate bank account below. Include your Store Name or Payment Reference in your transfer narration. After paying, submit your sender details below for instant admin approval.',
   monthlyPlanPrice: 1000, // ₦1,000 / month promo through Dec 31, 2026
   annualPlanPrice: 3000,  // ₦3,000 flat for 3-Month Q4 Pass (Oct-Dec 2026)
   q4PassPrice: 3000,
@@ -15,7 +15,7 @@ export const DEFAULT_PLATFORM_BANK: PlatformBankConfig = {
   supportEmail: 'getmarketmate@gmail.com',
 };
 
-const STORAGE_PLATFORM_BANK_KEY = 'marketmate_platform_bank_config_v2';
+const STORAGE_PLATFORM_BANK_KEY = 'marketmate_platform_bank_config_v3';
 const STORAGE_SUBSCRIPTION_REQUESTS_KEY = 'marketmate_subscription_requests_v1';
 
 /**
@@ -39,6 +39,7 @@ export const fetchPlatformBankConfig = async (): Promise<PlatformBankConfig> => 
   // Purge any stale legacy local caches
   try {
     localStorage.removeItem('marketmate_platform_bank_config_v1');
+    localStorage.removeItem('marketmate_platform_bank_config_v2');
   } catch {}
 
   try {
@@ -46,16 +47,25 @@ export const fetchPlatformBankConfig = async (): Promise<PlatformBankConfig> => 
     const snap = await getDoc(configDocRef);
     if (snap.exists()) {
       const data = snap.data() as PlatformBankConfig;
-      // Always enforce 1,000 monthly and 3,000 Q4 pass
+      // Auto-migrate legacy personal account or old OPay details to official Moniepoint corporate account
+      const isLegacyAccount =
+        data.accountNumber === '6110157178' ||
+        data.bankName?.toLowerCase() === 'opay' ||
+        data.accountName?.toUpperCase().includes('OGHENEOVO');
+
       const normalized: PlatformBankConfig = {
         ...DEFAULT_PLATFORM_BANK,
         ...data,
+        bankName: isLegacyAccount ? DEFAULT_PLATFORM_BANK.bankName : (data.bankName || DEFAULT_PLATFORM_BANK.bankName),
+        accountNumber: isLegacyAccount ? DEFAULT_PLATFORM_BANK.accountNumber : (data.accountNumber || DEFAULT_PLATFORM_BANK.accountNumber),
+        accountName: isLegacyAccount ? DEFAULT_PLATFORM_BANK.accountName : (data.accountName || DEFAULT_PLATFORM_BANK.accountName),
         monthlyPlanPrice: 1000,
         annualPlanPrice: 3000,
         q4PassPrice: 3000,
       };
 
       if (
+        isLegacyAccount ||
         data.monthlyPlanPrice !== 1000 ||
         data.annualPlanPrice !== 3000 ||
         data.q4PassPrice !== 3000
@@ -76,13 +86,20 @@ export const fetchPlatformBankConfig = async (): Promise<PlatformBankConfig> => 
     const localStr = localStorage.getItem(STORAGE_PLATFORM_BANK_KEY);
     if (localStr) {
       const parsed = JSON.parse(localStr);
-      const normalized: PlatformBankConfig = {
-        ...DEFAULT_PLATFORM_BANK,
-        ...parsed,
-        monthlyPlanPrice: 1000,
-        annualPlanPrice: 3000,
-        q4PassPrice: 3000,
-      };
+      const isLegacyLocal =
+        parsed.accountNumber === '6110157178' ||
+        parsed.bankName?.toLowerCase() === 'opay' ||
+        parsed.accountName?.toUpperCase()?.includes('OGHENEOVO');
+
+      const normalized: PlatformBankConfig = isLegacyLocal
+        ? DEFAULT_PLATFORM_BANK
+        : {
+            ...DEFAULT_PLATFORM_BANK,
+            ...parsed,
+            monthlyPlanPrice: 1000,
+            annualPlanPrice: 3000,
+            q4PassPrice: 3000,
+          };
       localStorage.setItem(STORAGE_PLATFORM_BANK_KEY, JSON.stringify(normalized));
       return normalized;
     }

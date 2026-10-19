@@ -155,7 +155,7 @@ export const ProFeatureGate: React.FC<ProFeatureGateProps> = ({
           <div className="text-left sm:text-right border-t sm:border-t-0 sm:border-l border-emerald-200 dark:border-emerald-800/80 pt-2 sm:pt-0 sm:pl-4">
             <span className="text-[10px] font-bold text-slate-500 uppercase block">Payment Method</span>
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1 mt-0.5">
-              <Building2 className="w-3.5 h-3.5 text-emerald-600" /> Direct OPay Transfer
+              <Building2 className="w-3.5 h-3.5 text-emerald-600" /> Direct Moniepoint Transfer
             </span>
             <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium block">
               Instant Admin Activation

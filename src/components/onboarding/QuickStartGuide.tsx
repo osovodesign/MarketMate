@@ -20,6 +20,7 @@ import { Button } from '../ui/Button';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { AppView } from '../../types';
 import { useBusinessData } from '../../context/BusinessDataContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface QuickStartGuideProps {
   onNavigate: (view: AppView) => void;
@@ -28,44 +29,36 @@ interface QuickStartGuideProps {
   onOpenTourModal: () => void;
 }
 
-const STORAGE_DISMISS_KEY = 'marketmate_quickstart_dismissed_v1';
-
 export const QuickStartGuide: React.FC<QuickStartGuideProps> = ({
   onNavigate,
   onOpenAddSale,
   onOpenAddExpense,
   onOpenTourModal,
 }) => {
-  const { sales, expenses, products, business } = useBusinessData();
-  const [isDismissed, setIsDismissed] = useState(false);
+  const { user, business, updateBusiness } = useAuth();
+  const { sales, expenses, products } = useBusinessData();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_DISMISS_KEY);
-      if (stored === 'true') {
-        setIsDismissed(true);
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
+  const userDismissKey = `marketmate_guide_dismissed_${user?.id || 'guest'}`;
+  const isCloudDismissed = Boolean(business?.hasDismissedGuide || business?.hasCompletedTour);
 
-  const handleDismiss = () => {
-    setIsDismissed(true);
+  const [isLocallyDismissed, setIsLocallyDismissed] = useState(() => {
     try {
-      localStorage.setItem(STORAGE_DISMISS_KEY, 'true');
+      return localStorage.getItem(userDismissKey) === 'true';
     } catch {
-      // ignore
+      return false;
     }
-  };
+  });
 
-  const handleRestore = () => {
-    setIsDismissed(false);
+  const isDismissed = isCloudDismissed || isLocallyDismissed;
+
+  const handleDismiss = async () => {
+    setIsLocallyDismissed(true);
     try {
-      localStorage.removeItem(STORAGE_DISMISS_KEY);
-    } catch {
-      // ignore
+      localStorage.setItem(userDismissKey, 'true');
+    } catch {}
+    if (updateBusiness) {
+      await updateBusiness({ hasDismissedGuide: true });
     }
   };
 
@@ -122,31 +115,7 @@ export const QuickStartGuide: React.FC<QuickStartGuideProps> = ({
   const isAllDone = completedCount === steps.length;
 
   if (isDismissed) {
-    return (
-      <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 text-xs">
-        <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
-          <Compass className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <span className="font-semibold">Getting Started Guide:</span>
-          <span>{completedCount} of {steps.length} milestones complete</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onOpenTourModal}
-            className="text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:underline flex items-center gap-1 cursor-pointer"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>App Tour</span>
-          </button>
-          <span className="text-slate-300 dark:text-slate-700">•</span>
-          <button
-            onClick={handleRestore}
-            className="text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline cursor-pointer"
-          >
-            Show Checklist
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

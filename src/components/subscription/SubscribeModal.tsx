@@ -374,7 +374,7 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
                   <div className="p-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
                     <span className="text-[10px] font-bold text-slate-300 uppercase block">Bank Name</span>
                     <span className="text-sm font-bold text-white block mt-0.5">
-                      {bankConfig?.bankName || 'OPay'}
+                      {bankConfig?.bankName || 'MONIEPOINT'}
                     </span>
                   </div>
 
@@ -382,12 +382,12 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
                     <div>
                       <span className="text-[10px] font-bold text-slate-300 uppercase block">Account Number</span>
                       <span className="text-base font-black font-mono text-emerald-300 tracking-wider block mt-0.5">
-                        {bankConfig?.accountNumber || '6110157178'}
+                        {bankConfig?.accountNumber || '3006119131'}
                       </span>
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleCopy(bankConfig?.accountNumber || '6110157178', 'accNo')}
+                      onClick={() => handleCopy(bankConfig?.accountNumber || '3006119131', 'accNo')}
                       className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
                       title="Copy Account Number"
                     >
@@ -404,12 +404,12 @@ export const SubscribeModal: React.FC<SubscribeModalProps> = ({
                   <div>
                     <span className="text-[10px] font-bold text-slate-300 uppercase block">Account Name</span>
                     <span className="text-xs font-bold text-white block mt-0.5">
-                      {bankConfig?.accountName || 'OGHENEOVO DANIEL OSOVOYORON'}
+                      {bankConfig?.accountName || 'MARKET-MATE TECHNOLOGIES LIMITED'}
                     </span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleCopy(bankConfig?.accountName || 'OGHENEOVO DANIEL OSOVOYORON', 'accName')}
+                    onClick={() => handleCopy(bankConfig?.accountName || 'MARKET-MATE TECHNOLOGIES LIMITED', 'accName')}
                     className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
                     title="Copy Account Name"
                   >

@@ -28,6 +28,7 @@ interface AppTourModalProps {
   onNavigate: (view: AppView) => void;
   onOpenAddSale: () => void;
   onOpenAddExpense: () => void;
+  onCompleteTour?: () => void;
   businessName?: string;
 }
 
@@ -50,6 +51,7 @@ export const AppTourModal: React.FC<AppTourModalProps> = ({
   onNavigate,
   onOpenAddSale,
   onOpenAddExpense,
+  onCompleteTour,
   businessName = 'Your Business',
 }) => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -179,6 +181,9 @@ export const AppTourModal: React.FC<AppTourModalProps> = ({
       ],
       primaryActionLabel: 'Explore MarketMate',
       onPrimaryAction: () => {
+        if (onCompleteTour) {
+          onCompleteTour();
+        }
         onClose();
       },
       illustrationBg: 'from-purple-600/20 to-emerald-700/20',
@@ -191,6 +196,9 @@ export const AppTourModal: React.FC<AppTourModalProps> = ({
 
   const handleNext = () => {
     if (isLast) {
+      if (onCompleteTour) {
+        onCompleteTour();
+      }
       onClose();
     } else {
       setCurrentSlideIndex((prev) => prev + 1);

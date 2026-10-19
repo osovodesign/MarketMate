@@ -34,12 +34,20 @@ interface ContactsViewProps {
   onOpenRecordExpense?: (prefillDescription?: string) => void;
   onOpenRecordSale?: (prefillCustomer?: string) => void;
   onOpenRecordDebt?: (prefillCustomer?: string, prefillPhone?: string) => void;
+  onOpenCreateContact?: (
+    type?: 'customer' | 'supplier',
+    initialCustomer?: Customer | null,
+    initialSupplier?: Supplier | null
+  ) => void;
+  onOpenCreateInvoice?: (defaultType?: 'invoice' | 'quote', invoiceToEdit?: Invoice | null) => void;
 }
 
 export const ContactsView: React.FC<ContactsViewProps> = ({
   onOpenRecordExpense,
   onOpenRecordSale,
   onOpenRecordDebt,
+  onOpenCreateContact,
+  onOpenCreateInvoice,
 }) => {
   const {
     customers,
@@ -149,8 +157,12 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
               variant="primary"
               size="sm"
               onClick={() => {
-                setEditingCustomer(null);
-                setIsCustomerModalOpen(true);
+                if (onOpenCreateContact) {
+                  onOpenCreateContact('customer', null, null);
+                } else {
+                  setEditingCustomer(null);
+                  setIsCustomerModalOpen(true);
+                }
               }}
               className="bg-emerald-700 hover:bg-emerald-800 shadow-sm"
             >
@@ -162,8 +174,12 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
               variant="primary"
               size="sm"
               onClick={() => {
-                setEditingSupplier(null);
-                setIsSupplierModalOpen(true);
+                if (onOpenCreateContact) {
+                  onOpenCreateContact('supplier', null, null);
+                } else {
+                  setEditingSupplier(null);
+                  setIsSupplierModalOpen(true);
+                }
               }}
               className="bg-amber-600 hover:bg-amber-700 shadow-sm"
             >
@@ -231,8 +247,12 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
               }
               actionLabel="Add First Customer"
               onAction={() => {
-                setEditingCustomer(null);
-                setIsCustomerModalOpen(true);
+                if (onOpenCreateContact) {
+                  onOpenCreateContact('customer', null, null);
+                } else {
+                  setEditingCustomer(null);
+                  setIsCustomerModalOpen(true);
+                }
               }}
             />
           ) : (
@@ -265,10 +285,14 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => {
-                              setEditingCustomer(cust);
-                              setIsCustomerModalOpen(true);
+                              if (onOpenCreateContact) {
+                                onOpenCreateContact('customer', cust, null);
+                              } else {
+                                setEditingCustomer(cust);
+                                setIsCustomerModalOpen(true);
+                              }
                             }}
-                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                             title="Edit Customer"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -361,8 +385,17 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
                         size="sm"
                         fullWidth
                         onClick={() => {
-                          setInvoicePrefillCustomer(cust);
-                          setInvoiceModalOpen(true);
+                          if (onOpenCreateInvoice) {
+                            onOpenCreateInvoice('invoice', {
+                              customerName: cust.name,
+                              customerPhone: cust.phone || '',
+                              customerAddress: cust.address || '',
+                              customerEmail: cust.email || '',
+                            } as any);
+                          } else {
+                            setInvoicePrefillCustomer(cust);
+                            setInvoiceModalOpen(true);
+                          }
                         }}
                         className="text-xs text-emerald-800 border-emerald-200 hover:bg-emerald-50"
                       >
@@ -404,8 +437,12 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
               }
               actionLabel="Add First Supplier"
               onAction={() => {
-                setEditingSupplier(null);
-                setIsSupplierModalOpen(true);
+                if (onOpenCreateContact) {
+                  onOpenCreateContact('supplier', null, null);
+                } else {
+                  setEditingSupplier(null);
+                  setIsSupplierModalOpen(true);
+                }
               }}
             />
           ) : (
@@ -437,10 +474,14 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => {
-                            setEditingSupplier(sup);
-                            setIsSupplierModalOpen(true);
+                            if (onOpenCreateContact) {
+                              onOpenCreateContact('supplier', null, sup);
+                            } else {
+                              setEditingSupplier(sup);
+                              setIsSupplierModalOpen(true);
+                            }
                           }}
-                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                           title="Edit Supplier"
                         >
                           <Edit2 className="w-3.5 h-3.5" />

@@ -1,48 +1,77 @@
-# Implementation Plan: Landing Page Mobile Navbar Optimization (Revised)
+# Dashboard First-Screen Financial Snapshot & Action Flow
 
-Refine the landing page top navigation bar so that the tagline subtitle under the logo is hidden **only on mobile viewports** (and preserved on desktop/tablet), while arranging the Log In, Start Free, and Install App buttons to fit without overlapping or horizontal overflow.
+Elevate the **Current Sales, Expenses, and Net Profit** snapshot to be the immediate, unencumbered focal point of MarketMate the moment a user logs in, followed directly by intuitive one-click navigation into recording sales and expenses.
 
-## User Review Required
+## User Feedback & Strategic Rationale
 
-> [!IMPORTANT]
-> Revised specifications based on your feedback:
-> 1. **Tagline Visibility**: The tagline *"Know Your Numbers, Grow Your Business"* is removed **only on mobile screens** (`< sm`) and remains fully visible on desktop and tablet (`sm:` and up).
-> 2. **Mobile Button Arrangement**: Align "Log In" and "Start Free" with compact, touch-friendly padding (`px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm`) and `whitespace-nowrap` to prevent awkward wrapping.
-> 3. **Professional Install App Adjustment**: Format the Install App button to show a sleek, compact smartphone icon trigger on mobile (`variant="icon"` in a soft emerald badge) and the full button with text on desktop/tablet.
-> 4. **No Horizontal Overlap**: Header container margins and flex layout configured with `overflow-x-hidden` and `gap-1.5 sm:gap-3` so all mobile screen sizes (360px–430px) display everything on one balanced line.
+> [!NOTE]
+> Feedback from users highlights that merchants open their business management app with one primary objective: **to know their numbers first** before doing work.
+> Seeing today's sales, expenses, and true take-home profit immediately upon login provides instant operational awareness and eliminates anxiety before recording subsequent sales.
 
 ---
 
-## Proposed Changes
+## 1. Overview & Proposed Flow
 
-### 1. MarketMateLogo Component (`src/components/common/MarketMateLogo.tsx`)
-- Add `hideSubtitleOnMobile?: boolean` to `MarketMateLogoProps`.
-- In the subtitle render block:
-  - When `hideSubtitleOnMobile` is true, render with `hidden sm:block` so the subtitle is hidden strictly on mobile viewports and remains visible on tablet and desktop.
-
----
-
-### 2. Landing Page Header (`src/components/landing/LandingPage.tsx`)
-- In `<header>`:
-  - Pass `showSubtitle={true}` and `hideSubtitleOnMobile={true}` to `<MarketMateLogo size="md" />`.
-  - Wrap the logo container in `flex items-center min-w-0 shrink`.
-  - Update the right-side action group:
-    - **Install App Trigger**: On mobile, render a compact smartphone icon button (`w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80`); on desktop (`sm:block`), render the standard compact button with label.
-    - **Log In Button**: `text-xs sm:text-sm font-semibold text-slate-700 hover:text-slate-900 px-2 sm:px-3 py-1.5 transition-colors cursor-pointer whitespace-nowrap`.
-    - **Start Free Button**: `Button onClick={onStartFree} size="sm"` with `px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0`.
-  - Container padding adjusted to `px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-3`.
+1. **Top Financial Snapshot First**:
+   - The three core performance cards (**Today's Sales**, **Operating Expenses**, and **Net Take-Home Profit**) sit at the very top of the viewport immediately below the header.
+   - Zero visual clutter: Greeting text and quick-start guides are designed compactly so the three primary numbers are 100% visible above the fold on both mobile smartphones and desktop screens.
+2. **Seamless Transition to Recording**:
+   - Position prominent, high-contrast action buttons (**`+ Record Sale`** in emerald and **`+ Record Expense`** in subtle outline) directly attached to the financial summary.
+   - When clicked, smoothly transitions into the dedicated full-page `RecordSaleView` or `RecordExpenseView`.
+   - After saving, automatically returns back to the Dashboard, where the live numbers immediately tick up with fresh data and animated metric feedback.
+3. **Role-Based Privacy by Default**:
+   - **Store Owner & Manager**: Sees full sales revenue, operating expenses, gross margins, and take-home net profit.
+   - **Cashier / Sales Clerk**: Sees today's counter sales volume and transaction count, while confidential cost prices, store expenses, and net profits remain masked with role-based security badges.
 
 ---
 
-## Verification Plan
+## 2. Visual & Architectural Improvements
 
-### Automated Build & Compilation
-- Run `npm run build` and `tsc --noEmit` to ensure type safety and error-free compilation.
+### A. Layout Hierarchy on Dashboard (`DashboardView.tsx`)
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ Top Header: Store Name • Cashier Profile • Quick Help                  │
+├────────────────────────────────────────────────────────────────────────┤
+│ Period Tabs: [ Today (Active) ] [ This Week ] [ This Month ]           │
+├────────────────────────────────────────────────────────────────────────┤
+│ ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────┐ │
+│ │    TODAY'S SALES     │ │   TODAY'S EXPENSES   │ │ TAKE-HOME PROFIT │ │
+│ │      ₦145,000        │ │       ₦18,500        │ │     ₦42,800      │ │
+│ │   12 sales recorded  │ │   3 costs logged     │ │   29.5% margin   │ │
+│ └──────────────────────┘ └──────────────────────┘ └──────────────────┘ │
+├────────────────────────────────────────────────────────────────────────┤
+│ Quick Entry Strip:                                                     │
+│   [ + Record New Sale ]               [ + Record Expense ]             │
+├────────────────────────────────────────────────────────────────────────┤
+│ Recent Activity • AI Recommendations • Financial Charts                │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
-### Visual & Viewport Verification
-- **Mobile Viewports (360px, 375px, 390px, 414px)**:
-  - Verify that the tagline subtitle is hidden.
-  - Verify that the logo, Install App icon, Log In, and Start Free buttons sit cleanly in a single horizontal row with zero overflow.
-- **Desktop Viewport (>= 640px / 1024px)**:
-  - Verify that the tagline *"Know Your Numbers, Grow Your Business"* is visible under the logo.
-  - Verify that the full Install App button with label is shown.
+### B. Mobile Screen Ergonomics
+- Ensure that on mobile viewport heights (375px–430px), the 3 cards and the Record buttons fit within the first visible screen without requiring any downward scroll.
+- Convert the period selector into a streamlined segmented pill toggle.
+- Add live subtle delta indicators (e.g., `+15% vs yesterday`) to give merchants immediate context on whether today's trade is pacing ahead or behind.
+
+---
+
+## 3. Technical Implementation Details
+
+1. **`src/components/dashboard/DashboardView.tsx`**:
+   - Reposition the period selector and core metric cards to the top of the content stream.
+   - Tighten header padding and move the QuickStartGuide into a dismissible compact pill if still uncompleted.
+   - Connect the primary action strip directly to `onOpenAddSale` and `onOpenAddExpense`.
+2. **Real-time Recalculation Verification**:
+   - Verify that upon returning from `RecordSaleView` and `RecordExpenseView`, the dashboard numbers update deterministically via `BusinessDataContext` without requiring manual refresh.
+3. **Permissions Hardening**:
+   - Ensure `canViewProfit` and `canViewExpenses` remain strictly enforced so staff log-ins respect owner confidentiality.
+
+---
+
+## 4. Verification & Testing
+
+1. **Mobile & Desktop Viewport Testing**: Test screen layouts at 375px (iPhone SE), 390px (iPhone 14/15), and 1280px (Laptop).
+2. **Navigation Loop**:
+   - Log in -> Verify Dashboard displays Today's Sales, Expenses, and Profit above fold.
+   - Click `+ Record Sale` -> Opens full-page `RecordSaleView`.
+   - Save sale -> Returns to Dashboard -> Verify Today's Sales and Profit immediately reflect the new transaction.
+3. **Build & Lint Verification**: Run `compile_applet` and `lint_applet` to ensure zero compilation or styling errors.

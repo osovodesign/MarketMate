@@ -111,7 +111,15 @@ export const Header: React.FC<HeaderProps> = ({
     ai: { title: 'MarketMate AI Advisor', subtitle: 'Ask questions about your business numbers' },
     settings: { title: 'Settings & Profile', subtitle: 'Manage business details and preferences' },
     admin: { title: 'Super Admin Portal', subtitle: 'Owner command center, registered merchants & platform health' },
-    staff: { title: 'Staff & Access Control', subtitle: 'Manage team members, 4-digit PINs & granular access permissions' },
+    staff: { title: 'Staff & Cashier PINs', subtitle: 'Manage roles, employee permissions & drawer shifts' },
+    'record-sale': { title: 'Record Sale', subtitle: 'Enter sales details with real-time profit and margin calculations' },
+    'record-expense': { title: 'Record Expense', subtitle: 'Track operating costs and daily business expenditures' },
+    'pricing-calc': { title: 'Pricing & Margin Calculator', subtitle: 'Calculate selling prices, overhead buffers & target profit margins' },
+    'profit-sim': { title: 'Profit Simulator', subtitle: 'Simulate monthly revenue, fixed expenses & break-even profitability' },
+    'fx-calc': { title: 'FX & Landed Cost Import', subtitle: 'Calculate foreign import costs with official vs parallel FX rates' },
+    'create-invoice': { title: 'Create Invoice & Quote', subtitle: 'Issue professional branded invoices with line items & payment terms' },
+    'record-debt': { title: 'Record Customer Debt', subtitle: 'Track customer balances, payment due dates & credit ledgers' },
+    'create-contact': { title: 'Add Contact', subtitle: 'Register customer or wholesale supplier profile and contact info' },
   };
 
   const viewMeta = titles[currentView] || { title: 'Dashboard', subtitle: '' };

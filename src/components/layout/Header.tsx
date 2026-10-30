@@ -32,6 +32,7 @@ import { isSuperAdminEmail } from '../../lib/adminConfig';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { useNotifications } from '../../context/NotificationContext';
 import { PWAInstallButton } from '../common/PWAInstallButton';
+import { VIEW_TITLES } from '../../lib/navigationConfig';
 
 interface HeaderProps {
   currentView: AppView;
@@ -93,45 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, [isDropdownOpen]);
 
-  const titles: Record<AppView, { title: string; subtitle: string }> = {
-    landing: { title: 'MarketMate', subtitle: 'Know Your Numbers, Grow Your Business' },
-    login: { title: 'Login', subtitle: 'Access your account' },
-    signup: { title: 'Sign Up', subtitle: 'Start free with MarketMate' },
-    onboarding: { title: 'Setup Business', subtitle: 'Tell us about your business' },
-    dashboard: { title: 'Business Overview', subtitle: 'Today, this week & month performance' },
-    pos: { title: 'POS Register & Scanner', subtitle: 'High-speed checkout, barcode scanning & instant receipts' },
-    sales: { title: 'Sales Record', subtitle: 'Track your incoming revenue and item profits' },
-    expenses: { title: 'Expenses & Costs', subtitle: 'Manage your operating expenses' },
-    invoices: { title: 'Invoices & Quotations', subtitle: 'Generate PDF/WhatsApp bills, quotes & payment tracking' },
-    contacts: { title: 'Contacts & Directory', subtitle: 'Manage customers CRM and wholesale market suppliers' },
-    debts: { title: 'Customer Debt Book', subtitle: 'Track customer balances, payment reminders & credit' },
-    products: { title: 'Inventory & Price Catalog', subtitle: 'Set standard unit costs, prices & margins' },
-    transactions: { title: 'Transactions Ledger', subtitle: 'Full history of sales and expenses' },
-    reports: { title: 'Financial Reports', subtitle: 'Detailed breakdown, profit trends & margins' },
-    ai: { title: 'MarketMate AI Advisor', subtitle: 'Ask questions about your business numbers' },
-    settings: { title: 'Settings & Profile', subtitle: 'Manage business details and preferences' },
-    admin: { title: 'Super Admin Portal', subtitle: 'Owner command center, registered merchants & platform health' },
-    staff: { title: 'Staff & Cashier PINs', subtitle: 'Manage roles, employee permissions & drawer shifts' },
-    'record-sale': { title: 'Record Sale', subtitle: 'Enter sales details with real-time profit and margin calculations' },
-    'record-expense': { title: 'Record Expense', subtitle: 'Track operating costs and daily business expenditures' },
-    'pricing-calc': { title: 'Pricing & Margin Calculator', subtitle: 'Calculate selling prices, overhead buffers & target profit margins' },
-    'profit-sim': { title: 'Profit Simulator', subtitle: 'Simulate monthly revenue, fixed expenses & break-even profitability' },
-    'fx-calc': { title: 'FX & Landed Cost Import', subtitle: 'Calculate foreign import costs with official vs parallel FX rates' },
-    'create-invoice': { title: 'Create Invoice & Quote', subtitle: 'Issue professional branded invoices with line items & payment terms' },
-    'record-debt': { title: 'Record Customer Debt', subtitle: 'Track customer balances, payment due dates & credit ledgers' },
-    'create-contact': { title: 'Add Contact', subtitle: 'Register customer or wholesale supplier profile and contact info' },
-    'create-product': { title: 'Add Catalog Product', subtitle: 'Set unit cost, default selling price, stock levels & profit margins' },
-    'financial-goals': { title: 'Financial Goals & Targets', subtitle: 'Set monthly revenue & net profit benchmarks with live daily run-rates' },
-    'backup-vault': { title: 'Backup & Restore Vault', subtitle: 'Download encrypted offline JSON snapshots and restore business ledgers' },
-    referral: { title: 'Refer & Earn 5% Off', subtitle: 'Invite fellow retail merchants and unlock subscription discounts' },
-    'help-support': { title: 'Help & Support Hub', subtitle: 'Direct WhatsApp admin chat, in-app support tickets & official channels' },
-    'logo-export': { title: 'Official Brand Assets', subtitle: 'Download vector SVG emblems, high-res PNG logos & PWA icons' },
-    subscribe: { title: 'Subscribe to MarketMate Pro', subtitle: 'Direct bank transfer & instant admin verification' },
-    'bulk-import': { title: 'Bulk Product Import', subtitle: 'Upload CSV or Excel spreadsheets to populate your inventory in seconds' },
-    legal: { title: 'Legal & Compliance Center', subtitle: 'Official Terms of Service, Legal Disclaimers & NDPA Privacy Notices' },
-  };
-
-  const viewMeta = titles[currentView] || { title: 'Dashboard', subtitle: '' };
+  const viewMeta = VIEW_TITLES[currentView] || { title: 'Home', subtitle: '' };
 
   const handleAction = (callback?: () => void) => {
     setIsDropdownOpen(false);
@@ -384,7 +347,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </button>
                   )}
 
-                  {/* Refer & Earn 5% Discount */}
+                  {/* MarketMate Referral Programme */}
                   {onOpenReferralModal && (
                     <button
                       onClick={() => handleAction(onOpenReferralModal)}
@@ -395,8 +358,8 @@ export const Header: React.FC<HeaderProps> = ({
                           <Gift className="w-4 h-4" />
                         </div>
                         <div className="text-left">
-                          <p className="font-bold text-emerald-900 dark:text-emerald-300">Refer & Earn 5% Off</p>
-                          <p className="text-[10px] text-emerald-700 dark:text-emerald-400">Campaign: Oct 12 – 30, 2026</p>
+                          <p className="font-bold text-emerald-900 dark:text-emerald-300">MarketMate Referral Programme</p>
+                          <p className="text-[10px] text-emerald-700 dark:text-emerald-400">Invite More. Grow Together.</p>
                         </div>
                       </div>
                       <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">5% OFF</span>

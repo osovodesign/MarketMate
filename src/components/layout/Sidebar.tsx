@@ -1,27 +1,9 @@
 import React from 'react';
 import {
-  LayoutDashboard,
-  ShoppingCart,
-  TrendingUp,
-  Receipt,
-  Package,
-  Users,
-  ArrowLeftRight,
-  BarChart3,
-  Bot,
-  Settings,
   PlusCircle,
-  Sparkles,
-  Calculator,
-  Sliders,
-  Target,
-  Database,
-  FileText,
-  BookUser,
-  Ship,
+  ShoppingCart,
   Shield,
   Image as ImageIcon,
-  Gift,
   Headphones,
 } from 'lucide-react';
 import { AppView } from '../../types';
@@ -30,6 +12,13 @@ import { useAuth } from '../../context/AuthContext';
 import { isSuperAdminEmail } from '../../lib/adminConfig';
 import { SocialMediaLinks } from '../common/SocialMediaLinks';
 import { PWAInstallButton } from '../common/PWAInstallButton';
+import {
+  NAV_GROUPS,
+  SHARED_NAV_ITEMS,
+  isNavItemVisible,
+  isNavItemActive,
+} from '../../lib/navigationConfig';
+import { hasPermission } from '../../lib/staffPermissions';
 
 interface SidebarProps {
   currentView: AppView;
@@ -54,368 +43,218 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavigate,
   onOpenAddSale,
   onOpenAddExpense,
-  onOpenPricingCalculator,
-  onOpenProfitSimulator,
-  onOpenGoalsModal,
-  onOpenBackupModal,
-  onOpenFxModal,
-  onOpenStaffModal,
   onOpenLogoExportModal,
-  onOpenReferralModal,
   onOpenSupportModal,
   businessName = 'My Business',
-  businessType = 'Micro Enterprise',
+  businessType = 'Small Business',
 }) => {
-  const { debts, invoices, currentSession, staffList } = useBusinessData();
-  const { user, business, isSuperAdmin, isDemoMode, isSubscribed } = useAuth();
+  const { debts, invoices, products, currentSession } = useBusinessData();
+  const { user, isSuperAdmin, isSubscribed } = useAuth();
+
   const activeDebtorsCount = debts.filter((d) => d.status !== 'settled').length;
   const unpaidInvoicesCount = invoices.filter(
     (i) => i.type === 'invoice' && i.status !== 'paid' && i.status !== 'draft'
   ).length;
+  const lowStockCount = products.filter(
+    (p) =>
+      p.stockQuantity !== undefined &&
+      p.stockQuantity <= (p.lowStockThreshold ?? 5)
+  ).length;
 
-  const isCashier = currentSession.currentRole === 'cashier';
+  const isCashier = currentSession?.currentRole === 'cashier';
+  const canAddExpense = hasPermission(currentSession, 'canViewExpenses');
 
-  const navItems: {
-    id: AppView;
-    label: string;
-    icon: React.ComponentType<{ className?: string }>;
-    badge?: number;
-    hideForCashier?: boolean;
-    isPro?: boolean;
-  }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'pos', label: 'POS Register Terminal', icon: ShoppingCart },
-    { id: 'sales', label: 'Sales Records', icon: TrendingUp },
-    { id: 'expenses', label: 'Expenses & Costs', icon: Receipt, hideForCashier: isCashier },
-    { id: 'invoices', label: 'Invoices & Quotes', icon: FileText, badge: unpaidInvoicesCount, isPro: true },
-    { id: 'contacts', label: 'Contacts & CRM', icon: BookUser, isPro: true },
-    { id: 'debts', label: 'Debt & Credit Book', icon: Users, badge: activeDebtorsCount, isPro: true },
-    { id: 'products', label: 'Catalog & Inventory', icon: Package, isPro: true },
-    { id: 'transactions', label: 'Transactions', icon: ArrowLeftRight },
-    { id: 'reports', label: 'Reports & P&L', icon: BarChart3, hideForCashier: isCashier, isPro: true },
-    { id: 'staff', label: 'Staff & Team Access', icon: Shield, isPro: true },
-    { id: 'ai', label: 'MarketMate AI', icon: Bot, isPro: true },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
+  const getBadgeCount = (badgeKey?: 'debts' | 'invoices' | 'lowStock'): number => {
+    if (badgeKey === 'debts') return activeDebtorsCount;
+    if (badgeKey === 'invoices') return unpaidInvoicesCount;
+    if (badgeKey === 'lowStock') return lowStockCount;
+    return 0;
+  };
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 border-r border-slate-800 bg-[#001A35] text-white shrink-0 sticky top-14 sm:top-16 h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] overflow-y-auto z-20 transition-colors scrollbar-thin scrollbar-thumb-slate-700/60 scrollbar-track-transparent hover:scrollbar-thumb-slate-600">
-      {/* Business Switcher / Profile Badge */}
+    <aside
+      aria-label="Main navigation"
+      className="hidden lg:flex flex-col w-64 border-r border-slate-800 bg-[#001A35] text-white shrink-0 sticky top-14 sm:top-16 h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] overflow-y-auto z-20 transition-colors scrollbar-thin scrollbar-thumb-slate-700/60 scrollbar-track-transparent hover:scrollbar-thumb-slate-600"
+    >
+      {/* Business Profile Summary */}
       <div className="px-4 py-3.5 border-b border-slate-800 bg-[#082F4B]/90 shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#059669] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs">
+          <div className="w-8 h-8 rounded-lg bg-[#059669] text-white font-bold text-xs flex items-center justify-center shrink-0">
             {businessName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <p className="text-xs font-semibold text-white truncate leading-tight">{businessName}</p>
+              <p className="text-xs font-semibold text-white truncate leading-tight">
+                {businessName}
+              </p>
               {isCashier && (
-                <span className="text-[9px] font-bold px-1.5 py-0.2 bg-amber-950/90 text-amber-300 rounded border border-amber-700/70 shrink-0">
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-amber-950/90 text-amber-300 rounded border border-amber-700/70 shrink-0">
                   Cashier
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-300 truncate leading-tight mt-0.5">{businessType}</p>
+            <p className="text-[11px] text-slate-300 truncate leading-tight mt-0.5">
+              {businessType}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Quick Action Buttons */}
+      {/* Primary Quick Actions */}
       <div className="p-3.5 space-y-2 border-b border-slate-800 bg-[#001A35] shrink-0">
         <button
-          onClick={() => onNavigate('pos')}
-          className="w-full flex items-center justify-center gap-2 bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow-2xs transition-colors cursor-pointer"
+          onClick={onOpenAddSale}
+          className="w-full flex items-center justify-center gap-2 bg-[#059669] hover:bg-[#047857] text-white text-xs font-semibold py-2.5 px-3 rounded-xl transition-colors cursor-pointer whitespace-nowrap"
         >
-          <ShoppingCart className="w-4 h-4" />
-          <span>Launch POS Register</span>
+          <PlusCircle className="w-4 h-4 shrink-0" />
+          <span>Record Sale</span>
         </button>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className={`grid ${canAddExpense && !isCashier ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
           <button
-            onClick={onOpenAddSale}
-            className="flex items-center justify-center gap-1.5 bg-[#059669]/20 hover:bg-[#059669]/30 text-[#34D399] border border-[#059669]/40 text-xs font-semibold py-2 px-2.5 rounded-lg transition-colors cursor-pointer"
+            onClick={() => onNavigate('pos')}
+            className="flex items-center justify-center gap-1.5 bg-[#082F4B] hover:bg-[#0F2744] text-slate-100 border border-slate-700 text-xs font-semibold py-2 px-2.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
           >
-            <PlusCircle className="w-3.5 h-3.5 text-[#34D399]" />
-            <span>Add Sale</span>
+            <ShoppingCart className="w-3.5 h-3.5 text-[#34D399] shrink-0" />
+            <span>Checkout</span>
           </button>
-          {!isCashier && (
+          {canAddExpense && !isCashier && (
             <button
               onClick={onOpenAddExpense}
-              className="flex items-center justify-center gap-1.5 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-800/80 text-xs font-semibold py-2 px-2.5 rounded-lg transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 bg-[#082F4B] hover:bg-[#0F2744] text-slate-100 border border-slate-700 text-xs font-semibold py-2 px-2.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
             >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>Expense</span>
+              <PlusCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>Add Expense</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Navigation Links */}
-      <nav className="flex-1 px-3 py-3 space-y-0.5">
-        <div className="px-3 pb-1.5 pt-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-          Main Menu
-        </div>
-        {navItems
-          .filter((item) => !item.hideForCashier)
-          .map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              currentView === item.id ||
-              (item.id === 'sales' && currentView === 'record-sale') ||
-              (item.id === 'expenses' && currentView === 'record-expense') ||
-              (item.id === 'invoices' && currentView === 'create-invoice') ||
-              (item.id === 'debts' && currentView === 'record-debt') ||
-              (item.id === 'contacts' && currentView === 'create-contact') ||
-              (item.id === 'products' && (currentView === 'create-product' || currentView === 'bulk-import'));
-            return (
-              <button
-                key={item.id}
-                onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
-                  isActive
-                    ? 'bg-[#059669]/20 text-[#34D399] font-bold border border-[#059669]/60 shadow-[0_0_12px_rgba(5,150,105,0.25)]'
-                    : 'text-slate-200 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-[#34D399]' : 'text-slate-400 group-hover:text-slate-200'}`} />
-                  <span>{item.label}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                        item.id === 'debts'
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                          : 'bg-[#064E3B] text-[#34D399] border border-[#059669]/40'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                  {item.isPro && !isSubscribed && (
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
-                      PRO
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+      {/* Grouped Navigation Links from Single Source of Truth */}
+      <nav className="flex-1 px-3 py-3 space-y-4">
+        {NAV_GROUPS.map((group) => {
+          const groupItems = SHARED_NAV_ITEMS.filter(
+            (item) => item.group === group.id && isNavItemVisible(item, currentSession)
+          );
+          if (groupItems.length === 0) return null;
 
-        {/* Business Tools Section */}
-        <div className="px-3 pb-1 pt-4 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-          Smart Tools
-        </div>
+          return (
+            <div key={group.id} className="space-y-0.5">
+              <div className="px-3 pb-1 text-[11px] font-semibold text-slate-400 tracking-wide">
+                {group.label}
+              </div>
+              {groupItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = isNavItemActive(item, currentView);
+                const badgeCount = getBadgeCount(item.badgeKey);
 
-        {onOpenFxModal && (
-          <button
-            onClick={onOpenFxModal}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
-              currentView === 'fx-calc'
-                ? 'bg-blue-600/25 text-blue-300 font-bold border border-blue-500/60 shadow-[0_0_12px_rgba(59,130,246,0.25)]'
-                : 'text-slate-200 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Ship className={`w-4 h-4 ${currentView === 'fx-calc' ? 'text-blue-300' : 'text-blue-400'}`} />
-              <span>FX & Landed Cost Import</span>
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      if (item.id === 'help-support' && onOpenSupportModal) {
+                        onOpenSupportModal();
+                      } else {
+                        onNavigate(item.id);
+                      }
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer group ${
+                      isActive
+                        ? 'bg-[#059669] text-white font-semibold'
+                        : 'text-slate-200 hover:text-white hover:bg-white/5 font-medium'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Icon
+                        className={`w-4 h-4 shrink-0 transition-colors ${
+                          isActive
+                            ? 'text-white'
+                            : 'text-slate-400 group-hover:text-slate-200'
+                        }`}
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {badgeCount > 0 && (
+                        <span
+                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md tabular-nums ${
+                            isActive
+                              ? 'bg-white/20 text-white'
+                              : item.badgeKey === 'debts'
+                              ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                              : item.badgeKey === 'lowStock'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : 'bg-[#064E3B] text-[#34D399] border border-[#059669]/40'
+                          }`}
+                        >
+                          {badgeCount}
+                        </span>
+                      )}
+                      {item.isPro && !isSubscribed && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
+                          Pro
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            {!isSubscribed && (
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
-                PRO
-              </span>
-            )}
-          </button>
-        )}
+          );
+        })}
 
-        {onOpenStaffModal && (
-          <button
-            onClick={onOpenStaffModal}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
-              currentView === 'staff'
-                ? 'bg-purple-600/25 text-purple-300 font-bold border border-purple-500/60 shadow-[0_0_12px_rgba(168,85,247,0.25)]'
-                : 'text-slate-200 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Shield className={`w-4 h-4 ${currentView === 'staff' ? 'text-purple-300' : 'text-purple-400'}`} />
-              <span>Staff & Cashier PINs</span>
-            </div>
-            {!isSubscribed && (
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
-                PRO
-              </span>
-            )}
-          </button>
-        )}
-
-        {onOpenGoalsModal && (
-          <button
-            onClick={onOpenGoalsModal}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
-              currentView === 'financial-goals'
-                ? 'bg-[#059669]/20 text-[#34D399] font-bold border border-[#059669]/60 shadow-[0_0_12px_rgba(5,150,105,0.25)]'
-                : 'text-slate-200 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Target className="w-4 h-4 text-[#34D399]" />
-              <span>Financial Goals & Targets</span>
-            </div>
-            {!isSubscribed && (
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
-                PRO
-              </span>
-            )}
-          </button>
-        )}
-
-        {onOpenPricingCalculator && (
-          <button
-            onClick={onOpenPricingCalculator}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
-              currentView === 'pricing-calc'
-                ? 'bg-[#059669]/20 text-[#34D399] font-bold border border-[#059669]/60 shadow-[0_0_12px_rgba(5,150,105,0.25)]'
-                : 'text-slate-200 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Calculator className={`w-4 h-4 ${currentView === 'pricing-calc' ? 'text-[#34D399]' : 'text-[#34D399]'}`} />
-              <span>Pricing Calculator</span>
-            </div>
-            {!isSubscribed && (
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
-                PRO
-              </span>
-            )}
-          </button>
-        )}
-
-        {onOpenProfitSimulator && (
-          <button
-            onClick={onOpenProfitSimulator}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
-              currentView === 'profit-sim'
-                ? 'bg-amber-600/25 text-amber-300 font-bold border border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
-                : 'text-slate-200 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Sliders className={`w-4 h-4 ${currentView === 'profit-sim' ? 'text-amber-300' : 'text-amber-400'}`} />
-              <span>Profit Simulator</span>
-            </div>
-            {!isSubscribed && (
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
-                PRO
-              </span>
-            )}
-          </button>
-        )}
-
-        {onOpenBackupModal && (
-          <button
-            onClick={onOpenBackupModal}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
-              currentView === 'backup-vault'
-                ? 'bg-[#059669]/20 text-[#34D399] font-bold border border-[#059669]/60 shadow-[0_0_12px_rgba(5,150,105,0.25)]'
-                : 'text-slate-200 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Database className={`w-4 h-4 ${currentView === 'backup-vault' ? 'text-[#34D399]' : 'text-slate-400'}`} />
-              <span>Backup & Restore Vault</span>
-            </div>
-            {!isSubscribed && (
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-950/90 text-amber-300 border border-amber-700/70">
-                PRO
-              </span>
-            )}
-          </button>
-        )}
-
-        {/* Refer & Earn 5% Off Campaign Trigger */}
-        {onOpenReferralModal && (
-          <button
-            onClick={onOpenReferralModal}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-[#34D399] bg-[#059669]/20 border border-[#059669]/40 hover:bg-[#059669]/30 transition-all cursor-pointer shadow-2xs group"
-          >
-            <div className="flex items-center gap-2.5">
-              <Gift className="w-4 h-4 text-[#34D399] group-hover:scale-110 transition-transform" />
-              <span>Refer & Earn 5%</span>
-            </div>
-            <span className="px-1.5 py-0.5 rounded font-bold text-[10px] bg-[#059669] text-white">
-              5% Off
-            </span>
-          </button>
-        )}
-
-        {/* Super Admin Owner Link */}
+        {/* Super Admin Portal Link (Protected for Administrators Only) */}
         {(isSuperAdmin || isSuperAdminEmail(user?.email)) && (
-          <div className="pt-2">
+          <div className="pt-2 border-t border-slate-800/80">
             <button
               onClick={() => onNavigate('admin')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                 currentView === 'admin'
-                  ? 'bg-[#059669] text-white shadow-xs'
+                  ? 'bg-[#059669] text-white'
                   : 'bg-[#059669]/20 text-[#34D399] border border-[#059669]/40 hover:bg-[#059669]/30'
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <Shield className="w-4 h-4 text-[#34D399]" />
-                <span>Owner Admin Portal</span>
+                <Shield className="w-4 h-4 shrink-0" />
+                <span>Admin Portal</span>
               </div>
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#059669] text-white">
-                Owner
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#059669] text-white">
+                Admin
               </span>
             </button>
           </div>
         )}
       </nav>
 
-      {/* Footer Support & Brand Tray */}
+      {/* Footer Tray */}
       <div className="p-3 border-t border-slate-800 bg-[#082F4B]/90 space-y-2 text-slate-300 shrink-0">
-        {/* PWA Install Trigger */}
-        <PWAInstallButton variant="primary" className="w-full justify-center text-xs py-2 shadow-xs" />
-
-        {/* Help & Support Desk Trigger */}
-        {onOpenSupportModal && (
-          <button
-            onClick={onOpenSupportModal}
-            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-slate-700/70 bg-[#082F4B] hover:bg-[#0F2744] text-slate-200 text-xs font-semibold transition-colors cursor-pointer shadow-2xs group"
-            title="Chat with MarketMate Admin on WhatsApp or Submit Inquiry"
-          >
-            <div className="flex items-center gap-2">
-              <Headphones className="w-3.5 h-3.5 text-[#34D399] group-hover:scale-110 transition-transform" />
-              <span className="text-[11px] font-bold">Help & Support Desk</span>
-            </div>
-            <span className="text-[9px] font-bold px-1.5 py-0.2 bg-[#059669] text-white rounded">
-              WhatsApp
-            </span>
-          </button>
-        )}
+        <PWAInstallButton variant="primary" className="w-full justify-center text-xs py-2" />
 
         <div className="flex items-center justify-between gap-2">
-          {/* Export Brand Logo Trigger */}
+          {onOpenSupportModal && (
+            <button
+              onClick={onOpenSupportModal}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border border-slate-700/70 bg-[#082F4B] hover:bg-[#0F2744] text-slate-200 text-xs font-medium transition-colors cursor-pointer"
+              title="Open Help & Support"
+            >
+              <Headphones className="w-3.5 h-3.5 text-[#34D399] shrink-0" />
+              <span className="text-[11px] truncate">Help & Support</span>
+            </button>
+          )}
           {onOpenLogoExportModal && (
             <button
               onClick={onOpenLogoExportModal}
-              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border border-slate-700/60 bg-white/5 text-xs font-medium text-slate-200 hover:text-[#34D399] hover:bg-white/10 transition-colors cursor-pointer"
-              title="Export & Download MarketMate Official Logos"
+              className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg border border-slate-700/60 bg-white/5 text-xs font-medium text-slate-200 hover:text-[#34D399] hover:bg-white/10 transition-colors cursor-pointer"
+              title="Official MarketMate Logos"
             >
-              <ImageIcon className="w-3.5 h-3.5 text-[#34D399]" />
-              <span className="text-[11px]">Brand Assets</span>
+              <ImageIcon className="w-3.5 h-3.5 text-[#34D399] shrink-0" />
+              <span className="text-[11px]">Logos</span>
             </button>
           )}
         </div>
 
-        {/* Official Channels Quick Strip */}
         <div className="pt-1 text-slate-300 [&_a]:text-slate-300 [&_a:hover]:text-[#34D399] [&_a:hover]:bg-white/10">
           <SocialMediaLinks variant="sidebar" />
-        </div>
-
-        <div className="text-center text-[10px] text-slate-400">
-          <p className="font-medium">MarketMate™ • Financial OS</p>
         </div>
       </div>
     </aside>

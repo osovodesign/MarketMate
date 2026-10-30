@@ -28,6 +28,8 @@ import {
   detectAndStoreReferralCode,
   getPendingReferralCode,
   recordReferralSignup,
+  ensureReferralCodeMapping,
+  updateReferredBusinessName,
 } from '../lib/referralService';
 import { triggerWelcomeEmail } from '../lib/emailService';
 import { isBusinessSubscriptionActive } from '../lib/subscriptionService';
@@ -242,6 +244,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Fetch business profile BEFORE concluding auth state to prevent Onboarding flash
         const bizData = await fetchBusinessProfile(firebaseUser.uid, firebaseUser.email || undefined);
 
+        // Register deterministic referral code mapping for this merchant
+        ensureReferralCodeMapping({
+          userId: firebaseUser.uid,
+          email: firebaseUser.email || undefined,
+          businessName: bizData?.businessName || userObj.fullName,
+        });
+
         setUser(userObj);
         setBusiness(bizData);
         setIsDemoMode(false);
@@ -277,9 +286,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isSuperAdmin: isSuper,
       };
 
+      const bizData = await fetchBusinessProfile(fbUser.uid, fbUser.email || undefined);
+
       // Save user doc in Firestore
       try {
         const userDocRef = doc(db, 'users', fbUser.uid);
+        const existingUserSnap = await getDoc(userDocRef);
+        const isFirstGoogleSignup = !existingUserSnap.exists() && !bizData;
+
         await setDoc(
           userDocRef,
           {
@@ -291,18 +305,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           { merge: true }
         );
 
-        // Record pending referral if user signed up with a referral link
+        ensureReferralCodeMapping({
+          userId: fbUser.uid,
+          email: fbUser.email || undefined,
+          businessName: bizData?.businessName || fbUser.displayName || 'Merchant',
+        });
+
+        // Record pending referral if a new user signed up with a referral link/code
         const pendingRef = getPendingReferralCode();
-        if (pendingRef) {
-          recordReferralSignup({
+        if (pendingRef && (isFirstGoogleSignup || !bizData)) {
+          await recordReferralSignup({
             referrerCode: pendingRef,
             referredUserId: fbUser.uid,
             referredUserEmail: fbUser.email || undefined,
-            referredBusinessName: fbUser.displayName || 'New Merchant',
+            referredBusinessName: bizData?.businessName || fbUser.displayName || 'New Merchant',
           }).catch((err) => console.warn('Referral signup record error:', err));
         }
+
         // Trigger welcome email for new Google signups
-        if (fbUser.email && fbUser.email.includes('@')) {
+        if (isFirstGoogleSignup && fbUser.email && fbUser.email.includes('@')) {
           triggerWelcomeEmail({
             email: fbUser.email,
             ownerName: fbUser.displayName || 'Merchant user / Business Owner',
@@ -315,7 +336,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userObj));
       localStorage.removeItem(STORAGE_KEYS.IS_DEMO);
-      const bizData = await fetchBusinessProfile(fbUser.uid, fbUser.email || undefined);
 
       setUser(userObj);
       setBusiness(bizData);
@@ -419,10 +439,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           updatedAt: new Date().toISOString(),
         });
 
+        ensureReferralCodeMapping({
+          userId: fbUser.uid,
+          email: fbUser.email || email,
+          businessName: fullName.trim(),
+        });
+
         // Record referral if provided or pending
         const codeToAttribute = (referralCode || getPendingReferralCode() || '').trim().toUpperCase();
         if (codeToAttribute) {
-          recordReferralSignup({
+          await recordReferralSignup({
             referrerCode: codeToAttribute,
             referredUserId: fbUser.uid,
             referredUserEmail: fbUser.email || email,
@@ -520,6 +546,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Update user doc with current business ID
         const userDocRef = doc(db, 'users', user.id);
         await setDoc(userDocRef, { currentBusinessId: bizId }, { merge: true });
+
+        // Sync referral code mapping & update referred store name if this merchant was referred
+        ensureReferralCodeMapping({
+          userId: user.id,
+          email: user.email,
+          businessName: newProfile.businessName,
+        });
+        updateReferredBusinessName(user.id, newProfile.businessName, user.email).catch(() => {});
 
         // Update welcome email with newly established business details
         if (user.email && user.email.includes('@')) {

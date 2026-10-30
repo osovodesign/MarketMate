@@ -65,7 +65,7 @@ export const Shell: React.FC<ShellProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#FEFEFE] dark:bg-[#082F4B] flex flex-col text-[#001A35] dark:text-[#FEFEFE] font-sans antialiased selection:bg-[#059669]/20 selection:text-[#001A35] transition-colors">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#082F4B] flex flex-col text-[#0F172A] dark:text-white font-sans antialiased selection:bg-[#059669]/20 selection:text-[#001A35] transition-colors">
       {/* Urgent/Important Announcement Banner */}
       <AnnouncementBanner onNavigate={onNavigate} />
 
@@ -107,8 +107,8 @@ export const Shell: React.FC<ShellProps> = ({
         />
 
         {/* Viewport Content Container */}
-        <div className="flex-1 flex flex-col min-w-0 pb-24 lg:pb-8">
-          <main className="flex-1 w-full max-w-7xl mx-auto p-3.5 sm:p-6 lg:p-8">
+        <div className="flex-1 flex flex-col min-w-0 pb-28 lg:pb-8">
+          <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
             {children}
           </main>
         </div>
@@ -142,8 +142,8 @@ export const Shell: React.FC<ShellProps> = ({
         onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
       />
 
-      {/* Persistent Global Floating Support Button (WhatsApp & Help Desk) */}
-      <FloatingSupportButton onOpen={handleOpenSupport} />
+      {/* Desktop-only Non-Intrusive Support Control */}
+      <FloatingSupportButton onOpen={handleOpenSupport} currentView={currentView} />
 
       {/* Fallback Help & Support Hub Modal if not provided by parent App */}
       {!onOpenSupportModal && (

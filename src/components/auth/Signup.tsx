@@ -5,7 +5,11 @@ import { Input } from '../ui/Input';
 import { useAuth } from '../../context/AuthContext';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { AuthErrorNotice } from './AuthErrorNotice';
-import { detectAndStoreReferralCode, getPendingReferralCode } from '../../lib/referralService';
+import {
+  detectAndStoreReferralCode,
+  getPendingReferralCode,
+  setPendingReferralCode,
+} from '../../lib/referralService';
 import { LegalModal } from '../legal/LegalModal';
 import { SocialMediaLinks } from '../common/SocialMediaLinks';
 
@@ -61,6 +65,10 @@ export const Signup: React.FC<SignupProps> = ({
     if (!agreedToTerms) {
       setError('Please check the agreement box below to accept MarketMate’s Terms & Policies before signing up with Google.');
       return;
+    }
+
+    if (referralCode.trim()) {
+      setPendingReferralCode(referralCode.trim());
     }
 
     const res = await loginWithGoogle();
@@ -157,14 +165,18 @@ export const Signup: React.FC<SignupProps> = ({
                 type="text"
                 placeholder="e.g. MM-A8F29C"
                 value={referralCode}
-                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  const nextCode = e.target.value.toUpperCase();
+                  setReferralCode(nextCode);
+                  setPendingReferralCode(nextCode);
+                }}
                 leftAddon={<Tag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
               />
               {referralCode.trim() && (
-                <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-300 font-medium">
+                <div className="mt-1.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-300 font-medium">
                   <Gift className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>
-                    Referral code applied! Inviting merchant unlocks 5% discount once your store registers and activates a MarketMate subscription.
+                    Referral code applied. Your account will be linked to the person who invited you.
                   </span>
                 </div>
               )}

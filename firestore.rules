@@ -94,12 +94,65 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // Referral Campaign & Reward Ledger (/referrals/{referralId})
+    // Referral Code Mappings (/referral_codes/{code})
+    // ===============================================================
+    match /referral_codes/{code} {
+      allow get: if isSignedIn();
+      allow list: if isSuperAdmin();
+      allow create, update: if isSignedIn() &&
+        incoming().userId == request.auth.uid &&
+        code == ('MM-' + request.auth.uid[0:6].upper());
+      allow delete: if isSuperAdmin();
+    }
+
+    // ===============================================================
+    // Permanent Referral Programme & Reward Ledger (/referrals/{referralId})
     // ===============================================================
     match /referrals/{referralId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() || isSuperAdmin();
+      // Merchants can only read referrals where they are the referrer or the referred user.
+      // Super Admins can read all referrals across the platform.
+      allow get, list: if isSignedIn() && (
+        isSuperAdmin() ||
+        resource.data.referredUserId == request.auth.uid ||
+        resource.data.referrerUserId == request.auth.uid ||
+        resource.data.referrerCode == ('MM-' + request.auth.uid[0:6].upper())
+      );
+
+      // Authenticated newly registered users can only create their own pending referral record,
+      // cannot refer themselves, and cannot self-grant subscription qualification.
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        (
+          incoming().referredUserId == request.auth.uid &&
+          incoming().referrerCode is string &&
+          incoming().referrerCode != ('MM-' + request.auth.uid[0:6].upper()) &&
+          (!('referrerUserId' in incoming()) || incoming().referrerUserId != request.auth.uid) &&
+          incoming().referredSubscribed == false &&
+          incoming().status == 'pending_subscription' &&
+          incoming().discountPercent == 5 &&
+          (!('subscribedAt' in incoming()) || incoming().subscribedAt == null)
+        )
+      );
+
+      // Regular merchants cannot alter referral reward fields (status, referredSubscribed,
+      // discountPercent, subscribedAt, referrerCode, referredUserId); they may only sync
+      // their own referredBusinessName/referredUserEmail while still pending.
+      // Super Admins can update referral qualification and subscription rewards.
+      allow update: if isSignedIn() && (
+        isSuperAdmin() ||
+        (
+          existing().referredUserId == request.auth.uid &&
+          existing().status == 'pending_subscription' &&
+          existing().referredSubscribed == false &&
+          incoming().referredSubscribed == false &&
+          incoming().status == 'pending_subscription' &&
+          incoming().discountPercent == existing().discountPercent &&
+          incoming().referrerCode == existing().referrerCode &&
+          incoming().referredUserId == existing().referredUserId &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['referredBusinessName', 'referredUserEmail'])
+        )
+      );
+
       allow delete: if isSuperAdmin();
     }
 

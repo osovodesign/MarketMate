@@ -3,7 +3,6 @@ import {
   Gift,
   Copy,
   Check,
-  Calendar,
   Users,
   CheckCircle2,
   Clock,
@@ -15,10 +14,12 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { useAuth } from '../../context/AuthContext';
 import {
+  REFERRAL_PROGRAM,
   getReferralCodeForUser,
   getReferralShareUrl,
   getWhatsAppShareMessage,
   fetchUserReferrals,
+  ensureReferralCodeMapping,
 } from '../../lib/referralService';
 import { ReferralRecord } from '../../types';
 
@@ -32,6 +33,7 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
+  const [totalRegistered, setTotalRegistered] = useState<number>(0);
   const [totalDiscount, setTotalDiscount] = useState<number>(0);
   const [totalSubscribed, setTotalSubscribed] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number>(0);
@@ -39,21 +41,28 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
 
   const referralCode = getReferralCodeForUser(user?.id);
   const shareUrl = getReferralShareUrl(referralCode);
-  const merchantName = business?.businessName || user?.fullName || 'MarketMate Merchant';
+  const merchantName = business?.businessName || user?.fullName || '';
 
   useEffect(() => {
     if (user?.id) {
+      ensureReferralCodeMapping({
+        userId: user.id,
+        email: user.email,
+        businessName: business?.businessName || user.fullName,
+      });
+
       setLoading(true);
       fetchUserReferrals(user.id, referralCode)
         .then((res) => {
           setReferrals(res.referrals);
+          setTotalRegistered(res.totalRegistered);
           setTotalDiscount(res.totalDiscountPercent);
           setTotalSubscribed(res.totalSubscribed);
           setPendingCount(res.pendingCount);
         })
         .finally(() => setLoading(false));
     }
-  }, [user?.id, referralCode]);
+  }, [user?.id, user?.email, business?.businessName, user?.fullName, referralCode]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -93,16 +102,16 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
           </button>
           <div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Refer a Business &amp; Earn 5% Off
+              {REFERRAL_PROGRAM.title}
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              Early Merchant Referral Offer · Valid October 12th – 30th, 2026
+              {REFERRAL_PROGRAM.supportingText}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Campaign Banner */}
+      {/* Permanent Programme Banner */}
       <div className="p-6 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 transform translate-x-6 -translate-y-6 opacity-10 pointer-events-none">
           <Gift className="w-48 h-48" />
@@ -110,31 +119,26 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
 
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
           <div className="space-y-2 max-w-xl">
-            <div className="flex items-center gap-1.5 text-emerald-100 text-xs font-semibold">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Oct 12 – Oct 30, 2026</span>
-            </div>
             <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-white">
-              Get 5% off your MarketMate subscription!
+              {REFERRAL_PROGRAM.headline}
             </h2>
             <p className="text-xs sm:text-sm text-emerald-50 leading-relaxed">
-              Invite fellow store owners to join MarketMate. When they{' '}
-              <strong>register and subscribe</strong>, you unlock a 5% discount on your
-              subscription starting October 12th!
+              Share your link with as many business owners as you want. Your link stays active, and
+              you can keep inviting new merchants.
             </p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-xs border border-white/20 rounded-xl p-4 text-center shrink-0 min-w-[150px]">
+          <div className="bg-white/10 backdrop-blur-xs border border-white/20 rounded-xl p-4 text-center shrink-0 min-w-[165px]">
             <span className="text-[11px] uppercase tracking-wider font-semibold text-emerald-100 block">
-              Active Discount
+              Earned Referral Discount
             </span>
-            <span className="text-3xl font-black text-white font-mono">
+            <span className="text-3xl font-black text-white font-mono tabular-nums">
               {totalDiscount}%
             </span>
             <span className="text-[11px] text-emerald-100 block mt-0.5">
               {totalSubscribed > 0
-                ? `${totalSubscribed} subscribed merchant${totalSubscribed > 1 ? 's' : ''}`
-                : 'Unlocks upon subscription'}
+                ? `${totalSubscribed} subscribed (${REFERRAL_PROGRAM.maxDiscountPercent}% max discount)`
+                : `${REFERRAL_PROGRAM.rewardPercent}% per subscribed referral`}
             </span>
           </div>
         </div>
@@ -144,15 +148,16 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
       <div className="flex items-start gap-2.5 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs">
         <HelpCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
         <div>
-          <span className="font-bold">Subscription Requirement: </span>
+          <span className="font-bold">How Rewards Qualify: </span>
           <span>
-            To qualify for the 5% subscription discount, referred merchants must complete their
-            store registration <strong>and subscribe</strong> to MarketMate.
+            You earn the 5% referral discount when someone registers through your link and
+            subscribes to MarketMate (up to {REFERRAL_PROGRAM.maxDiscountPercent}% maximum
+            accumulated discount). You can continue inviting unlimited businesses at any time.
           </span>
         </div>
       </div>
 
-      {/* Shareable Referral Code & Link */}
+      {/* Shareable Referral Code & Personal Link */}
       <Card padding="lg" className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Unique Referral Code */}
@@ -168,7 +173,7 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
                 <button
                   type="button"
                   onClick={handleCopyCode}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors cursor-pointer shrink-0"
                 >
                   {copiedCode ? (
                     <>
@@ -185,7 +190,7 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
               </div>
             </div>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">
-              Fellow merchants can enter this code when creating their account.
+              Other business owners can enter this permanent code when creating their account.
             </p>
           </div>
 
@@ -193,16 +198,16 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Direct Sign-Up Link
+                Your Personal Referral Link
               </span>
               <div className="mt-1.5 flex items-center justify-between gap-2">
-                <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[200px] font-mono">
+                <span className="text-xs text-slate-600 dark:text-slate-300 truncate max-w-[180px] font-mono">
                   {shareUrl}
                 </span>
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-2xs shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-2xs shrink-0 whitespace-nowrap"
                 >
                   {copiedLink ? (
                     <>
@@ -212,14 +217,14 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      <span>Copy Link</span>
+                      <span>Copy Referral Link</span>
                     </>
                   )}
                 </button>
               </div>
             </div>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-2">
-              Automatically applies your referral discount when they click it.
+              Your personal referral link never expires and can be shared anytime.
             </p>
           </div>
         </div>
@@ -257,7 +262,7 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
       {/* How it Works (3 Steps) */}
       <Card padding="lg" className="space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-          How the 5% Discount Works
+          How It Works
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -268,7 +273,7 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
             <div>
               <p className="text-xs font-bold text-slate-900 dark:text-white">Share Your Link</p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">
-                Send your referral code or link to another store owner or trader.
+                Send your personal referral link to other business owners.
               </p>
             </div>
           </div>
@@ -279,10 +284,10 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
             </span>
             <div>
               <p className="text-xs font-bold text-slate-900 dark:text-white">
-                They Register &amp; Subscribe
+                They Join MarketMate
               </p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">
-                They open their MarketMate shop and activate their subscription.
+                They register using your link and subscribe to MarketMate.
               </p>
             </div>
           </div>
@@ -292,9 +297,9 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
               3
             </span>
             <div>
-              <p className="text-xs font-bold text-slate-900 dark:text-white">Unlock 5% Off</p>
+              <p className="text-xs font-bold text-slate-900 dark:text-white">Earn Your Reward</p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">
-                As soon as they subscribe, your 5% discount is unlocked for the Oct 12–30 launch!
+                When they meet the existing reward requirements, your 5% referral discount is added.
               </p>
             </div>
           </div>
@@ -303,18 +308,18 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
 
       {/* Referrals History List */}
       <Card padding="lg" className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
             <Users className="w-4 h-4 text-emerald-600" />
-            <span>Your Referred Businesses</span>
+            <span>Your Referred Businesses ({totalRegistered})</span>
           </span>
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-emerald-700 dark:text-emerald-400 font-bold">
-              {totalSubscribed} subscribed
+            <span className="text-emerald-700 dark:text-emerald-400 font-bold tabular-nums">
+              {totalSubscribed} Reward Earned
             </span>
             {pendingCount > 0 && (
-              <span className="text-amber-600 dark:text-amber-400">
-                · {pendingCount} awaiting subscription
+              <span className="text-amber-600 dark:text-amber-400 tabular-nums">
+                · {pendingCount} Awaiting Subscription
               </span>
             )}
           </div>
@@ -330,7 +335,7 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
               No businesses registered with your link yet
             </p>
             <p className="text-[11px] text-slate-400 dark:text-slate-500">
-              Tap "Share on WhatsApp" above to invite your first merchant friend!
+              Tap "Share on WhatsApp" above to invite other business owners anytime.
             </p>
           </div>
         ) : (
@@ -356,7 +361,7 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
                       <p className="font-bold text-slate-900 dark:text-white">
                         {ref.referredBusinessName || 'New Store Partner'}
                       </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 tabular-nums">
                         Registered: {new Date(ref.createdAt).toLocaleDateString()}
                         {ref.subscribedAt &&
                           ` · Subscribed: ${new Date(ref.subscribedAt).toLocaleDateString()}`}
@@ -368,12 +373,12 @@ export const ReferralView: React.FC<ReferralViewProps> = ({ onBack }) => {
                     {isSubscribed ? (
                       <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
                         <Check className="w-3.5 h-3.5" />
-                        <span>Subscribed · 5% Discount Active</span>
+                        <span>Reward Earned · +5% Discount</span>
                       </span>
                     ) : (
                       <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
-                        <span>Registered · Awaiting Subscription</span>
+                        <span>Awaiting Subscription</span>
                       </span>
                     )}
                   </div>

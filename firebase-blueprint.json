@@ -296,7 +296,20 @@
         "subscriptionPlan": { "type": "string", "maxLength": 64 },
         "createdAt": { "type": "string", "maxLength": 64 }
       },
-      "required": ["id", "referrerCode", "referredUserId", "discountPercent", "validFrom", "validUntil", "status", "referredSubscribed", "createdAt"]
+      "required": ["id", "referrerCode", "referredUserId", "discountPercent", "status", "referredSubscribed", "createdAt"]
+    },
+    "ReferralCode": {
+      "title": "ReferralCode",
+      "description": "Deterministic referral code to merchant userId mapping",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "businessName": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["code", "userId"]
     },
     "PlatformBankConfig": {
       "title": "PlatformBankConfig",
@@ -381,6 +394,10 @@
     "/referrals/{referralId}": {
       "schema": "Referral",
       "description": "Referral rewards and tracking records"
+    },
+    "/referral_codes/{code}": {
+      "schema": "ReferralCode",
+      "description": "Deterministic referral code to merchant userId mapping"
     },
     "/support_tickets/{ticketId}": {
       "schema": "SupportTicket",

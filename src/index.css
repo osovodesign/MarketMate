@@ -18,7 +18,7 @@
   --color-mm-navy-card: #0F2744;
 
   /* 60% Dominant Canvas & Cards */
-  --color-mm-white: #FEFEFE;
+  --color-mm-white: #FFFFFF;
 
   /* Structural Borders, Dividers & Secondary Surfaces */
   --color-mm-gray: #E2E8F0;
@@ -36,37 +36,46 @@
 }
 
 :root {
-  --color-canvas-bg: #FEFEFE;
-  --color-canvas-card: #FEFEFE;
+  --color-canvas-bg: #F8FAFC;
+  --color-canvas-card: #FFFFFF;
   --color-structure-navy: #001A35;
   --color-structure-border: #E2E8F0;
   --color-accent-green: #059669;
   --color-accent-green-deep: #047857;
 }
 
-/* Base Global Setup following 60-30-10 */
+/* Base Global Setup following 60-30-10 & MarketMate UI/UX Spec */
 html {
   transition: background-color 0.2s ease, color 0.2s ease;
-  background-color: #FEFEFE;
-  color: #001A35;
+  background-color: #F8FAFC;
+  color: #0F172A;
 }
 
 body {
-  background-color: #FEFEFE;
-  color: #001A35;
+  background-color: #F8FAFC;
+  color: #0F172A;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
 }
 
 html.dark {
   color-scheme: dark;
   background-color: #082F4B;
-  color: #FEFEFE;
+  color: #FFFFFF;
 }
 
 html.dark body {
   background-color: #082F4B;
-  color: #FEFEFE;
+  color: #FFFFFF;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.safe-area-pb {
+  padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
 }
 
 /* High-Precision Print & POS Thermal Receipt Rules */

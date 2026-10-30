@@ -416,9 +416,9 @@ export interface ReferralRecord {
   referredUserEmail?: string;
   referredBusinessName?: string;
   discountPercent: number; // 5%
-  campaign: string; // 'MarketMate Pioneer Referral Campaign'
-  validFrom: string; // '2026-10-12'
-  validUntil: string; // '2026-10-30'
+  campaign: string; // 'marketmate_permanent_referral' or historical campaign name
+  validFrom?: string; // Optional historical metadata for legacy records
+  validUntil?: string; // Optional historical metadata for legacy records
   status: 'pending_subscription' | 'qualified' | 'redeemed' | 'active';
   referredSubscribed: boolean; // Must be TRUE (merchant registered & subscribed) to earn 5% discount
   subscribedAt?: string;

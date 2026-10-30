@@ -336,7 +336,7 @@ function AppContent() {
         return (
           <RecordSaleView
             onBack={handleCloseRecordScreen}
-            onSuccess={handleCloseRecordScreen}
+            onSuccess={() => navigateTo('sales')}
             prefillCustomer={salePrefillCustomer}
             prefillProduct={salePrefillProduct}
           />
@@ -345,7 +345,7 @@ function AppContent() {
         return (
           <RecordExpenseView
             onBack={handleCloseRecordScreen}
-            onSuccess={handleCloseRecordScreen}
+            onSuccess={() => navigateTo('expenses')}
           />
         );
       case 'pricing-calc':
@@ -438,14 +438,14 @@ function AppContent() {
         if (!isSubscribed) {
           return (
             <ProFeatureGate
-              title="Invoices & Official Quotations"
-              subtitle="Generate professional, branded PDF and WhatsApp invoices, create official quotations, track partial payments, and issue merchant receipts."
+              title="Invoices & Quotes"
+              subtitle="Prepare and track customer invoices and price quotations, record partial payments, and share receipts."
               icon={FileText}
               benefits={[
-                'Issue professional PDF & WhatsApp invoices with your store branding',
-                'Send official price quotations and convert them to invoices in 1 click',
-                'Track uncollected, overdue, and partial payments with audit trails',
-                'Include verified Nigerian bank account details on every invoice',
+                'Create PDF and WhatsApp invoices with your business details',
+                'Send price quotes and convert them to invoices',
+                'Track unpaid, partly paid, and overdue invoices',
+                'Include your business bank account details on every invoice',
               ]}
               onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
@@ -457,14 +457,14 @@ function AppContent() {
         if (!isSubscribed) {
           return (
             <ProFeatureGate
-              title="CRM & Customer Directory"
-              subtitle="Centralize your business address book, track individual customer lifetime spend, manage wholesale suppliers, and send WhatsApp alerts."
+              title="Customers & Suppliers"
+              subtitle="Keep your customer and supplier contact details organised in one place and review their purchase history."
               icon={BookUser}
               benefits={[
-                'Unlimited customer & supplier directory with instant search',
-                'Track customer lifetime purchase histories and top buyers',
-                '1-click direct WhatsApp messaging and customer account notes',
-                'Track supplier payment terms, order histories, and deliveries',
+                'Save customer and supplier names, phone numbers, and notes',
+                'See total purchases and unpaid balances for each customer',
+                'Send quick WhatsApp messages to customers and suppliers',
+                'Keep supplier items and payment records organised',
               ]}
               onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
@@ -484,14 +484,14 @@ function AppContent() {
         if (!isSubscribed) {
           return (
             <ProFeatureGate
-              title="Credit & Debit Ledger Book"
-              subtitle="Stop losing money to forgotten credits. Track who owes your business, set due date reminders, and send friendly WhatsApp debt recovery prompts."
+              title="Customer Debts"
+              subtitle="Know who owes your business, how much remains unpaid, and send polite payment reminders."
               icon={Users}
               benefits={[
-                'Track total uncollected receivables and customer credit balances',
-                'Set repayment due dates with overdue alert badges',
-                'Send polite, pre-filled WhatsApp payment reminder templates',
-                'Partial payment logging and automatic balance recalculations',
+                'See total outstanding customer balances at a glance',
+                'Set due dates and spot overdue customer debts',
+                'Send payment reminders via WhatsApp',
+                'Record partial payments and automatically update remaining balances',
               ]}
               onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
@@ -503,14 +503,14 @@ function AppContent() {
         if (!isSubscribed) {
           return (
             <ProFeatureGate
-              title="Catalog & Stock Inventory"
-              subtitle="Centralize your entire store inventory, barcode scanning, stock reorder alerts, batch pricing, and profit margin audits."
+              title="Products & Stock"
+              subtitle="Manage the products you sell, set cost and selling prices, and see when stock is running low."
               icon={Package}
               benefits={[
-                'Unlimited product catalog with SKUs, barcodes, and categories',
-                'Live stock tracking with low-stock and out-of-stock warning alerts',
-                'Batch cost and selling price updates with profit margin audits',
-                'Barcode scanner integration for lightning-fast checkout',
+                'Save your product list with cost price and selling price',
+                'Track available stock and see Low Stock and Out of Stock alerts',
+                'Update stock quantities when new goods arrive',
+                'Use barcode scanning for faster checkout',
               ]}
               onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
@@ -530,14 +530,14 @@ function AppContent() {
         if (!isSubscribed) {
           return (
             <ProFeatureGate
-              title="Reports & Profit and Loss (P&L)"
-              subtitle="Detailed financial intelligence, automated Net Profit audits, expense leak detection, and tax-ready business reports."
+              title="Reports"
+              subtitle="Understand how your business is performing with clear sales, expense, and profit reports."
               icon={BarChart3}
               benefits={[
-                'Automated Profit & Loss (P&L) statements with gross & net margins',
-                'Top-selling product analytics and customer retention insights',
-                'Expense categorization and operational cost breakdown',
-                'Exportable accounting summaries formatted for tax & bank audits',
+                'Clear sales, expense, and profit summaries by date range',
+                'See which products bring in the most sales and profit',
+                'Review where your business money was spent by category',
+                'Download reports for your business records',
               ]}
               onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
@@ -549,14 +549,14 @@ function AppContent() {
         if (!isSubscribed) {
           return (
             <ProFeatureGate
-              title="MarketMate AI Business Advisor"
-              subtitle="Your 24/7 retail financial advisor trained on Nigerian commerce, currency inflation hedge strategies, and margin optimization."
+              title="Business Assistant"
+              subtitle="Ask questions about your business sales, expenses, and products and get clear answers."
               icon={Bot}
               benefits={[
-                '24/7 retail financial advisor powered by Gemini AI',
-                'Custom pricing and profitability recommendations for your catalog',
-                'Actionable suggestions to reduce operating expenses and waste',
-                'Market insights tailored to Nigerian trade and FX fluctuations',
+                'Ask plain-language questions about your recorded sales and expenses',
+                'Get practical suggestions to review product prices and costs',
+                'Spot high expense categories and slow-moving stock',
+                'Tailored for small businesses in Nigeria',
               ]}
               onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
@@ -585,14 +585,14 @@ function AppContent() {
         if (!isSubscribed) {
           return (
             <ProFeatureGate
-              title="Staff, Roles & Permissions"
-              subtitle="Hire cashiers, sales clerks, and branch managers with PIN-locked access, cash drawer shift handovers, and role-based permissions."
+              title="Staff & Permissions"
+              subtitle="Control who can use your business account, set staff PINs, and manage shifts."
               icon={Shield}
               benefits={[
-                'Multi-user PIN login and quick-switching between staff at the register',
-                'Granular permissions: lock profit margins, cost prices, discounts, and deletions',
-                'Opening cash float and end-of-shift drawer reconciliation audits',
-                'Staff sales performance tracking and accountability logging',
+                'Add cashiers, managers, and stock staff with individual PINs',
+                'Control who can see business profit, reports, or settings',
+                'Track staff shifts and opening/closing cash',
+                'See which staff member recorded each sale',
               ]}
               onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}

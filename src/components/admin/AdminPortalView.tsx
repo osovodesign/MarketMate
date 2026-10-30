@@ -69,7 +69,7 @@ import {
   SupportTicket,
   SupportTicketStatus,
 } from '../../types';
-import { fetchAllReferrals, REFERRAL_CAMPAIGN, updateReferralSubscriptionStatus } from '../../lib/referralService';
+import { fetchAllReferrals, REFERRAL_PROGRAM, updateReferralSubscriptionStatus } from '../../lib/referralService';
 import {
   fetchPlatformBankConfig,
   updatePlatformBankConfig,
@@ -887,15 +887,17 @@ export const AdminPortalView: React.FC = () => {
   const handleToggleReferralSubscription = async (ref: ReferralRecord) => {
     const newStatus = !ref.referredSubscribed;
     setUpdatingRefId(ref.id);
+    setSubErrorNotice(null);
     try {
       await updateReferralSubscriptionStatus(
         ref.id,
         newStatus,
-        newStatus ? (ref.subscriptionPlan || 'Pioneer Standard Plan') : undefined
+        newStatus ? (ref.subscriptionPlan || 'MarketMate Monthly Plan') : undefined
       );
       await fetchPlatformData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update referral subscription status', err);
+      setSubErrorNotice(err?.message || 'Failed to update referral subscription qualification.');
     } finally {
       setUpdatingRefId(null);
     }
@@ -2559,35 +2561,35 @@ export const AdminPortalView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: REFERRAL & SUBSCRIPTION DISCOUNT CAMPAIGN LEDGER */}
+      {/* TAB 4: PERMANENT REFERRAL PROGRAMME & REWARD LEDGER */}
       {/* ========================================================================= */}
       {activeTab === 'referrals' && (
         <div className="space-y-6 animate-in fade-in">
-          {/* Campaign Status Banner */}
+          {/* Programme Status Banner */}
           <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white border border-emerald-500/30 shadow-lg">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1.5">
                 <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-400/30">
                   <Gift className="w-3.5 h-3.5" />
-                  <span>Early Business Referral Campaign</span>
+                  <span>{REFERRAL_PROGRAM.title}</span>
                 </div>
                 <h3 className="text-lg font-black tracking-tight">
-                  5% Subscription Discount Program
+                  {REFERRAL_PROGRAM.headline} ({REFERRAL_PROGRAM.rewardPercent}% Subscription Discount)
                 </h3>
                 <p className="text-xs text-emerald-200/80 max-w-2xl leading-relaxed">
-                  Every registered business owner who refers another shop to register <strong>and subscribe</strong> to MarketMate earns a 5% discount on their upcoming subscription (commencing October 12th, 2026).
+                  Every registered business owner who refers another business to register <strong>and subscribe</strong> to MarketMate earns a {REFERRAL_PROGRAM.rewardPercent}% referral discount (up to {REFERRAL_PROGRAM.maxDiscountPercent}% maximum accumulated discount). Referral links never expire and merchants can invite unlimited businesses.
                 </p>
               </div>
 
               <div className="p-3.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-right shrink-0">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 block">
-                  Campaign Validity
+                  Programme Status
                 </span>
                 <span className="text-sm font-black font-mono">
-                  {REFERRAL_CAMPAIGN.durationText}
+                  Permanent · Always Open
                 </span>
                 <span className="text-[10px] text-white/70 block mt-0.5">
-                  Subscription launch window
+                  No expiry date · Unlimited invites
                 </span>
               </div>
             </div>
@@ -2610,7 +2612,7 @@ export const AdminPortalView: React.FC = () => {
                       <Users className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                  <div className="text-2xl font-black text-slate-900 dark:text-white font-mono tabular-nums">
                     {referralsList.length}
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-1">
@@ -2620,16 +2622,16 @@ export const AdminPortalView: React.FC = () => {
 
                 <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Subscribed & Qualified</span>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Reward Earned</span>
                     <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
                       <CheckCircle2 className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 font-mono">
+                  <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 font-mono tabular-nums">
                     {qualifiedReferrals.length}
                   </div>
                   <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-1">
-                    Stores that registered & subscribed (+5% off each)
+                    Stores that registered & subscribed (+{REFERRAL_PROGRAM.rewardPercent}% off each)
                   </p>
                 </div>
 
@@ -2640,7 +2642,7 @@ export const AdminPortalView: React.FC = () => {
                       <Clock className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">
+                  <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono tabular-nums">
                     {pendingReferrals.length}
                   </div>
                   <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-1">
@@ -2650,16 +2652,16 @@ export const AdminPortalView: React.FC = () => {
 
                 <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Active Discounts Granted</span>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Earned Discounts Granted</span>
                     <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-400 flex items-center justify-center">
                       <Sparkles className="w-4 h-4" />
                     </div>
                   </div>
-                  <div className="text-2xl font-black text-purple-700 dark:text-purple-300 font-mono">
-                    {qualifiedReferrals.length * REFERRAL_CAMPAIGN.discountPercent}%
+                  <div className="text-2xl font-black text-purple-700 dark:text-purple-300 font-mono tabular-nums">
+                    {qualifiedReferrals.length * REFERRAL_PROGRAM.rewardPercent}%
                   </div>
                   <p className="text-[11px] text-purple-600 dark:text-purple-400 font-medium mt-1">
-                    From qualified store subscriptions
+                    From qualified store subscriptions ({REFERRAL_PROGRAM.maxDiscountPercent}% max per store)
                   </p>
                 </div>
               </div>
@@ -2722,7 +2724,7 @@ export const AdminPortalView: React.FC = () => {
                             {ref.referredBusinessName || 'New Store'}
                           </td>
                           <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300">
-                            {ref.referredEmail || '—'}
+                            {ref.referredUserEmail || (ref as any).referredEmail || '—'}
                           </td>
                           <td className="px-5 py-3.5 text-slate-500 font-mono text-[11px]">
                             {new Date(ref.createdAt).toLocaleDateString(undefined, {
@@ -2740,7 +2742,7 @@ export const AdminPortalView: React.FC = () => {
                             ) : (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
                                 <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                <span>Pending Subscription</span>
+                                <span>Awaiting Subscription</span>
                               </span>
                             )}
                           </td>
@@ -2748,11 +2750,11 @@ export const AdminPortalView: React.FC = () => {
                             {isSubscribed ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                 <Percent className="w-3 h-3" />
-                                <span>5% Off Qualified</span>
+                                <span>Reward Earned (+5%)</span>
                               </span>
                             ) : (
                               <span className="text-[11px] text-slate-400 italic">
-                                Unlocks on subscription
+                                Awaiting Subscription
                               </span>
                             )}
                           </td>

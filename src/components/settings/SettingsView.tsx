@@ -59,7 +59,7 @@ import {
   getReferralCodeForUser,
   getReferralShareUrl,
   getWhatsAppShareMessage,
-  REFERRAL_CAMPAIGN,
+  REFERRAL_PROGRAM,
 } from '../../lib/referralService';
 
 interface SettingsViewProps {
@@ -729,13 +729,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
               <div>
                 <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>Refer & Earn 5% Discount</span>
+                  <span>{REFERRAL_PROGRAM.title}</span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                    {REFERRAL_CAMPAIGN.discountPercent}% OFF
+                    {REFERRAL_PROGRAM.rewardPercent}% OFF
                   </span>
                 </CardTitle>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Share your link with fellow retail merchants. When they register and subscribe to MarketMate, you receive 5% off your subscription!
+                  {REFERRAL_PROGRAM.supportingText}
                 </p>
               </div>
             </div>
@@ -883,16 +883,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             )}
           </div>
 
-          {/* Campaign Period Notice */}
+          {/* Permanent Programme Notice */}
           <div className="p-3 rounded-xl bg-emerald-100/60 dark:bg-emerald-950/60 border border-emerald-300/80 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
               <span>
-                <strong>Campaign Period:</strong> {REFERRAL_CAMPAIGN.durationText}
+                <strong>{REFERRAL_PROGRAM.headline}</strong> — Your referral link never expires.
               </span>
             </div>
             <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
-              Reward applies when referred stores register & subscribe
+              You earn the 5% referral discount when someone registers through your link and subscribes to MarketMate.
             </span>
           </div>
 
@@ -922,7 +922,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="p-3.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  Share Referral Link
+                  Your Personal Referral Link
                 </p>
                 <p className="text-xs text-slate-600 dark:text-slate-300 truncate mt-0.5 font-mono">
                   {userReferralLink}

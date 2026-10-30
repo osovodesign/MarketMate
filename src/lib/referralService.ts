@@ -1,16 +1,20 @@
 import { ReferralRecord } from '../types';
-import { db, collection, query, where, getDocs, doc, setDoc, updateDoc } from './firebase';
+import { db, collection, query, where, getDocs, getDoc, doc, setDoc, updateDoc } from './firebase';
 
-export const REFERRAL_CAMPAIGN = {
+export const REFERRAL_PROGRAM = {
+  id: 'marketmate_permanent_referral',
+  rewardPercent: 5,
   discountPercent: 5,
-  startDate: '2026-10-12',
-  endDate: '2026-10-30',
-  title: 'MarketMate Pioneer Referral Campaign',
-  headline: 'Refer a Business to Register & Subscribe — Earn 5% Off',
-  durationText: 'October 12th – October 30th, 2026',
+  maxDiscountPercent: 50,
+  title: 'MarketMate Referral Programme',
+  headline: 'Invite More. Grow Together.',
+  supportingText: 'Invite as many business owners as you want. Your referral link never expires.',
   description:
-    'Share your referral link with fellow merchants. When they register their store AND subscribe to MarketMate, you unlock a 5% discount on your subscription valid throughout the launch window (Oct 12 – 30, 2026).',
+    'Share your MarketMate referral link with other business owners. When someone registers through your link and subscribes to MarketMate, you earn the existing referral reward. Your link stays active, so you can keep inviting more businesses.',
 };
+
+// Backwards-compatible alias for any external caller
+export const REFERRAL_CAMPAIGN = REFERRAL_PROGRAM;
 
 const STORAGE_PENDING_REF_KEY = 'marketmate_pending_referral_code';
 const STORAGE_LOCAL_REFERRALS_KEY = 'marketmate_local_referrals_cache';
@@ -42,21 +46,28 @@ export const getReferralShareUrl = (code: string): string => {
 };
 
 /**
- * Compose a high-converting WhatsApp message emphasizing registration + subscription
+ * Compose a permanent WhatsApp invitation message
  */
 export const getWhatsAppShareMessage = (code: string, merchantName?: string): string => {
   const shareUrl = getReferralShareUrl(code);
-  const senderPrefix = merchantName ? `Hey! This is ${merchantName}. ` : 'Hey! ';
-  return `${senderPrefix}I manage my store sales, daily inventory, and instant receipts with MarketMate.
+  const trimmedName = merchantName?.trim();
+  const greeting = trimmedName ? `Hey! This is ${trimmedName}.` : 'Hey!';
 
-Register and subscribe to MarketMate using my referral link:
+  return `${greeting}
+
+I use MarketMate to manage my sales, expenses, products and business performance.
+
+You can join MarketMate using my referral link:
+
 ${shareUrl}
 
-🎁 Special Launch Offer: When you register and subscribe to MarketMate, we unlock a 5% discount on our subscription (valid from October 12th to October 30th, 2026)!`;
+When you register and subscribe, I can earn a 5% referral discount under MarketMate's referral programme.
+
+The referral programme is always open, so you can join whenever you're ready.`;
 };
 
 /**
- * Detect ref from current URL query parameters and cache in localStorage
+ * Detect ref from current URL query parameters (?ref= or ?r=) and cache in localStorage
  */
 export const detectAndStoreReferralCode = (): string | null => {
   if (typeof window === 'undefined') return null;
@@ -72,6 +83,20 @@ export const detectAndStoreReferralCode = (): string | null => {
   } catch (err) {
     console.warn('Error reading referral params:', err);
     return null;
+  }
+};
+
+export const setPendingReferralCode = (code: string): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    const clean = code.trim().toUpperCase();
+    if (clean) {
+      localStorage.setItem(STORAGE_PENDING_REF_KEY, clean);
+    } else {
+      localStorage.removeItem(STORAGE_PENDING_REF_KEY);
+    }
+  } catch (err) {
+    console.warn('Error setting pending referral code:', err);
   }
 };
 
@@ -94,54 +119,149 @@ export const clearPendingReferralCode = (): void => {
 };
 
 /**
+ * Register or update the deterministic referral code -> userId mapping in Firestore
+ * so referral records can verifiably link to their owner's UID.
+ */
+export const ensureReferralCodeMapping = async (params: {
+  userId: string;
+  email?: string;
+  businessName?: string;
+}): Promise<string> => {
+  const code = getReferralCodeForUser(params.userId);
+  if (!params.userId || params.userId === 'demo-user-1' || params.userId === 'anonymous') {
+    return code;
+  }
+
+  try {
+    const codeDocRef = doc(db, 'referral_codes', code);
+    await setDoc(
+      codeDocRef,
+      {
+        code,
+        userId: params.userId,
+        email: params.email || '',
+        businessName: params.businessName || '',
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch {
+    // Non-blocking if offline or rules not yet deployed
+  }
+
+  return code;
+};
+
+/**
  * Record a referral when a new merchant completes registration.
- * Initially, status is 'pending_subscription' and referredSubscribed is false,
- * unless they immediately subscribe upon registration.
+ * - Rejects self-referrals.
+ * - Prevents duplicate attribution for the same referredUserId.
+ * - Does not write campaign expiry dates on new records.
+ * - Initially sets status to 'pending_subscription' and referredSubscribed to false.
  */
 export const recordReferralSignup = async (params: {
   referrerCode: string;
   referredUserId: string;
   referredUserEmail?: string;
   referredBusinessName?: string;
-  isSubscribed?: boolean;
-  subscriptionPlan?: string;
 }): Promise<ReferralRecord | null> => {
   const cleanCode = params.referrerCode.trim().toUpperCase();
   if (!cleanCode || !params.referredUserId) return null;
 
-  const referralId = `ref_${params.referredUserId}_${cleanCode.replace(/[^A-Z0-9]/g, '')}`;
-  const isSubscribed = Boolean(params.isSubscribed);
+  // 1. Reject self-referrals (merchant cannot use their own referral code)
+  const ownCode = getReferralCodeForUser(params.referredUserId);
+  if (cleanCode === ownCode) {
+    clearPendingReferralCode();
+    return null;
+  }
+
+  // 2. Check if this new merchant has already been attributed in Firestore
+  try {
+    const col = collection(db, 'referrals');
+    const existingQuery = query(col, where('referredUserId', '==', params.referredUserId));
+    const existingSnap = await getDocs(existingQuery);
+    if (!existingSnap.empty) {
+      const existingData = existingSnap.docs[0].data() as ReferralRecord;
+      clearPendingReferralCode();
+      return existingData;
+    }
+  } catch (checkErr) {
+    console.warn('Could not check existing referral attribution:', checkErr);
+  }
+
+  // 3. Also check local cache to prevent duplicate attribution offline
+  try {
+    const existingCacheRaw = localStorage.getItem(STORAGE_LOCAL_REFERRALS_KEY);
+    if (existingCacheRaw) {
+      const list: ReferralRecord[] = JSON.parse(existingCacheRaw);
+      const existingLocal = list.find((item) => item.referredUserId === params.referredUserId);
+      if (existingLocal) {
+        clearPendingReferralCode();
+        return existingLocal;
+      }
+    }
+  } catch {}
+
+  // 4. Resolve referrerUserId from /referral_codes/{cleanCode} if registered
+  let referrerUserId: string | undefined;
+  let referrerEmail: string | undefined;
+  let referrerBusinessName: string | undefined;
+  try {
+    const codeSnap = await getDoc(doc(db, 'referral_codes', cleanCode));
+    if (codeSnap.exists()) {
+      const codeData = codeSnap.data();
+      if (codeData?.userId) {
+        if (codeData.userId === params.referredUserId) {
+          // Self-referral detected via code owner mapping
+          clearPendingReferralCode();
+          return null;
+        }
+        referrerUserId = codeData.userId;
+        referrerEmail = codeData.email || undefined;
+        referrerBusinessName = codeData.businessName || undefined;
+      }
+    }
+  } catch {
+    // Proceed with deterministic code attribution if lookup is unavailable
+  }
+
+  const referralId = `ref_${params.referredUserId}`;
+  const nowIso = new Date().toISOString();
 
   const record: ReferralRecord = {
     id: referralId,
     referrerCode: cleanCode,
+    ...(referrerUserId ? { referrerUserId } : {}),
+    ...(referrerEmail ? { referrerEmail } : {}),
+    ...(referrerBusinessName ? { referrerBusinessName } : {}),
     referredUserId: params.referredUserId,
     referredUserEmail: params.referredUserEmail || '',
     referredBusinessName: params.referredBusinessName || 'New Store',
-    discountPercent: REFERRAL_CAMPAIGN.discountPercent, // 5%
-    campaign: REFERRAL_CAMPAIGN.title,
-    validFrom: REFERRAL_CAMPAIGN.startDate, // '2026-10-12'
-    validUntil: REFERRAL_CAMPAIGN.endDate, // '2026-10-30'
-    status: isSubscribed ? 'qualified' : 'pending_subscription',
-    referredSubscribed: isSubscribed,
-    subscribedAt: isSubscribed ? new Date().toISOString() : undefined,
-    subscriptionPlan: isSubscribed ? params.subscriptionPlan || 'Pioneer Standard' : undefined,
-    createdAt: new Date().toISOString(),
+    discountPercent: REFERRAL_PROGRAM.rewardPercent, // 5%
+    campaign: REFERRAL_PROGRAM.id, // 'marketmate_permanent_referral'
+    status: 'pending_subscription',
+    referredSubscribed: false,
+    createdAt: nowIso,
   };
 
-  // 1. Try writing to Firestore
+  let savedToFirestore = false;
+
+  // 5. Write to Firestore
   try {
     const refDoc = doc(db, 'referrals', referralId);
-    await setDoc(refDoc, record, { merge: true });
+    await setDoc(refDoc, record);
+    savedToFirestore = true;
   } catch (err) {
-    console.warn('Could not save referral to Firestore (will save locally):', err);
+    console.warn('Could not save referral to Firestore (will cache locally):', err);
   }
 
-  // 2. Also cache in localStorage
+  // 6. Cache in localStorage
   try {
     const existingCacheRaw = localStorage.getItem(STORAGE_LOCAL_REFERRALS_KEY);
     const list: ReferralRecord[] = existingCacheRaw ? JSON.parse(existingCacheRaw) : [];
-    const idx = list.findIndex((item) => item.id === record.id);
+    const idx = list.findIndex(
+      (item) => item.id === record.id || item.referredUserId === record.referredUserId
+    );
     if (idx >= 0) {
       list[idx] = record;
     } else {
@@ -152,18 +272,69 @@ export const recordReferralSignup = async (params: {
     console.warn('Local referral cache write error:', localErr);
   }
 
-  // Clear the pending code once registered
-  clearPendingReferralCode();
+  if (savedToFirestore) {
+    clearPendingReferralCode();
+  }
   return record;
 };
 
 /**
- * When a merchant actually subscribes to MarketMate, call this to activate
- * the referral so that the referrer earns their 5% subscription discount.
+ * Update the referred store's business name once the new merchant completes onboarding
+ */
+export const updateReferredBusinessName = async (
+  referredUserId: string,
+  businessName: string,
+  referredUserEmail?: string
+): Promise<void> => {
+  if (!referredUserId || !businessName.trim()) return;
+  const cleanName = businessName.trim();
+
+  try {
+    const col = collection(db, 'referrals');
+    const q = query(col, where('referredUserId', '==', referredUserId));
+    const snap = await getDocs(q);
+    for (const docItem of snap.docs) {
+      const data = docItem.data() as ReferralRecord;
+      if (data.status === 'pending_subscription' && !data.referredSubscribed) {
+        await updateDoc(docItem.ref, {
+          referredBusinessName: cleanName,
+          ...(referredUserEmail ? { referredUserEmail } : {}),
+        });
+      }
+    }
+  } catch {}
+
+  try {
+    const cachedRaw = localStorage.getItem(STORAGE_LOCAL_REFERRALS_KEY);
+    if (cachedRaw) {
+      const list: ReferralRecord[] = JSON.parse(cachedRaw);
+      let changed = false;
+      const updated = list.map((item) => {
+        if (item.referredUserId === referredUserId) {
+          changed = true;
+          return {
+            ...item,
+            referredBusinessName: cleanName,
+            ...(referredUserEmail ? { referredUserEmail } : {}),
+          };
+        }
+        return item;
+      });
+      if (changed) {
+        localStorage.setItem(STORAGE_LOCAL_REFERRALS_KEY, JSON.stringify(updated));
+      }
+    }
+  } catch {}
+};
+
+/**
+ * When a merchant's subscription is approved by Super Admin, call this to qualify
+ * the referral so the referrer earns their 5% subscription discount.
+ * Idempotent: repeated approvals for the same referredUserId do not duplicate rewards.
  */
 export const recordReferralSubscription = async (
   referredUserId: string,
-  planName: string = 'Pioneer Standard'
+  planName: string = 'MarketMate Monthly Plan'
 ): Promise<ReferralRecord | null> => {
   if (!referredUserId) return null;
 
@@ -178,14 +349,19 @@ export const recordReferralSubscription = async (
 
     for (const docItem of snap.docs) {
       const data = docItem.data() as ReferralRecord;
+      if (data.referredSubscribed === true && data.status === 'qualified') {
+        // Already qualified — preserve existing qualification without duplicating reward
+        updatedRecord = data;
+        continue;
+      }
       const patch = {
         referredSubscribed: true,
-        status: 'qualified',
-        subscribedAt: now,
+        status: 'qualified' as const,
+        subscribedAt: data.subscribedAt || now,
         subscriptionPlan: planName,
       };
       await updateDoc(docItem.ref, patch);
-      updatedRecord = { ...data, ...patch, status: 'qualified' };
+      updatedRecord = { ...data, ...patch };
     }
   } catch (err) {
     console.warn('Firestore update referral subscription error:', err);
@@ -199,12 +375,16 @@ export const recordReferralSubscription = async (
       let changed = false;
       const updatedList = list.map((item) => {
         if (item.referredUserId === referredUserId) {
+          if (item.referredSubscribed === true && item.status === 'qualified') {
+            if (!updatedRecord) updatedRecord = item;
+            return item;
+          }
           changed = true;
-          const patched = {
+          const patched: ReferralRecord = {
             ...item,
             referredSubscribed: true,
-            status: 'qualified' as const,
-            subscribedAt: now,
+            status: 'qualified',
+            subscribedAt: item.subscribedAt || now,
             subscriptionPlan: planName,
           };
           if (!updatedRecord) updatedRecord = patched;
@@ -229,7 +409,7 @@ export const recordReferralSubscription = async (
 export const updateReferralSubscriptionStatus = async (
   referralId: string,
   isSubscribed: boolean,
-  planName: string = 'Pioneer Standard'
+  planName: string = 'MarketMate Monthly Plan'
 ): Promise<boolean> => {
   const now = new Date().toISOString();
   const patch = {
@@ -239,12 +419,8 @@ export const updateReferralSubscriptionStatus = async (
     subscriptionPlan: isSubscribed ? planName : null,
   };
 
-  try {
-    const refDoc = doc(db, 'referrals', referralId);
-    await updateDoc(refDoc, patch);
-  } catch (err) {
-    console.warn('Firestore update referral status error:', err);
-  }
+  const refDoc = doc(db, 'referrals', referralId);
+  await updateDoc(refDoc, patch);
 
   try {
     const cachedRaw = localStorage.getItem(STORAGE_LOCAL_REFERRALS_KEY);
@@ -255,7 +431,7 @@ export const updateReferralSubscriptionStatus = async (
           return {
             ...item,
             referredSubscribed: isSubscribed,
-            status: (isSubscribed ? 'qualified' : 'pending_subscription') as any,
+            status: (isSubscribed ? 'qualified' : 'pending_subscription') as ReferralRecord['status'],
             subscribedAt: isSubscribed ? now : undefined,
             subscriptionPlan: isSubscribed ? planName : undefined,
           };
@@ -270,8 +446,34 @@ export const updateReferralSubscriptionStatus = async (
 };
 
 /**
+ * Helper to deduplicate referral records so a referred merchant is never counted twice,
+ * preferring qualified records over pending records if duplicates exist.
+ */
+const deduplicateReferrals = (records: ReferralRecord[]): ReferralRecord[] => {
+  const byKey = new Map<string, ReferralRecord>();
+  for (const rec of records) {
+    const key = rec.referredUserId ? `uid_${rec.referredUserId}` : `id_${rec.id}`;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, rec);
+    } else {
+      const existingQualified = existing.referredSubscribed || existing.status === 'qualified';
+      const currentQualified = rec.referredSubscribed || rec.status === 'qualified';
+      if (currentQualified && !existingQualified) {
+        byKey.set(key, rec);
+      }
+    }
+  }
+  return Array.from(byKey.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+};
+
+/**
  * Fetch referrals belonging to a specific user/code.
- * Total discount is ONLY awarded for referrals where referredSubscribed === true!
+ * - Counts both historical records and new permanent programme records.
+ * - Unlimited invitations are recorded and displayed even after reaching the 50% discount cap.
+ * - Earned discount is 5% per qualified (subscribed) referral, capped at 50%.
  */
 export const fetchUserReferrals = async (
   userId: string,
@@ -283,30 +485,29 @@ export const fetchUserReferrals = async (
   pendingCount: number;
   totalDiscountPercent: number;
 }> => {
-  const code = userCode || getReferralCodeForUser(userId);
-  const results: ReferralRecord[] = [];
+  const code = (userCode || getReferralCodeForUser(userId)).trim().toUpperCase();
+  const rawResults: ReferralRecord[] = [];
 
-  // 1. Fetch from Firestore
+  // 1. Fetch from Firestore by referrerCode
   try {
     const col = collection(db, 'referrals');
     const q = query(col, where('referrerCode', '==', code));
     const snap = await getDocs(q);
     snap.forEach((d) => {
-      const data = d.data() as ReferralRecord;
-      results.push(data);
+      rawResults.push(d.data() as ReferralRecord);
     });
   } catch (err) {
     console.warn('Firestore fetch referrals warning:', err);
   }
 
-  // 2. Also check local fallback
+  // 2. Also check local fallback for matching referrerCode
   try {
     const cachedRaw = localStorage.getItem(STORAGE_LOCAL_REFERRALS_KEY);
     if (cachedRaw) {
       const localList: ReferralRecord[] = JSON.parse(cachedRaw);
       localList.forEach((item) => {
-        if (item.referrerCode === code && !results.some((r) => r.id === item.id)) {
-          results.push(item);
+        if (item.referrerCode === code && !rawResults.some((r) => r.id === item.id)) {
+          rawResults.push(item);
         }
       });
     }
@@ -314,14 +515,21 @@ export const fetchUserReferrals = async (
     console.warn('Local cache check error:', err);
   }
 
+  const results = deduplicateReferrals(rawResults);
   const totalRegistered = results.length;
-  // A referral qualifies for discount ONLY if the merchant registered AND subscribed
-  const subscribedReferrals = results.filter((r) => r.referredSubscribed === true || r.status === 'qualified');
+
+  // A referral qualifies for the 5% reward ONLY if the referred merchant registered AND subscribed
+  const subscribedReferrals = results.filter(
+    (r) => r.referredSubscribed === true || r.status === 'qualified'
+  );
   const totalSubscribed = subscribedReferrals.length;
   const pendingCount = Math.max(0, totalRegistered - totalSubscribed);
 
-  // 5% discount per referred merchant who registered AND subscribed
-  const totalDiscountPercent = Math.min(totalSubscribed * REFERRAL_CAMPAIGN.discountPercent, 50);
+  // 5% discount per referred merchant who registered AND subscribed, capped at 50%
+  const totalDiscountPercent = Math.min(
+    totalSubscribed * REFERRAL_PROGRAM.rewardPercent,
+    REFERRAL_PROGRAM.maxDiscountPercent
+  );
 
   return {
     referrals: results,
@@ -336,12 +544,12 @@ export const fetchUserReferrals = async (
  * Fetch all referrals across the platform (for Super Admin)
  */
 export const fetchAllReferrals = async (): Promise<ReferralRecord[]> => {
-  const list: ReferralRecord[] = [];
+  const rawList: ReferralRecord[] = [];
   try {
     const col = collection(db, 'referrals');
     const snap = await getDocs(col);
     snap.forEach((d) => {
-      list.push(d.data() as ReferralRecord);
+      rawList.push(d.data() as ReferralRecord);
     });
   } catch (err) {
     console.warn('Admin fetchAllReferrals error:', err);
@@ -353,13 +561,12 @@ export const fetchAllReferrals = async (): Promise<ReferralRecord[]> => {
     if (cachedRaw) {
       const localList: ReferralRecord[] = JSON.parse(cachedRaw);
       localList.forEach((item) => {
-        if (!list.some((r) => r.id === item.id)) {
-          list.push(item);
+        if (!rawList.some((r) => r.id === item.id)) {
+          rawList.push(item);
         }
       });
     }
   } catch {}
 
-  // Sort descending by date
-  return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return deduplicateReferrals(rawList);
 };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Receipt, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Receipt, AlertCircle, CheckCircle2, PlusCircle } from 'lucide-react';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
@@ -13,32 +13,32 @@ interface RecordExpenseViewProps {
   onSuccess?: () => void;
 }
 
-const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
-  { value: 'Transport', label: 'Transport & Dispatch Delivery' },
-  { value: 'Packaging', label: 'Packaging, Bags & Labels' },
-  { value: 'Electricity', label: 'Generator Fuel, Electricity & Power' },
-  { value: 'Internet', label: 'Internet Data & Phone Airtime' },
-  { value: 'Supplies', label: 'Raw Materials & Store Supplies' },
-  { value: 'Rent', label: 'Shop Rent, Stall & Storage Fees' },
-  { value: 'Marketing', label: 'Social Media Ads & Promotion' },
-  { value: 'Staff', label: 'Staff Salaries, Apprentices & Wages' },
-  { value: 'Other', label: 'Other Operating Expense' },
+const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string; hint: string }[] = [
+  { value: 'Supplies', label: 'Stock or Supplies', hint: 'Goods or materials bought' },
+  { value: 'Transport', label: 'Transport or Delivery', hint: 'Dispatch rider, bus, fuel' },
+  { value: 'Electricity', label: 'Electricity or Fuel', hint: 'Generator fuel, NEPA/PHCN' },
+  { value: 'Rent', label: 'Rent', hint: 'Shop rent or stall fee' },
+  { value: 'Internet', label: 'Internet or Airtime', hint: 'Data bundles and calls' },
+  { value: 'Packaging', label: 'Packaging', hint: 'Nylon, bags, boxes, labels' },
+  { value: 'Staff', label: 'Staff Payment', hint: 'Salaries and wages' },
+  { value: 'Marketing', label: 'Marketing or Ads', hint: 'Flyers and social media ads' },
+  { value: 'Other', label: 'Other', hint: 'Repairs, levies, or other costs' },
 ];
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'Transfer', label: 'Bank Transfer' },
-  { value: 'Cash', label: 'Cash Payment' },
-  { value: 'POS', label: 'POS Terminal' },
-  { value: 'Other', label: 'Other Method' },
+  { value: 'Cash', label: 'Cash' },
+  { value: 'POS', label: 'POS Card Terminal' },
+  { value: 'Other', label: 'Other' },
 ];
 
-const QUICK_SUGGESTIONS = [
-  { label: 'Generator Fuel', category: 'Electricity' as ExpenseCategory },
-  { label: 'Dispatch Rider / Delivery', category: 'Transport' as ExpenseCategory },
-  { label: 'Shop Rent & Stall Levy', category: 'Rent' as ExpenseCategory },
-  { label: 'Packaging Bags / Nylon', category: 'Packaging' as ExpenseCategory },
-  { label: 'Internet Data & Airtime', category: 'Internet' as ExpenseCategory },
-  { label: 'Restock Raw Supplies', category: 'Supplies' as ExpenseCategory },
+const QUICK_SUGGESTIONS: { label: string; category: ExpenseCategory }[] = [
+  { label: 'Generator Fuel', category: 'Electricity' },
+  { label: 'Dispatch Delivery', category: 'Transport' },
+  { label: 'Shop Rent', category: 'Rent' },
+  { label: 'Packaging Bags', category: 'Packaging' },
+  { label: 'Internet & Airtime', category: 'Internet' },
+  { label: 'Store Supplies', category: 'Supplies' },
 ];
 
 export const RecordExpenseView: React.FC<RecordExpenseViewProps> = ({
@@ -55,21 +55,39 @@ export const RecordExpenseView: React.FC<RecordExpenseViewProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Transfer');
   const [expenseDate, setExpenseDate] = useState(getTodayDateString());
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [savedExpenseSummary, setSavedExpenseSummary] = useState<{
+    description: string;
+    amount: number;
+    category: ExpenseCategory;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const handleAddAnother = () => {
+    setSavedExpenseSummary(null);
+    setDescription('');
+    setAmount('');
+    setError(null);
+    setIsSubmitting(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setError(null);
 
     if (!description.trim()) {
-      setError('Please enter a description for this expense.');
+      setError('Enter what the money was spent on.');
       return;
     }
 
     const amt = Number(amount);
     if (!amt || amt <= 0 || isNaN(amt)) {
       setError('Amount must be greater than zero.');
+      return;
+    }
+
+    if (!expenseDate) {
+      setError('Select a valid date.');
       return;
     }
 
@@ -83,17 +101,14 @@ export const RecordExpenseView: React.FC<RecordExpenseViewProps> = ({
         expenseDate,
       });
 
-      setIsSuccess(true);
-
-      setTimeout(() => {
-        if (onSuccess) {
-          onSuccess();
-        } else {
-          onBack();
-        }
-      }, 700);
+      setSavedExpenseSummary({
+        description: description.trim(),
+        amount: amt,
+        category,
+      });
+      setIsSubmitting(false);
     } catch (err) {
-      setError('Failed to record expense. Please try again.');
+      setError("We couldn't save this expense. Check your connection and try again.");
       setIsSubmitting(false);
     }
   };
@@ -106,71 +121,124 @@ export const RecordExpenseView: React.FC<RecordExpenseViewProps> = ({
 
   return (
     <div className="min-h-full pb-12">
-      {/* Top Navigation Bar with Back Button */}
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-4 sm:px-8 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      {/* Top Bar with Back Button */}
+      <div className="bg-white dark:bg-[#001A35] border border-slate-200 dark:border-slate-800 rounded-2xl px-4 sm:px-6 py-3.5 mb-6 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
             onClick={onBack}
-            className="p-2 -ml-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-slate-500"
+            className="p-2 -ml-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#059669] cursor-pointer"
             title="Go back"
             aria-label="Go back"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-              Record Expense
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
+              Add Expense
             </h1>
-            <p className="text-xs text-slate-500">
-              Track your operating costs to get an accurate view of take-home profit.
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+              Record money spent to run your business
             </p>
           </div>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6">
-        {isSuccess ? (
-          <div className="p-8 bg-white border border-emerald-200 rounded-2xl shadow-sm text-center space-y-3 animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center">
+      <div className="max-w-3xl mx-auto">
+        {savedExpenseSummary ? (
+          <div className="p-6 sm:p-8 bg-white dark:bg-[#001A35] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-[#ECFDF5] dark:bg-[#064E3B] text-[#059669] dark:text-[#34D399] mx-auto flex items-center justify-center">
               <CheckCircle2 className="w-7 h-7" />
             </div>
-            <h2 className="text-lg font-bold text-slate-900">Expense Recorded!</h2>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto font-mono tabular-nums">
-              {formatCurrency(Number(amount) || 0, currency)} for {description} has been saved. Returning to your dashboard...
-            </p>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                Expense saved successfully.
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1">
+                <strong className="tabular-nums">
+                  {formatCurrency(savedExpenseSummary.amount, currency)}
+                </strong>{' '}
+                for <strong>{savedExpenseSummary.description}</strong> ({savedExpenseSummary.category}) has been recorded.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <Button
+                type="button"
+                onClick={handleAddAnother}
+                leftIcon={<PlusCircle className="w-4 h-4" />}
+                className="w-full sm:w-auto bg-[#059669] hover:bg-[#047857] text-white font-semibold cursor-pointer"
+              >
+                Add Another Expense
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => (onSuccess ? onSuccess() : onBack())}
+                className="w-full sm:w-auto border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold cursor-pointer"
+              >
+                View Expenses
+              </Button>
+            </div>
           </div>
         ) : (
           <form
             onSubmit={handleSubmit}
-            className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-8 space-y-6"
+            className="bg-white dark:bg-[#001A35] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xs p-5 sm:p-8 space-y-6"
           >
             {error && (
-              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <div
+                role="alert"
+                className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-medium flex items-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            {/* Description & Quick Fill */}
-            <div className="space-y-2">
-              <Input
-                label="Expense Description"
-                type="text"
-                placeholder="e.g. Generator petrol, Dispatch rider for Ikeja delivery"
-                value={description}
-                onChange={(e) => {
-                  setDescription(e.target.value);
-                  setError(null);
-                }}
-                required
-              />
+            {/* Section A. Expense details */}
+            <div className="space-y-4">
+              <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  A. Expense details
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Enter how much was spent and what it was for.
+                </p>
+              </div>
 
-              {/* Quick Suggestion Pills */}
-              <div className="pt-1">
-                <p className="text-[11px] text-slate-400 font-medium mb-1.5">
-                  Frequent expense categories:
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label={`Amount Spent (${currency}) *`}
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="any"
+                  placeholder="e.g. 4500"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  required
+                  leftAddon={<span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{currency}</span>}
+                />
+
+                <Input
+                  label="What was the money spent on? *"
+                  type="text"
+                  placeholder="e.g. Generator fuel, Dispatch delivery, Nylon bags"
+                  value={description}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    setError(null);
+                  }}
+                  required
+                />
+              </div>
+
+              {/* Quick Suggestions */}
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5">
+                  Common expenses (tap to fill):
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {QUICK_SUGGESTIONS.map((sug) => (
@@ -178,84 +246,92 @@ export const RecordExpenseView: React.FC<RecordExpenseViewProps> = ({
                       key={sug.label}
                       type="button"
                       onClick={() => applySuggestion(sug)}
-                      className="px-2.5 py-1 text-xs rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors font-medium border border-slate-200/60"
+                      className="px-2.5 py-1 text-xs rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors font-medium border border-slate-200 dark:border-slate-700 cursor-pointer"
                     >
                       {sug.label}
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
 
-            {/* Amount & Category */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label={`Amount Spent (${currency})`}
-                type="number"
-                min="0"
-                step="any"
-                placeholder="e.g. 4500"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-                leftAddon={<span className="text-xs font-semibold text-slate-600">{currency}</span>}
-              />
-
-              <Select
-                label="Expense Category"
-                options={EXPENSE_CATEGORIES}
-                value={category}
-                onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-                required
-              />
-            </div>
-
-            {/* Payment Method & Date */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Select
-                label="Payment Method"
-                options={PAYMENT_METHODS}
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                required
-              />
-
-              <Input
-                label="Date of Expense"
-                type="date"
-                value={expenseDate}
-                onChange={(e) => setExpenseDate(e.target.value)}
-                required
-              />
-            </div>
-
-            {/* Helpful Financial Advice Note */}
-            <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/70 flex items-start gap-3 text-xs text-amber-900">
-              <Receipt className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-amber-950">Why logging every expense matters</p>
-                <p className="text-amber-800/90 mt-0.5 leading-relaxed">
-                  Recording every small expenditure (airtime, generator fuel, packing nylon) prevents unaccounted cash leakages and ensures your true net profit and tax deductions are 100% accurate.
-                </p>
+              {/* Tappable Category Selection */}
+              <div className="space-y-2 pt-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-200 block">
+                  Category <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {EXPENSE_CATEGORIES.map((cat) => {
+                    const isSelected = category === cat.value;
+                    return (
+                      <button
+                        key={cat.value}
+                        type="button"
+                        onClick={() => setCategory(cat.value)}
+                        className={`p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#ECFDF5] dark:bg-[#064E3B]/50 border-[#059669] text-[#047857] dark:text-[#34D399]'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <p className="text-xs font-semibold leading-tight">{cat.label}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                          {cat.hint}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Bottom Actions: Explicit Cancel Button + Save Expense Button */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            {/* Section B. Payment details */}
+            <div className="space-y-4 pt-2">
+              <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  B. Payment details
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  How and when this expense was paid.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Select
+                  label="Payment Method *"
+                  options={PAYMENT_METHODS}
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                  required
+                />
+
+                <Input
+                  label="Date *"
+                  type="date"
+                  value={expenseDate}
+                  onChange={(e) => setExpenseDate(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={onBack}
                 disabled={isSubmitting}
-                className="text-slate-600 hover:text-slate-900"
+                className="w-full sm:w-auto text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 isLoading={isSubmitting}
+                disabled={isSubmitting}
                 size="md"
-                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6"
+                leftIcon={<Receipt className="w-4 h-4" />}
+                className="w-full sm:w-auto bg-[#059669] hover:bg-[#047857] text-white font-semibold px-6 cursor-pointer"
               >
                 Save Expense
               </Button>

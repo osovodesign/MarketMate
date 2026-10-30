@@ -25,6 +25,7 @@ import {
   Sparkles,
   Info,
   X,
+  ArrowLeft,
 } from 'lucide-react';
 import { StaffMember, StaffRole, StaffPermissions, StaffShiftRecord } from '../../types';
 import { useBusinessData } from '../../context/BusinessDataContext';
@@ -40,7 +41,11 @@ import { formatCurrency, getTodayDateString } from '../../lib/formatters';
 import { ShiftClosingModal } from './ShiftClosingModal';
 import { StaffSwitchModal } from './StaffSwitchModal';
 
-export const StaffManagementView: React.FC = () => {
+interface StaffManagementViewProps {
+  onBack?: () => void;
+}
+
+export const StaffManagementView: React.FC<StaffManagementViewProps> = ({ onBack }) => {
   const {
     staffList,
     currentSession,
@@ -214,6 +219,15 @@ export const StaffManagementView: React.FC = () => {
       <div className="bg-[#FEFEFE] dark:bg-[#001A35] rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-2xs transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer shadow-2xs shrink-0"
+                title="Go Back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
             <div className="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 flex items-center justify-center font-black shadow-2xs shrink-0">
               <Users className="w-6 h-6" />
             </div>

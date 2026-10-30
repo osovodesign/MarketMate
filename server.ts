@@ -872,7 +872,7 @@ Current Business Profile & Grounded Financial Summary:
   // Automated Subscription Approval Confirmation Email
   app.post('/api/email/subscription-approval', async (req, res) => {
     try {
-      const { email, ownerName, businessName, planName, amount, discountPercent } = req.body;
+      const { email, ownerName, businessName, planName, amount, discountPercent, startsAt, expiresAt } = req.body;
       const resend = getResendClient();
       if (!resend || !email || typeof email !== 'string' || !email.includes('@')) {
         res.status(400).json({ success: false, error: 'Resend not configured or invalid recipient email' });
@@ -880,14 +880,18 @@ Current Business Profile & Grounded Financial Summary:
       }
 
       const discountNotice = discountPercent ? ` (Includes your ${discountPercent}% discount reward)` : '';
+      const periodDetails =
+        startsAt || expiresAt
+          ? `\n\n📅 **Subscription Period (Africa/Lagos Time):**\n• **Active From:** ${startsAt || 'Today'}\n• **Valid Until:** ${expiresAt || 'Active'}\n`
+          : '';
 
       const html = buildMarketMateEmailHtml({
         title: '🎉 Payment Confirmed: Your MarketMate Pro Subscription is Active!',
-        content: `Great news! 🚀\n\nYour bank transfer of **₦${Number(amount || 0).toLocaleString()}**${discountNotice} for the **"${planName || 'Pioneer Pro'}"** plan has been verified and approved by MarketMate Admin.\n\nYour store **${businessName || ''}** now has full access to all unlocked Pro capabilities:\n• 🛡️ **Staff, Roles & Cashier PINs:** Restrict cashier view from profit margins and store accounting.\n• 📊 **Advanced P&L Reports & CSV Ledgers:** Download itemized sales and expense exports.\n• 💵 **Multi-Currency POS:** Track foreign currencies (USD, EUR, GBP, CFA) with real-time margins.\n• ⚡ **Priority Cloud Synchronization:** Instant real-time multi-device sync.\n\nThank you for choosing MarketMate to take your retail operations to the next level!`,
+        content: `Great news! 🚀\n\nYour bank transfer of **₦${Number(amount || 0).toLocaleString()}**${discountNotice} for the **"${planName || 'MarketMate Pro'}"** plan has been verified and approved by MarketMate Admin.${periodDetails}\nYour store **${businessName || ''}** now has full access to all unlocked Pro capabilities:\n• 🛡️ **Staff, Roles & Cashier PINs:** Restrict cashier view from profit margins and store accounting.\n• 📊 **Advanced P&L Reports & CSV Ledgers:** Download itemized sales and expense exports.\n• 💵 **Multi-Currency POS:** Track foreign currencies (USD, EUR, GBP, CFA) with real-time margins.\n• ⚡ **Priority Cloud Synchronization:** Instant real-time multi-device sync.\n\nThank you for choosing MarketMate to take your retail operations to the next level!`,
         recipientName: ownerName,
         businessName,
-        actionLabel: 'Explore Pro Features',
-        actionUrl: 'settings',
+        actionLabel: 'View Subscription',
+        actionUrl: 'subscribe',
         priority: 'important',
       });
 
@@ -949,6 +953,74 @@ Current Business Profile & Grounded Financial Summary:
       console.error('Subscription rejection email error:', err);
       res.status(500).json({ success: false, error: err.message });
     }
+  });
+
+  // Automated Subscription Renewal Reminder & Expiry Email (7d, 3d, 1d, and on expiry)
+  app.post('/api/email/subscription-reminder', async (req, res) => {
+    try {
+      const { email, ownerName, businessName, planName, expiresAt, daysRemaining, isExpired } = req.body;
+      const resend = getResendClient();
+      if (!resend || !email || typeof email !== 'string' || !email.includes('@')) {
+        res.status(400).json({ success: false, error: 'Resend not configured or invalid recipient email' });
+        return;
+      }
+
+      const title = isExpired
+        ? '⏰ Your MarketMate Pro Subscription Has Expired'
+        : `⏳ Renewal Reminder: ${daysRemaining} ${daysRemaining === 1 ? 'Day' : 'Days'} Remaining on MarketMate Pro`;
+
+      const content = isExpired
+        ? `Hello ${ownerName || businessName},\n\nYour **${planName || 'MarketMate Pro'}** subscription for **${businessName || 'your store'}** expired on **${expiresAt || 'recently'}**.\n\n🔒 **Your Data is 100% Safe:**\nAll your sales records, products, customer contacts, and historical ledgers remain completely intact. Renew your subscription anytime (**₦1,000/month** or **₦3,000 for the October–December 2026 Q4 Pass**) to restore full Pro access.`
+        : `Hello ${ownerName || businessName},\n\nThis is a friendly reminder that your **${planName || 'MarketMate Pro'}** subscription for **${businessName || 'your store'}** will expire on **${expiresAt}** (**${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} remaining**).\n\n💡 **Renew Early Without Losing Time:**\nWhen you renew before your current expiry date, your new subscription period automatically starts right after **${expiresAt}** — so you never lose a single paid day!`;
+
+      const html = buildMarketMateEmailHtml({
+        title,
+        content,
+        recipientName: ownerName,
+        businessName,
+        actionLabel: 'Renew Subscription',
+        actionUrl: 'subscribe',
+        priority: isExpired || Number(daysRemaining) <= 3 ? 'urgent' : 'important',
+      });
+
+      const response = await resend.emails.send({
+        from: 'MarketMate Billing <notifications@getmarketmate.online>',
+        to: email.trim().toLowerCase(),
+        replyTo: 'getmarketmate@gmail.com',
+        subject: `[MarketMate] ${title}`,
+        html,
+      });
+
+      if (response.error) {
+        res.status(400).json({ success: false, error: response.error.message });
+        return;
+      }
+
+      res.json({ success: true, id: response.data?.id });
+    } catch (err: any) {
+      console.error('Subscription reminder email error:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Subscription Lifecycle Policy & Scheduled Cron Status Endpoint
+  app.get('/api/subscriptions/cron-status', (req, res) => {
+    res.json({
+      status: 'ready',
+      timezone: 'Africa/Lagos',
+      utcOffset: '+01:00',
+      q4PassExpiryUtc: '2026-12-31T22:59:59.999Z',
+      reminderMilestonesDays: [7, 3, 1, 0],
+      plans: {
+        monthly: { id: 'monthly', priceNGN: 1000, duration: '1 calendar month (clamped)' },
+        q4_pass: {
+          id: 'q4_pass',
+          priceNGN: 3000,
+          label: 'October–December 2026 Promotional Q4 Package',
+          expiresAtLagos: '2026-12-31 23:59:59.999 WAT',
+        },
+      },
+    });
   });
 
   // Serve favicon

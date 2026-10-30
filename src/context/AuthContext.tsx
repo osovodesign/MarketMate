@@ -28,9 +28,9 @@ import {
   detectAndStoreReferralCode,
   getPendingReferralCode,
   recordReferralSignup,
-  recordReferralSubscription,
 } from '../lib/referralService';
 import { triggerWelcomeEmail } from '../lib/emailService';
+import { isBusinessSubscriptionActive } from '../lib/subscriptionService';
 
 export interface UserSession {
   id: string;
@@ -170,7 +170,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setDoc(
               bizDocRef,
               {
-                ...bizData,
                 ownerEmail: userEmail || (bizData as any).ownerEmail || '',
                 lastActiveAt: nowIso,
               },
@@ -192,7 +191,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setDoc(
             doc(db, 'businesses', firstBiz.id),
             {
-              ...firstBiz,
               ownerEmail: userEmail || (firstBiz as any).ownerEmail || '',
               lastActiveAt: nowIso,
             },
@@ -542,9 +540,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateBusiness = async (data: Partial<BusinessProfile>) => {
     if (!business) return;
+    // Strip privileged subscription fields from client profile updates;
+    // only Super Admin approval/management workflows can mutate subscription entitlement.
+    const {
+      isSubscribed: _ignoreIsSubscribed,
+      subscriptionStatus: _ignoreSubStatus,
+      subscriptionPlan: _ignoreSubPlan,
+      subscriptionPlanId: _ignoreSubPlanId,
+      subscribedAt: _ignoreSubscribedAt,
+      subscriptionStartsAt: _ignoreSubStartsAt,
+      subscriptionExpiresAt: _ignoreSubExpiresAt,
+      lastSubscriptionRequestId: _ignoreLastReqId,
+      subscriptionUpdatedAt: _ignoreSubUpdatedAt,
+      subscriptionUpdatedBy: _ignoreSubUpdatedBy,
+      ...safeProfileData
+    } = data;
+
     const updated: BusinessProfile = {
       ...business,
-      ...data,
+      ...safeProfileData,
       updatedAt: new Date().toISOString(),
     };
     setBusiness(updated);
@@ -553,10 +567,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user?.id && business.id) {
       try {
         const bizDocRef = doc(db, 'businesses', business.id);
-        await setDoc(bizDocRef, {
-          ...updated,
-          ownerId: user.id,
-        }, { merge: true });
+        await setDoc(
+          bizDocRef,
+          {
+            ...safeProfileData,
+            updatedAt: updated.updatedAt,
+            ownerId: user.id,
+          },
+          { merge: true }
+        );
       } catch (err) {
         console.warn('Could not sync business update to cloud:', err);
       }
@@ -564,27 +583,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const activateSubscription = async (
-    planName: string = 'MarketMate Pioneer Standard'
+    _planName: string = 'MarketMate Monthly Plan'
   ): Promise<{ success: boolean; error?: string }> => {
-    try {
-      const now = new Date().toISOString();
-      if (business) {
-        await updateBusiness({
-          isSubscribed: true,
-          subscriptionPlan: planName,
-          subscribedAt: now,
-        });
-      }
-
-      if (user?.id) {
-        await recordReferralSubscription(user.id, planName);
-      }
-
-      return { success: true };
-    } catch (err: any) {
-      console.warn('Subscription activation error:', err);
-      return { success: false, error: err?.message || 'Could not activate subscription' };
-    }
+    return {
+      success: false,
+      error:
+        'Client self-activation is disabled. Please submit your bank transfer proof for MarketMate Admin verification.',
+    };
   };
 
   const activateDemoMode = () => {
@@ -615,10 +620,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAuthenticated = !!user;
   const isOnboarded = !!business;
   const isSuperAdmin = !!user?.isSuperAdmin || isSuperAdminEmail(user?.email);
-  // Demo Mode account (Adaeze) has all Pro features completely unlocked for free exploration.
-  // Real registered users remain locked on the Free Tier unless their subscription is approved.
+  // Demo Mode account (Adaeze) has all Pro features unlocked for exploration.
+  // Real registered stores only have Pro access while their subscription is active and not expired.
   const isSubscribed = Boolean(
-    business?.isSubscribed || isSuperAdmin || user?.isSuperAdmin || isDemoMode
+    isBusinessSubscriptionActive(business) || isSuperAdmin || user?.isSuperAdmin || isDemoMode
   );
 
   return (

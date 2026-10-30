@@ -65,6 +65,7 @@ import {
   ReferralRecord,
   PlatformBankConfig,
   SubscriptionRequest,
+  SubscriptionAuditEvent,
   SupportTicket,
   SupportTicketStatus,
 } from '../../types';
@@ -75,7 +76,16 @@ import {
   fetchSubscriptionRequests,
   approveSubscriptionPayment,
   rejectSubscriptionPayment,
+  extendBusinessSubscription,
+  cancelBusinessSubscription,
+  fetchSubscriptionAuditLogs,
+  processSubscriptionLifecycleSweep,
+  evaluateSubscriptionEntitlement,
+  isBusinessSubscriptionActive,
+  formatLagosDate,
+  formatLagosDateTime,
   DEFAULT_PLATFORM_BANK,
+  DEFAULT_EXPIRY_REMINDER_DAYS,
 } from '../../lib/subscriptionService';
 import {
   fetchAllSupportTickets,
@@ -103,6 +113,15 @@ interface MerchantSummary {
   activityStatus: 'active' | 'recent' | 'dormant' | 'inactive';
   transactionStatus: 'transacting' | 'setup_only' | 'zero_sales';
   isCurrentStore?: boolean;
+  isSubscribed?: boolean;
+  subscriptionStatus?: 'free' | 'active' | 'expired' | 'cancelled';
+  subscriptionPlan?: string;
+  subscriptionPlanId?: string;
+  subscribedAt?: string;
+  subscriptionStartsAt?: string;
+  subscriptionExpiresAt?: string;
+  subscriptionUpdatedAt?: string;
+  subscriptionUpdatedBy?: string;
 }
 
 interface PlatformOverview {
@@ -255,14 +274,22 @@ export const AdminPortalView: React.FC = () => {
 
   // Subscriptions & Bank Transfer Approvals state
   const [subscriptionRequests, setSubscriptionRequests] = useState<SubscriptionRequest[]>([]);
+  const [subscriptionAuditLogs, setSubscriptionAuditLogs] = useState<SubscriptionAuditEvent[]>([]);
   const [bankConfig, setBankConfig] = useState<PlatformBankConfig | null>(null);
   const [loadingSubscriptions, setLoadingSubscriptions] = useState<boolean>(false);
   const [subFilter, setSubFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [subPlanFilter, setSubPlanFilter] = useState<'all' | 'monthly' | 'q4_pass'>('all');
+  const [subSearchQuery, setSubSearchQuery] = useState<string>('');
   const [processingSubId, setProcessingSubId] = useState<string | null>(null);
   const [rejectModalReq, setRejectModalReq] = useState<SubscriptionRequest | null>(null);
   const [rejectReasonInput, setRejectReasonInput] = useState<string>('');
   const [isEditingBankConfig, setIsEditingBankConfig] = useState<boolean>(false);
   const [bankConfigForm, setBankConfigForm] = useState<Partial<PlatformBankConfig>>({});
+  const [subErrorNotice, setSubErrorNotice] = useState<string | null>(null);
+  const [manageSubMerchant, setManageSubMerchant] = useState<MerchantSummary | null>(null);
+  const [manualPlanChoice, setManualPlanChoice] = useState<'monthly' | 'q4_pass'>('monthly');
+  const [manualActionReason, setManualActionReason] = useState<string>('');
+  const [isRunningSweep, setIsRunningSweep] = useState<boolean>(false);
 
   // Platform metrics (Instantly hydrated from cache)
   const [overview, setOverview] = useState<PlatformOverview>(() => {
@@ -549,6 +576,15 @@ export const AdminPortalView: React.FC = () => {
               activityStatus: actStatus,
               transactionStatus: txStatus,
               isCurrentStore: isCurr,
+              isSubscribed: Boolean(data.isSubscribed),
+              subscriptionStatus: data.subscriptionStatus,
+              subscriptionPlan: data.subscriptionPlan,
+              subscriptionPlanId: data.subscriptionPlanId,
+              subscribedAt: data.subscribedAt,
+              subscriptionStartsAt: data.subscriptionStartsAt,
+              subscriptionExpiresAt: data.subscriptionExpiresAt,
+              subscriptionUpdatedAt: data.subscriptionUpdatedAt,
+              subscriptionUpdatedBy: data.subscriptionUpdatedBy,
             } as MerchantSummary;
           })
         );
@@ -580,6 +616,15 @@ export const AdminPortalView: React.FC = () => {
           activityStatus: 'active',
           transactionStatus: sales.length > 0 ? 'transacting' : 'zero_sales',
           isCurrentStore: true,
+          isSubscribed: business.isSubscribed,
+          subscriptionStatus: business.subscriptionStatus,
+          subscriptionPlan: business.subscriptionPlan,
+          subscriptionPlanId: business.subscriptionPlanId,
+          subscribedAt: business.subscribedAt,
+          subscriptionStartsAt: business.subscriptionStartsAt,
+          subscriptionExpiresAt: business.subscriptionExpiresAt,
+          subscriptionUpdatedAt: business.subscriptionUpdatedAt,
+          subscriptionUpdatedBy: business.subscriptionUpdatedBy,
         });
         totalGMV = currentSalesTotal;
         totalSales = sales.length;
@@ -675,13 +720,15 @@ export const AdminPortalView: React.FC = () => {
   const loadSubscriptionData = async () => {
     setLoadingSubscriptions(true);
     try {
-      const [reqs, cfg] = await Promise.all([
+      const [reqs, cfg, logs] = await Promise.all([
         fetchSubscriptionRequests(),
         fetchPlatformBankConfig(),
+        fetchSubscriptionAuditLogs(),
       ]);
       setSubscriptionRequests(reqs);
       setBankConfig(cfg);
       setBankConfigForm(cfg);
+      setSubscriptionAuditLogs(logs);
     } catch (err) {
       console.warn('Failed to load subscription requests:', err);
     } finally {
@@ -692,13 +739,21 @@ export const AdminPortalView: React.FC = () => {
   const handleApproveSubscription = async (req: SubscriptionRequest) => {
     if (!user?.email) return;
     setProcessingSubId(req.id);
+    setSubErrorNotice(null);
     try {
-      await approveSubscriptionPayment(req, user.email);
-      setSendSuccessNotice(`✓ Approved bank transfer for ${req.businessName}. Store subscription is now Active!`);
+      const res = await approveSubscriptionPayment(req, user.email);
+      setSendSuccessNotice(
+        `✓ Approved bank transfer for ${req.businessName}. Active from ${formatLagosDate(
+          res.startsAt
+        )} until ${formatLagosDate(res.expiresAt)} (WAT)!`
+      );
       await loadSubscriptionData();
       await fetchPlatformData();
     } catch (err: any) {
       console.error('Approval failed:', err);
+      setSubErrorNotice(
+        err?.message || 'Database write failed while approving subscription. Please retry.'
+      );
     } finally {
       setProcessingSubId(null);
     }
@@ -706,19 +761,25 @@ export const AdminPortalView: React.FC = () => {
 
   const handleRejectSubscription = async () => {
     if (!rejectModalReq || !user?.email) return;
+    if (!rejectReasonInput.trim()) {
+      setSubErrorNotice('Please enter a clear rejection reason before confirming.');
+      return;
+    }
     setProcessingSubId(rejectModalReq.id);
+    setSubErrorNotice(null);
     try {
-      await rejectSubscriptionPayment(
-        rejectModalReq,
-        rejectReasonInput.trim() || 'Bank transfer alert could not be matched with account statement.',
-        user.email
+      await rejectSubscriptionPayment(rejectModalReq, rejectReasonInput.trim(), user.email);
+      setSendSuccessNotice(
+        `Marked transfer request for ${rejectModalReq.businessName} as rejected.`
       );
-      setSendSuccessNotice(`Marked transfer request for ${rejectModalReq.businessName} as rejected.`);
       setRejectModalReq(null);
       setRejectReasonInput('');
       await loadSubscriptionData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Rejection failed:', err);
+      setSubErrorNotice(
+        err?.message || 'Database write failed while rejecting request. Please retry.'
+      );
     } finally {
       setProcessingSubId(null);
     }
@@ -726,13 +787,94 @@ export const AdminPortalView: React.FC = () => {
 
   const handleSaveBankConfig = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubErrorNotice(null);
     try {
       const updated = await updatePlatformBankConfig(bankConfigForm);
       setBankConfig(updated);
       setIsEditingBankConfig(false);
       setSendSuccessNotice('MarketMate receiving bank details and pricing saved successfully!');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save bank configuration:', err);
+      setSubErrorNotice(err?.message || 'Could not save bank & plan configuration to Firestore.');
+    }
+  };
+
+  const handleManualExtendSubscription = async () => {
+    if (!manageSubMerchant || !user?.email) return;
+    setProcessingSubId(manageSubMerchant.id);
+    setSubErrorNotice(null);
+    try {
+      const res = await extendBusinessSubscription({
+        businessId: manageSubMerchant.id,
+        businessName: manageSubMerchant.businessName,
+        ownerEmail: manageSubMerchant.ownerEmail,
+        ownerName: manageSubMerchant.ownerName,
+        planId: manualPlanChoice,
+        reason: manualActionReason.trim() || 'Manual subscription extension by Super Admin',
+        adminEmail: user.email,
+      });
+      setSendSuccessNotice(
+        `✓ Extended subscription for ${manageSubMerchant.businessName} until ${formatLagosDate(
+          res.expiresAt
+        )} (WAT).`
+      );
+      setManageSubMerchant(null);
+      setManualActionReason('');
+      await loadSubscriptionData();
+      await fetchPlatformData();
+    } catch (err: any) {
+      setSubErrorNotice(err?.message || 'Failed to extend store subscription.');
+    } finally {
+      setProcessingSubId(null);
+    }
+  };
+
+  const handleManualCancelSubscription = async () => {
+    if (!manageSubMerchant || !user?.email) return;
+    if (!manualActionReason.trim()) {
+      setSubErrorNotice('Please enter a reason for cancelling/revoking this store subscription.');
+      return;
+    }
+    setProcessingSubId(manageSubMerchant.id);
+    setSubErrorNotice(null);
+    try {
+      await cancelBusinessSubscription({
+        businessId: manageSubMerchant.id,
+        businessName: manageSubMerchant.businessName,
+        ownerEmail: manageSubMerchant.ownerEmail,
+        ownerName: manageSubMerchant.ownerName,
+        reason: manualActionReason.trim(),
+        adminEmail: user.email,
+      });
+      setSendSuccessNotice(
+        `Subscription for ${manageSubMerchant.businessName} has been marked as cancelled.`
+      );
+      setManageSubMerchant(null);
+      setManualActionReason('');
+      await loadSubscriptionData();
+      await fetchPlatformData();
+    } catch (err: any) {
+      setSubErrorNotice(err?.message || 'Failed to cancel store subscription.');
+    } finally {
+      setProcessingSubId(null);
+    }
+  };
+
+  const handleRunLifecycleSweep = async () => {
+    if (!user?.email) return;
+    setIsRunningSweep(true);
+    setSubErrorNotice(null);
+    try {
+      const res = await processSubscriptionLifecycleSweep(user.email);
+      setSendSuccessNotice(
+        `✓ Lifecycle sweep completed: Checked ${res.checkedCount} stores • ${res.expiredCount} expired • ${res.remindersSentCount} renewal reminders dispatched.`
+      );
+      await loadSubscriptionData();
+      await fetchPlatformData();
+    } catch (err: any) {
+      setSubErrorNotice(err?.message || 'Lifecycle sweep failed.');
+    } finally {
+      setIsRunningSweep(false);
     }
   };
 
@@ -2648,119 +2790,212 @@ export const AdminPortalView: React.FC = () => {
       {/* ========================================================================= */}
       {activeTab === 'subscriptions' && (
         <div className="space-y-6 animate-in fade-in">
+          {/* Error / Status Notices */}
+          {subErrorNotice && (
+            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-200 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="font-semibold">{subErrorNotice}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSubErrorNotice(null)}
+                className="text-rose-600 hover:text-rose-800 font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {sendSuccessNotice && (
+            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="font-semibold">{sendSuccessNotice}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSendSuccessNotice(null)}
+                className="text-emerald-600 hover:text-emerald-800 font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Top Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Pending Approvals
-                </span>
-                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center">
-                  <Clock className="w-5 h-5" />
+          {(() => {
+            const reminderDays = bankConfig?.expiryReminderDays || DEFAULT_EXPIRY_REMINDER_DAYS;
+            const evaluatedMerchants = merchants.map((m) => ({
+              merchant: m,
+              entitlement: evaluateSubscriptionEntitlement(
+                {
+                  id: m.id,
+                  userId: m.ownerId,
+                  businessName: m.businessName,
+                  businessType: m.businessType as any,
+                  currency: m.currency as any,
+                  isSubscribed: m.isSubscribed,
+                  subscriptionStatus: m.subscriptionStatus,
+                  subscriptionPlan: m.subscriptionPlan,
+                  subscriptionPlanId: m.subscriptionPlanId,
+                  subscribedAt: m.subscribedAt,
+                  subscriptionStartsAt: m.subscriptionStartsAt,
+                  subscriptionExpiresAt: m.subscriptionExpiresAt,
+                  createdAt: m.createdAt || '',
+                  updatedAt: m.subscriptionUpdatedAt || '',
+                },
+                subscriptionRequests.filter((r) => r.businessId === m.id),
+                reminderDays
+              ),
+            }));
+
+            const activeCount = evaluatedMerchants.filter((x) => x.entitlement.hasPaidAccess).length;
+            const expiringSoonCount = evaluatedMerchants.filter(
+              (x) => x.entitlement.isExpiringSoon
+            ).length;
+            const expiredCount = evaluatedMerchants.filter((x) => x.entitlement.isExpired).length;
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Pending Approvals
+                    </span>
+                    <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-amber-600 dark:text-amber-400 font-mono">
+                      {subscriptionRequests.filter((r) => r.status === 'pending').length}
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium">Awaiting review</span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">Direct bank transfers to verify</p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Active Subscribed Stores
+                    </span>
+                    <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                      {activeCount}
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium">
+                      of {merchants.length} stores
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    {expiringSoonCount} expiring within {reminderDays}d
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Expired Subscriptions
+                    </span>
+                    <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 flex items-center justify-center">
+                      <AlertCircle className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-rose-600 dark:text-rose-400 font-mono">
+                      {expiredCount}
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium">Need renewal</span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Data intact • Pro access paused
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Verified Sub Revenue
+                    </span>
+                    <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 flex items-center justify-center">
+                      <DollarSign className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-1">
+                    <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
+                      ₦
+                      {subscriptionRequests
+                        .filter((r) => r.status === 'approved')
+                        .reduce((sum, r) => sum + (r.finalAmount || 0), 0)
+                        .toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    {subscriptionRequests.filter((r) => r.status === 'approved').length} approved
+                    transfers
+                  </p>
                 </div>
               </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-amber-600 dark:text-amber-400 font-mono">
-                  {subscriptionRequests.filter((r) => r.status === 'pending').length}
-                </span>
-                <span className="text-xs text-slate-500 font-medium">Awaiting verification</span>
-              </div>
-              <p className="mt-1 text-[11px] text-slate-400">Direct bank transfers to review</p>
-            </div>
+            );
+          })()}
 
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Active Subscribed Stores
-                </span>
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                  {merchants.filter((m) => m.isSubscribed).length}
-                </span>
-                <span className="text-xs text-slate-500 font-medium">of {merchants.length} stores</span>
-              </div>
-              <p className="mt-1 text-[11px] text-slate-400">Tenants with active subscription</p>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Verified Sub Revenue
-                </span>
-                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
-                  ₦
-                  {subscriptionRequests
-                    .filter((r) => r.status === 'approved')
-                    .reduce((sum, r) => sum + (r.finalAmount || 0), 0)
-                    .toLocaleString()}
-                </span>
-              </div>
-              <p className="mt-1 text-[11px] text-slate-400">Total approved transfer revenue</p>
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Total Sub Submissions
-                </span>
-                <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
-                  {subscriptionRequests.length}
-                </span>
-                <span className="text-xs text-slate-500 font-medium">All time</span>
-              </div>
-              <p className="mt-1 text-[11px] text-slate-400">Bank payment submissions</p>
-            </div>
-          </div>
-
-          {/* MarketMate Official Receiving Bank Card */}
+          {/* MarketMate Official Receiving Bank & Plan Pricing Card */}
           <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 rounded-2xl p-6 text-white border border-slate-700/60 shadow-lg">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-slate-950">
-                    Platform Bank Settings
+                    Platform Bank &amp; Pricing Config
                   </span>
                   <span className="text-xs text-emerald-300 font-medium">
-                    Where merchants transfer subscription fees
+                    Africa/Lagos (WAT) Lifecycle Policy
                   </span>
                 </div>
                 <h3 className="text-lg font-black text-white mt-1">
-                  MarketMate Receiving Bank Account
+                  MarketMate Receiving Bank Account &amp; Plan Rates
                 </h3>
                 <p className="text-xs text-slate-300 max-w-xl mt-0.5 leading-relaxed">
-                  These details are displayed to merchants in the subscription modal. You can update your bank name,
-                  account number, or subscription prices at any time without needing a Paystack account.
+                  Configure your official receiving bank details, the Monthly Plan rate (₦1,000),
+                  the October–December 2026 Promotional Q4 Package rate (₦3,000), and reminder window.
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setBankConfigForm(bankConfig || DEFAULT_PLATFORM_BANK);
-                  setIsEditingBankConfig(!isEditingBankConfig);
-                }}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-colors cursor-pointer self-start sm:self-auto"
-              >
-                {isEditingBankConfig ? 'Cancel Editing' : 'Edit Bank Account & Prices'}
-              </button>
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={handleRunLifecycleSweep}
+                  disabled={isRunningSweep}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 transition-colors cursor-pointer flex items-center gap-1.5"
+                  title="Evaluate all stores for expired subscriptions and send 7d/3d/1d renewal reminders"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRunningSweep ? 'animate-spin' : ''}`} />
+                  <span>{isRunningSweep ? 'Running Sweep...' : 'Run Expiry & Reminder Sweep'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBankConfigForm(bankConfig || DEFAULT_PLATFORM_BANK);
+                    setIsEditingBankConfig(!isEditingBankConfig);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-colors cursor-pointer"
+                >
+                  {isEditingBankConfig ? 'Cancel Editing' : 'Edit Bank & Plan Config'}
+                </button>
+              </div>
             </div>
 
             {isEditingBankConfig ? (
-              <form onSubmit={handleSaveBankConfig} className="mt-6 pt-6 border-t border-slate-700/60 space-y-4">
+              <form
+                onSubmit={handleSaveBankConfig}
+                className="mt-6 pt-6 border-t border-slate-700/60 space-y-4"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
@@ -2808,10 +3043,10 @@ export const AdminPortalView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Monthly Launch Plan Price (₦)
+                      Monthly Plan Price (₦)
                     </label>
                     <input
                       type="number"
@@ -2831,18 +3066,59 @@ export const AdminPortalView: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Q4 Pass (3-Month) Price (₦)
+                      Oct–Dec 2026 Q4 Package Price (₦)
                     </label>
                     <input
                       type="number"
                       required
                       min={0}
                       step={100}
-                      value={bankConfigForm.annualPlanPrice ?? 3000}
+                      value={bankConfigForm.q4PassPrice ?? bankConfigForm.annualPlanPrice ?? 3000}
                       onChange={(e) =>
                         setBankConfigForm({
                           ...bankConfigForm,
+                          q4PassPrice: Number(e.target.value),
                           annualPlanPrice: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-xl text-xs bg-slate-800/90 border border-slate-600 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Expiry Reminder Window (Days)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      max={30}
+                      value={bankConfigForm.expiryReminderDays ?? DEFAULT_EXPIRY_REMINDER_DAYS}
+                      onChange={(e) =>
+                        setBankConfigForm({
+                          ...bankConfigForm,
+                          expiryReminderDays: Number(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-xl text-xs bg-slate-800/90 border border-slate-600 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Future Standard Monthly Price (₦, Optional)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={100}
+                      placeholder="Configure when ready"
+                      value={bankConfigForm.futureMonthlyPrice ?? ''}
+                      onChange={(e) =>
+                        setBankConfigForm({
+                          ...bankConfigForm,
+                          futureMonthlyPrice: e.target.value ? Number(e.target.value) : undefined,
                         })
                       }
                       className="w-full px-3 py-2 rounded-xl text-xs bg-slate-800/90 border border-slate-600 text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -2850,118 +3126,191 @@ export const AdminPortalView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingBankConfig(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 transition-colors flex items-center gap-1.5 cursor-pointer shadow-md"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Save Platform Bank Details</span>
-                  </button>
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                  <label className="inline-flex items-center gap-2 text-xs text-slate-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={bankConfigForm.q4PromoEnabled !== false}
+                      onChange={(e) =>
+                        setBankConfigForm({
+                          ...bankConfigForm,
+                          q4PromoEnabled: e.target.checked,
+                        })
+                      }
+                      className="rounded border-slate-600 text-emerald-500 focus:ring-emerald-500"
+                    />
+                    <span>Enable October–December 2026 Promotional Q4 Package (₦3,000)</span>
+                  </label>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingBankConfig(false)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 transition-colors flex items-center gap-1.5 cursor-pointer shadow-md"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Save Platform Bank &amp; Pricing</span>
+                    </button>
+                  </div>
                 </div>
               </form>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-5 pt-5 border-t border-slate-700/60">
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Bank Name</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                    Bank Name
+                  </span>
                   <span className="text-sm font-bold text-white block mt-0.5">
                     {bankConfig?.bankName || DEFAULT_PLATFORM_BANK.bankName}
                   </span>
                 </div>
 
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Account Number</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                    Account Number
+                  </span>
                   <span className="text-base font-black font-mono text-emerald-400 block mt-0.5">
                     {bankConfig?.accountNumber || DEFAULT_PLATFORM_BANK.accountNumber}
                   </span>
                 </div>
 
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Account Name</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                    Account Name
+                  </span>
                   <span className="text-xs font-bold text-white block mt-0.5 truncate">
                     {bankConfig?.accountName || DEFAULT_PLATFORM_BANK.accountName}
                   </span>
                 </div>
 
                 <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">2026 Plan Rates</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                    Active Plan Rates
+                  </span>
                   <span className="text-xs font-bold text-emerald-300 block mt-0.5 font-mono">
-                    ₦{(bankConfig?.monthlyPlanPrice || 1000).toLocaleString()}/mo • ₦
-                    {(bankConfig?.annualPlanPrice || 3000).toLocaleString()} (Q4 Pass)
+                    ₦{(bankConfig?.monthlyPlanPrice || 1000).toLocaleString()}/mo •{' '}
+                    {bankConfig?.q4PromoEnabled !== false
+                      ? `₦${(
+                          bankConfig?.q4PassPrice ||
+                          bankConfig?.annualPlanPrice ||
+                          3000
+                        ).toLocaleString()} (Q4 2026 Package)`
+                      : 'Q4 Package Disabled'}
                   </span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Verification Queue Section */}
+          {/* ===================================================================== */}
+          {/* 1. SUBSCRIPTION BANK TRANSFER VERIFICATION QUEUE */}
+          {/* ===================================================================== */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>Subscription Bank Transfer Ledger</span>
-                  <span className="text-xs font-normal text-slate-500">
-                    ({subscriptionRequests.length} total submissions)
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Confirm receipt of funds in your bank account, then click "Approve & Activate" to grant the store full subscription access and qualify their referrer's discount.
-                </p>
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>Subscription Bank Transfer Verification Queue</span>
+                    <span className="text-xs font-normal text-slate-500">
+                      ({subscriptionRequests.length} total submissions)
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Verify bank transfer receipt in your statement before clicking &ldquo;Approve
+                    &amp; Activate&rdquo;. Approval atomically calculates start and expiry dates in
+                    Africa/Lagos time.
+                  </p>
+                </div>
+
+                {/* Status Filter Tabs */}
+                <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setSubFilter('pending')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      subFilter === 'pending'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                  >
+                    Pending ({subscriptionRequests.filter((r) => r.status === 'pending').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubFilter('approved')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      subFilter === 'approved'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                  >
+                    Approved ({subscriptionRequests.filter((r) => r.status === 'approved').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubFilter('rejected')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      subFilter === 'rejected'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                  >
+                    Rejected ({subscriptionRequests.filter((r) => r.status === 'rejected').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      subFilter === 'all'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    }`}
+                  >
+                    All ({subscriptionRequests.length})
+                  </button>
+                </div>
               </div>
 
-              {/* Status Filter Tabs */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setSubFilter('pending')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    subFilter === 'pending'
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                  }`}
-                >
-                  Pending ({subscriptionRequests.filter((r) => r.status === 'pending').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSubFilter('approved')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    subFilter === 'approved'
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                  }`}
-                >
-                  Approved ({subscriptionRequests.filter((r) => r.status === 'approved').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSubFilter('rejected')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    subFilter === 'rejected'
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                  }`}
-                >
-                  Rejected ({subscriptionRequests.filter((r) => r.status === 'rejected').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSubFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    subFilter === 'all'
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                  }`}
-                >
-                  All ({subscriptionRequests.length})
-                </button>
+              {/* Search & Plan Filter Controls */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={subSearchQuery}
+                    onChange={(e) => setSubSearchQuery(e.target.value)}
+                    placeholder="Search store name, merchant email, request ID, or transfer ref..."
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-slate-500">Plan:</span>
+                  {(['all', 'monthly', 'q4_pass'] as const).map((pf) => (
+                    <button
+                      key={pf}
+                      type="button"
+                      onClick={() => setSubPlanFilter(pf)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                        subPlanFilter === pf
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      {pf === 'all'
+                        ? 'All Plans'
+                        : pf === 'monthly'
+                        ? 'Monthly (₦1,000)'
+                        : 'Q4 Package (₦3,000)'}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -2970,38 +3319,81 @@ export const AdminPortalView: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   <tr>
-                    <th className="px-5 py-3">Store & Merchant</th>
-                    <th className="px-5 py-3">Plan & Price</th>
+                    <th className="px-5 py-3">Store &amp; Merchant</th>
+                    <th className="px-5 py-3">Plan &amp; Amount</th>
                     <th className="px-5 py-3">Transfer Details</th>
                     <th className="px-5 py-3">Payment Reference</th>
-                    <th className="px-5 py-3">Date Submitted</th>
-                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Submitted (WAT)</th>
+                    <th className="px-5 py-3">Status &amp; Period</th>
                     <th className="px-5 py-3 text-right">Approval Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {loadingSubscriptions ? (
-                    <tr>
-                      <td colSpan={7} className="px-5 py-12 text-center text-slate-500">
-                        <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-emerald-600" />
-                        <span>Loading subscription requests...</span>
-                      </td>
-                    </tr>
-                  ) : subscriptionRequests.filter((r) => subFilter === 'all' || r.status === subFilter)
-                      .length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-5 py-12 text-center text-slate-500">
-                        <Inbox className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-700" />
-                        <p className="font-semibold text-sm">No subscription requests in this view</p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          When merchants initiate bank transfer subscriptions, their payment proofs appear here for verification.
-                        </p>
-                      </td>
-                    </tr>
-                  ) : (
-                    subscriptionRequests
-                      .filter((r) => subFilter === 'all' || r.status === subFilter)
-                      .map((req) => (
+                  {(() => {
+                    const filteredReqs = subscriptionRequests.filter((r) => {
+                      if (subFilter !== 'all' && r.status !== subFilter) return false;
+                      const normalizedPlan = r.planId === 'annual' ? 'q4_pass' : r.planId;
+                      if (subPlanFilter !== 'all' && normalizedPlan !== subPlanFilter) return false;
+                      if (subSearchQuery.trim()) {
+                        const q = subSearchQuery.toLowerCase();
+                        const matchStore = (r.businessName || '').toLowerCase().includes(q);
+                        const matchOwner = (r.ownerName || '').toLowerCase().includes(q);
+                        const matchEmail = (r.userEmail || '').toLowerCase().includes(q);
+                        const matchId = (r.id || '').toLowerCase().includes(q);
+                        const matchRef = (r.paymentReference || '').toLowerCase().includes(q);
+                        const matchSender = (r.senderAccountName || '').toLowerCase().includes(q);
+                        return (
+                          matchStore ||
+                          matchOwner ||
+                          matchEmail ||
+                          matchId ||
+                          matchRef ||
+                          matchSender
+                        );
+                      }
+                      return true;
+                    });
+
+                    if (loadingSubscriptions) {
+                      return (
+                        <tr>
+                          <td colSpan={7} className="px-5 py-12 text-center text-slate-500">
+                            <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-emerald-600" />
+                            <span>Loading subscription requests...</span>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    if (filteredReqs.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={7} className="px-5 py-12 text-center text-slate-500">
+                            <Inbox className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-700" />
+                            <p className="font-semibold text-sm">
+                              No subscription requests match your filter
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1">
+                              When merchants initiate bank transfer subscriptions, their payment
+                              proofs appear here for verification.
+                            </p>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return filteredReqs.map((req) => {
+                      const normalizedPlan = req.planId === 'annual' ? 'q4_pass' : req.planId;
+                      const expectedBasePrice =
+                        normalizedPlan === 'q4_pass'
+                          ? bankConfig?.q4PassPrice || 3000
+                          : bankConfig?.monthlyPlanPrice || 1000;
+                      const hasPriceMismatch =
+                        req.status === 'pending' &&
+                        req.planOriginalPrice !== undefined &&
+                        req.planOriginalPrice !== expectedBasePrice;
+
+                      return (
                         <tr
                           key={req.id}
                           className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
@@ -3014,11 +3406,9 @@ export const AdminPortalView: React.FC = () => {
                             <div className="text-[11px] text-slate-500">
                               {req.ownerName || req.userEmail}
                             </div>
-                            {req.phone && (
-                              <div className="text-[10px] text-slate-400 font-mono">
-                                Tel: {req.phone}
-                              </div>
-                            )}
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              ID: {req.id.slice(0, 14)}
+                            </div>
                           </td>
 
                           {/* Plan & Price */}
@@ -3026,13 +3416,21 @@ export const AdminPortalView: React.FC = () => {
                             <div className="font-semibold text-slate-900 dark:text-white">
                               {req.planName}
                             </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                               <span className="text-xs font-black font-mono text-emerald-600 dark:text-emerald-400">
                                 ₦{req.finalAmount.toLocaleString()}
                               </span>
                               {req.discountPercent > 0 && (
                                 <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
                                   {req.discountPercent}% Ref Discount
+                                </span>
+                              )}
+                              {hasPriceMismatch && (
+                                <span
+                                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300"
+                                  title={`Submitted base price ₦${req.planOriginalPrice.toLocaleString()} differs from current config ₦${expectedBasePrice.toLocaleString()}`}
+                                >
+                                  ⚠️ Config Price Changed
                                 </span>
                               )}
                             </div>
@@ -3048,7 +3446,7 @@ export const AdminPortalView: React.FC = () => {
                             </div>
                             {req.proofNote && (
                               <div className="text-[11px] text-slate-400 italic max-w-xs truncate mt-0.5">
-                                Note: "{req.proofNote}"
+                                Note: &ldquo;{req.proofNote}&rdquo;
                               </div>
                             )}
                           </td>
@@ -3062,27 +3460,39 @@ export const AdminPortalView: React.FC = () => {
 
                           {/* Date Submitted */}
                           <td className="px-5 py-3.5 text-slate-500 font-mono text-[11px]">
-                            {new Date(req.createdAt).toLocaleDateString(undefined, {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                            {formatLagosDateTime(req.createdAt)}
                           </td>
 
-                          {/* Status */}
+                          {/* Status & Granted Period */}
                           <td className="px-5 py-3.5">
                             {req.status === 'approved' ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Approved</span>
-                              </span>
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  <span>Approved</span>
+                                </span>
+                                {req.grantedExpiresAt && (
+                                  <div className="text-[10px] font-mono text-slate-500">
+                                    {formatLagosDate(req.grantedStartsAt)} →{' '}
+                                    {formatLagosDate(req.grantedExpiresAt)}
+                                  </div>
+                                )}
+                              </div>
                             ) : req.status === 'rejected' ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                                <XCircle className="w-3.5 h-3.5 text-rose-600" />
-                                <span>Rejected</span>
-                              </span>
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                                  <XCircle className="w-3 h-3 text-rose-600" />
+                                  <span>Rejected</span>
+                                </span>
+                                {req.rejectionReason && (
+                                  <div
+                                    className="text-[10px] text-rose-600 dark:text-rose-400 max-w-[180px] truncate"
+                                    title={req.rejectionReason}
+                                  >
+                                    {req.rejectionReason}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 animate-pulse">
                                 <Clock className="w-3.5 h-3.5 text-amber-600" />
@@ -3101,7 +3511,9 @@ export const AdminPortalView: React.FC = () => {
                                   onClick={() => handleApproveSubscription(req)}
                                   className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                                 >
-                                  {processingSubId === req.id ? 'Approving...' : '✓ Approve & Activate'}
+                                  {processingSubId === req.id
+                                    ? 'Approving...'
+                                    : '✓ Approve & Activate'}
                                 </button>
                                 <button
                                   type="button"
@@ -3116,22 +3528,245 @@ export const AdminPortalView: React.FC = () => {
                                 </button>
                               </div>
                             ) : req.status === 'approved' ? (
-                              <span className="text-[11px] text-slate-400 font-medium">
-                                Active • Reviewed by {req.reviewedBy?.split('@')[0] || 'Admin'}
-                              </span>
+                              <div className="text-[11px] text-slate-400 font-medium">
+                                <div>Reviewed by {req.reviewedBy?.split('@')[0] || 'Admin'}</div>
+                                {req.reviewedAt && (
+                                  <div className="text-[10px] font-mono">
+                                    {formatLagosDate(req.reviewedAt)}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
-                              <button
-                                type="button"
-                                disabled={processingSubId === req.id}
-                                onClick={() => handleApproveSubscription(req)}
-                                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 transition-colors cursor-pointer"
-                              >
-                                Re-approve
-                              </button>
+                              <div className="inline-flex items-center gap-2">
+                                <span className="text-[10px] text-slate-400">
+                                  By {req.reviewedBy?.split('@')[0] || 'Admin'}
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={processingSubId === req.id}
+                                  onClick={() => handleApproveSubscription(req)}
+                                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 transition-colors cursor-pointer"
+                                >
+                                  Approve Now
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>
-                      ))
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* ===================================================================== */}
+          {/* 2. STORE SUBSCRIPTION LIFECYCLE & MANUAL ADMIN MANAGEMENT */}
+          {/* ===================================================================== */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                  Merchant Subscriptions &amp; Lifecycle Directory
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  View active, expiring soon, expired, and free stores. Manually extend, renew, or
+                  revoke any store&apos;s subscription with full audit logging.
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <tr>
+                    <th className="px-5 py-3">Store &amp; Owner</th>
+                    <th className="px-5 py-3">Current Plan</th>
+                    <th className="px-5 py-3">Lifecycle Status</th>
+                    <th className="px-5 py-3">Start Date</th>
+                    <th className="px-5 py-3">Expiry Date (WAT)</th>
+                    <th className="px-5 py-3">Days Left</th>
+                    <th className="px-5 py-3 text-right">Admin Lifecycle Control</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {merchants.map((m) => {
+                    const ent = evaluateSubscriptionEntitlement(
+                      {
+                        id: m.id,
+                        userId: m.ownerId,
+                        businessName: m.businessName,
+                        businessType: m.businessType as any,
+                        currency: m.currency as any,
+                        isSubscribed: m.isSubscribed,
+                        subscriptionStatus: m.subscriptionStatus,
+                        subscriptionPlan: m.subscriptionPlan,
+                        subscriptionPlanId: m.subscriptionPlanId,
+                        subscribedAt: m.subscribedAt,
+                        subscriptionStartsAt: m.subscriptionStartsAt,
+                        subscriptionExpiresAt: m.subscriptionExpiresAt,
+                        createdAt: m.createdAt || '',
+                        updatedAt: m.subscriptionUpdatedAt || '',
+                      },
+                      subscriptionRequests.filter((r) => r.businessId === m.id),
+                      bankConfig?.expiryReminderDays || DEFAULT_EXPIRY_REMINDER_DAYS
+                    );
+
+                    return (
+                      <tr
+                        key={m.id}
+                        className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                      >
+                        <td className="px-5 py-3.5">
+                          <div className="font-bold text-slate-900 dark:text-white">
+                            {m.businessName}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            {m.ownerName} {m.ownerEmail ? `• ${m.ownerEmail}` : ''}
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-200">
+                          {ent.planName || 'Free Tier'}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          {ent.effectiveStatus === 'active' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                              Active
+                            </span>
+                          ) : ent.effectiveStatus === 'expiring_soon' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                              Expiring Soon
+                            </span>
+                          ) : ent.effectiveStatus === 'expired' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                              Expired
+                            </span>
+                          ) : ent.effectiveStatus === 'pending' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                              Pending Verification
+                            </span>
+                          ) : ent.effectiveStatus === 'cancelled' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              Cancelled
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                              Free
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                          {formatLagosDate(ent.startsAt)}
+                        </td>
+                        <td className="px-5 py-3.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                          {formatLagosDate(ent.expiresAt)}
+                        </td>
+                        <td className="px-5 py-3.5 font-mono font-bold">
+                          {ent.hasPaidAccess && ent.daysRemaining !== null ? (
+                            <span
+                              className={
+                                ent.isExpiringSoon
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : 'text-emerald-600 dark:text-emerald-400'
+                              }
+                            >
+                              {ent.daysRemaining}d
+                            </span>
+                          ) : ent.isExpired ? (
+                            <span className="text-rose-600 dark:text-rose-400">0d (Expired)</span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManageSubMerchant(m);
+                              setManualPlanChoice('monthly');
+                              setManualActionReason('');
+                            }}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
+                          >
+                            Manage (Extend / Revoke)
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* ===================================================================== */}
+          {/* 3. SUBSCRIPTION LIFECYCLE AUDIT TRAIL */}
+          {/* ===================================================================== */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  <History className="w-4 h-4 text-emerald-600" />
+                  <span>Subscription Lifecycle Audit Trail</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Immutable log of payment submissions, admin approvals, rejections, renewals,
+                  extensions, cancellations, and expiries.
+                </p>
+              </div>
+              <span className="text-xs font-mono text-slate-400">
+                {subscriptionAuditLogs.length} events
+              </span>
+            </div>
+
+            <div className="overflow-x-auto max-h-80">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 text-[11px] font-semibold text-slate-500 uppercase tracking-wider sticky top-0">
+                  <tr>
+                    <th className="px-5 py-3">Timestamp (WAT)</th>
+                    <th className="px-5 py-3">Event Action</th>
+                    <th className="px-5 py-3">Store</th>
+                    <th className="px-5 py-3">Actor</th>
+                    <th className="px-5 py-3">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {subscriptionAuditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-5 py-8 text-center text-slate-400">
+                        No subscription audit events recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    subscriptionAuditLogs.slice(0, 50).map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                        <td className="px-5 py-3 font-mono text-[11px] text-slate-500">
+                          {formatLagosDateTime(log.timestamp)}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {log.action.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 font-semibold text-slate-900 dark:text-white">
+                          {log.businessName}
+                        </td>
+                        <td className="px-5 py-3 text-slate-600 dark:text-slate-300">
+                          {log.actorEmail}
+                        </td>
+                        <td className="px-5 py-3 text-[11px] text-slate-500">
+                          {log.metadata?.planName ? `${log.metadata.planName} ` : ''}
+                          {log.metadata?.expiresAt
+                            ? `• Exp: ${formatLagosDate(log.metadata.expiresAt)} `
+                            : ''}
+                          {log.metadata?.rejectionReason
+                            ? `• Reason: "${log.metadata.rejectionReason}"`
+                            : ''}
+                          {log.metadata?.reason ? `• Note: "${log.metadata.reason}"` : ''}
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -3648,16 +4283,18 @@ export const AdminPortalView: React.FC = () => {
 
             <div className="p-5 space-y-4 text-xs">
               <p className="text-slate-600 dark:text-slate-300">
-                You are marking the subscription payment for <strong>{rejectModalReq.businessName}</strong> (Ref:{' '}
+                You are marking the subscription payment for{' '}
+                <strong>{rejectModalReq.businessName}</strong> (Ref:{' '}
                 <code>{rejectModalReq.paymentReference}</code>) as rejected.
               </p>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Reason for Rejection (Sent to Merchant in Notification)
+                  Reason for Rejection (Required — Sent to Merchant)
                 </label>
                 <textarea
                   rows={3}
+                  required
                   value={rejectReasonInput}
                   onChange={(e) => setRejectReasonInput(e.target.value)}
                   placeholder="e.g. We checked our bank alerts and could not match the transfer. Please confirm your sender account name or contact support."
@@ -3675,12 +4312,127 @@ export const AdminPortalView: React.FC = () => {
                 </button>
                 <button
                   type="button"
-                  disabled={processingSubId === rejectModalReq.id}
+                  disabled={processingSubId === rejectModalReq.id || !rejectReasonInput.trim()}
                   onClick={handleRejectSubscription}
-                  className="px-4 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-colors cursor-pointer"
+                  className="px-4 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {processingSubId === rejectModalReq.id ? 'Rejecting...' : 'Confirm Rejection'}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MANUAL SUBSCRIPTION LIFECYCLE MANAGEMENT MODAL (EXTEND / REVOKE) */}
+      {manageSubMerchant && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-850">
+              <div>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  Manage Store Subscription
+                </h3>
+                <p className="text-[11px] text-slate-500">{manageSubMerchant.businessName}</p>
+              </div>
+              <button
+                onClick={() => setManageSubMerchant(null)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Current Plan:</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {manageSubMerchant.subscriptionPlan || 'Free Tier'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Current Expiry (WAT):</span>
+                  <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                    {formatLagosDate(manageSubMerchant.subscriptionExpiresAt)}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Select Plan Period to Grant / Extend:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setManualPlanChoice('monthly')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      manualPlanChoice === 'monthly'
+                        ? 'border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40 font-bold'
+                        : 'border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <div className="text-slate-900 dark:text-white">+1 Month Plan</div>
+                    <div className="text-[10px] text-slate-500">₦1,000 Monthly Period</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setManualPlanChoice('q4_pass')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      manualPlanChoice === 'q4_pass'
+                        ? 'border-emerald-600 bg-emerald-50/60 dark:bg-emerald-950/40 font-bold'
+                        : 'border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <div className="text-slate-900 dark:text-white">Q4 2026 Package</div>
+                    <div className="text-[10px] text-slate-500">Valid through 31 Dec 2026</div>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Admin Audit Reason / Note (Required for Revoke)
+                </label>
+                <textarea
+                  rows={2}
+                  value={manualActionReason}
+                  onChange={(e) => setManualActionReason(e.target.value)}
+                  placeholder="e.g. Manual reconciliation of Moniepoint transfer or subscription cancellation reason..."
+                  className="w-full px-3 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  disabled={processingSubId === manageSubMerchant.id}
+                  onClick={handleManualCancelSubscription}
+                  className="px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Cancel / Revoke Sub
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setManageSubMerchant(null)}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    disabled={processingSubId === manageSubMerchant.id}
+                    onClick={handleManualExtendSubscription}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {processingSubId === manageSubMerchant.id
+                      ? 'Saving...'
+                      : 'Grant / Extend Period'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

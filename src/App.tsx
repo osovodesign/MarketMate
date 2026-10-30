@@ -28,24 +28,21 @@ import { MultiCurrencyView } from './components/currency/MultiCurrencyView';
 import { InvoiceCreateView } from './components/invoices/InvoiceCreateView';
 import { RecordDebtView } from './components/debts/RecordDebtView';
 import { ContactCreateView } from './components/contacts/ContactCreateView';
-import { RecordSaleModal } from './components/sales/RecordSaleModal';
-import { RecordExpenseModal } from './components/expenses/RecordExpenseModal';
-import { PricingCalculatorModal } from './components/tools/PricingCalculatorModal';
-import { ProfitSimulatorModal } from './components/tools/ProfitSimulatorModal';
+import { ProductCreateView } from './components/products/ProductCreateView';
+import { FinancialGoalsView } from './components/goals/FinancialGoalsView';
+import { BackupDataView } from './components/backup/BackupDataView';
+import { ReferralView } from './components/referral/ReferralView';
+import { HelpSupportView } from './components/common/HelpSupportView';
+import { LogoExportView } from './components/common/LogoExportView';
+import { SubscribeView } from './components/subscription/SubscribeView';
+import { BulkProductImportView } from './components/products/BulkProductImportView';
+import { LegalView } from './components/legal/LegalView';
 import { DebtsView } from './components/debts/DebtsView';
-import { FinancialGoalsModal } from './components/goals/FinancialGoalsModal';
-import { BackupDataModal } from './components/backup/BackupDataModal';
-import { MultiCurrencyCalculatorModal } from './components/currency/MultiCurrencyCalculatorModal';
-import { StaffManagementModal } from './components/staff/StaffManagementModal';
 import { StaffManagementView } from './components/staff/StaffManagementView';
-import { LogoExportModal } from './components/common/LogoExportModal';
 import { AppTourModal } from './components/onboarding/AppTourModal';
-import { ReferralModal } from './components/referral/ReferralModal';
 import { NotificationDrawer } from './components/notifications/NotificationDrawer';
 import { NotificationProvider } from './context/NotificationContext';
 import { ProFeatureGate } from './components/subscription/ProFeatureGate';
-import { SubscribeModal } from './components/subscription/SubscribeModal';
-import { HelpSupportModal } from './components/common/HelpSupportModal';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { AppView, Product, Invoice, InvoiceType, Customer, Supplier } from './types';
 import {
@@ -84,7 +81,16 @@ function AppContent() {
       view === 'fx-calc' ||
       view === 'create-invoice' ||
       view === 'record-debt' ||
-      view === 'create-contact'
+      view === 'create-contact' ||
+      view === 'create-product' ||
+      view === 'financial-goals' ||
+      view === 'backup-vault' ||
+      view === 'referral' ||
+      view === 'help-support' ||
+      view === 'logo-export' ||
+      view === 'subscribe' ||
+      view === 'bulk-import' ||
+      view === 'legal'
     );
   };
 
@@ -120,6 +126,7 @@ function AppContent() {
   const [contactPrefillType, setContactPrefillType] = useState<'customer' | 'supplier'>('customer');
   const [contactCustomerToEdit, setContactCustomerToEdit] = useState<Customer | null>(null);
   const [contactSupplierToEdit, setContactSupplierToEdit] = useState<Supplier | null>(null);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
 
   const navigateTo = (view: AppView) => {
     if (!isTransientCreationView(view) && !isTransientCreationView(currentView)) {
@@ -185,29 +192,35 @@ function AppContent() {
     setCurrentView('create-contact');
   };
 
+  const openCreateProduct = (product?: Product | null) => {
+    if (!isTransientCreationView(currentView)) {
+      setPreviousView(currentView);
+    }
+    setProductToEdit(product || null);
+    setCurrentView('create-product');
+  };
+
   const handleCloseRecordScreen = () => {
     setSalePrefillCustomer(undefined);
     setSalePrefillProduct(undefined);
     setInvoiceToEdit(null);
     setContactCustomerToEdit(null);
     setContactSupplierToEdit(null);
+    setProductToEdit(null);
     setCurrentView(previousView || 'dashboard');
   };
 
-  const [isAddSaleOpen, setIsAddSaleOpen] = useState(false);
-  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
-  const [isPricingCalcOpen, setIsPricingCalcOpen] = useState(false);
-  const [isProfitSimOpen, setIsProfitSimOpen] = useState(false);
-  const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
-  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
-  const [isFxModalOpen, setIsFxModalOpen] = useState(false);
-  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
-  const [isLogoExportOpen, setIsLogoExportOpen] = useState(false);
+  const [legalTab, setLegalTab] = useState<'disclaimers' | 'terms' | 'privacy'>('disclaimers');
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
   const [isTourModalOpen, setIsTourModalOpen] = useState(false);
-  const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
-  const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
-  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+
+  const openLegalView = (tab: 'disclaimers' | 'terms' | 'privacy' = 'disclaimers') => {
+    if (!isTransientCreationView(currentView)) {
+      setPreviousView(currentView);
+    }
+    setLegalTab(tab);
+    setCurrentView('legal');
+  };
 
   // While restoring auth & business session from cloud, show branded splash screen
   if (isLoading) {
@@ -304,14 +317,14 @@ function AppContent() {
             onOpenAddExpense={() => openRecordExpense()}
             onOpenPricingCalculator={() => navigateTo('pricing-calc')}
             onOpenProfitSimulator={() => navigateTo('profit-sim')}
-            onOpenGoalsModal={() => setIsGoalsModalOpen(true)}
+            onOpenGoalsModal={() => navigateTo('financial-goals')}
             onOpenTourModal={() => setIsTourModalOpen(true)}
           />
         );
       case 'pos':
         return (
           <POSView
-            onOpenStaffManagement={() => setIsStaffModalOpen(true)}
+            onOpenStaffManagement={() => navigateTo('staff')}
             onOpenFxCalculator={() => navigateTo('fx-calc')}
           />
         );
@@ -339,21 +352,21 @@ function AppContent() {
         return (
           <PricingCalculatorView
             onBack={handleCloseRecordScreen}
-            onUpgrade={() => setIsSubscribeModalOpen(true)}
+            onUpgrade={() => navigateTo('subscribe')}
           />
         );
       case 'profit-sim':
         return (
           <ProfitSimulatorView
             onBack={handleCloseRecordScreen}
-            onUpgrade={() => setIsSubscribeModalOpen(true)}
+            onUpgrade={() => navigateTo('subscribe')}
           />
         );
       case 'fx-calc':
         return (
           <MultiCurrencyView
             onBack={handleCloseRecordScreen}
-            onUpgrade={() => setIsSubscribeModalOpen(true)}
+            onUpgrade={() => navigateTo('subscribe')}
           />
         );
       case 'create-invoice':
@@ -382,6 +395,45 @@ function AppContent() {
             initialSupplier={contactSupplierToEdit}
           />
         );
+      case 'create-product':
+        return (
+          <ProductCreateView
+            onBack={handleCloseRecordScreen}
+            onSuccess={handleCloseRecordScreen}
+            initialProduct={productToEdit}
+          />
+        );
+      case 'financial-goals':
+        return (
+          <FinancialGoalsView
+            onBack={handleCloseRecordScreen}
+            onUpgrade={() => navigateTo('subscribe')}
+          />
+        );
+      case 'backup-vault':
+        return (
+          <BackupDataView
+            onBack={handleCloseRecordScreen}
+            onUpgrade={() => navigateTo('subscribe')}
+          />
+        );
+      case 'referral':
+        return <ReferralView onBack={handleCloseRecordScreen} />;
+      case 'help-support':
+        return (
+          <HelpSupportView
+            onBack={handleCloseRecordScreen}
+            businessName={business?.businessName}
+          />
+        );
+      case 'logo-export':
+        return <LogoExportView onBack={handleCloseRecordScreen} />;
+      case 'subscribe':
+        return <SubscribeView onBack={handleCloseRecordScreen} />;
+      case 'bulk-import':
+        return <BulkProductImportView onBack={() => setCurrentView('products')} />;
+      case 'legal':
+        return <LegalView onBack={handleCloseRecordScreen} defaultTab={legalTab} />;
       case 'invoices':
         if (!isSubscribed) {
           return (
@@ -395,7 +447,7 @@ function AppContent() {
                 'Track uncollected, overdue, and partial payments with audit trails',
                 'Include verified Nigerian bank account details on every invoice',
               ]}
-              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
             />
           );
@@ -414,7 +466,7 @@ function AppContent() {
                 '1-click direct WhatsApp messaging and customer account notes',
                 'Track supplier payment terms, order histories, and deliveries',
               ]}
-              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
             />
           );
@@ -441,7 +493,7 @@ function AppContent() {
                 'Send polite, pre-filled WhatsApp payment reminder templates',
                 'Partial payment logging and automatic balance recalculations',
               ]}
-              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
             />
           );
@@ -460,7 +512,7 @@ function AppContent() {
                 'Batch cost and selling price updates with profit margin audits',
                 'Barcode scanner integration for lightning-fast checkout',
               ]}
-              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
             />
           );
@@ -468,6 +520,8 @@ function AppContent() {
         return (
           <ProductsView
             onOpenAddSaleWithProduct={(prod) => openRecordSale({ product: prod })}
+            onOpenCreateProduct={openCreateProduct}
+            onOpenBulkImport={() => navigateTo('bulk-import')}
           />
         );
       case 'transactions':
@@ -485,7 +539,7 @@ function AppContent() {
                 'Expense categorization and operational cost breakdown',
                 'Exportable accounting summaries formatted for tax & bank audits',
               ]}
-              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
             />
           );
@@ -504,7 +558,7 @@ function AppContent() {
                 'Actionable suggestions to reduce operating expenses and waste',
                 'Market insights tailored to Nigerian trade and FX fluctuations',
               ]}
-              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
             />
           );
@@ -515,11 +569,14 @@ function AppContent() {
           <SettingsView
             onResetData={() => setCurrentView('dashboard')}
             onLoadDemo={() => setCurrentView('dashboard')}
-            onOpenLogoExport={() => setIsLogoExportOpen(true)}
+            onOpenLogoExport={() => navigateTo('logo-export')}
             onOpenTour={() => setIsTourModalOpen(true)}
-            onOpenReferralModal={() => setIsReferralModalOpen(true)}
-            onOpenSupportModal={() => setIsSupportModalOpen(true)}
+            onOpenReferralModal={() => navigateTo('referral')}
+            onOpenSupportModal={() => navigateTo('help-support')}
             onNavigateToFx={() => navigateTo('fx-calc')}
+            onNavigateToStaff={() => navigateTo('staff')}
+            onOpenSubscribe={() => navigateTo('subscribe')}
+            onOpenLegal={(tab) => openLegalView(tab)}
           />
         );
       case 'admin':
@@ -537,12 +594,12 @@ function AppContent() {
                 'Opening cash float and end-of-shift drawer reconciliation audits',
                 'Staff sales performance tracking and accountability logging',
               ]}
-              onUpgrade={() => setIsSubscribeModalOpen(true)}
+              onUpgrade={() => navigateTo('subscribe')}
               onBack={() => setCurrentView('dashboard')}
             />
           );
         }
-        return <StaffManagementView />;
+        return <StaffManagementView onBack={handleCloseRecordScreen} />;
       default:
         return (
           <DashboardView
@@ -551,7 +608,7 @@ function AppContent() {
             onOpenAddExpense={() => openRecordExpense()}
             onOpenPricingCalculator={() => navigateTo('pricing-calc')}
             onOpenProfitSimulator={() => navigateTo('profit-sim')}
-            onOpenGoalsModal={() => setIsGoalsModalOpen(true)}
+            onOpenGoalsModal={() => navigateTo('financial-goals')}
             onOpenTourModal={() => setIsTourModalOpen(true)}
           />
         );
@@ -566,15 +623,15 @@ function AppContent() {
       onOpenAddExpense={() => openRecordExpense()}
       onOpenPricingCalculator={() => navigateTo('pricing-calc')}
       onOpenProfitSimulator={() => navigateTo('profit-sim')}
-      onOpenGoalsModal={() => setIsGoalsModalOpen(true)}
-      onOpenBackupModal={() => setIsBackupModalOpen(true)}
+      onOpenGoalsModal={() => navigateTo('financial-goals')}
+      onOpenBackupModal={() => navigateTo('backup-vault')}
       onOpenFxModal={() => navigateTo('fx-calc')}
-      onOpenStaffModal={() => setIsStaffModalOpen(true)}
-      onOpenLogoExportModal={() => setIsLogoExportOpen(true)}
+      onOpenStaffModal={() => navigateTo('staff')}
+      onOpenLogoExportModal={() => navigateTo('logo-export')}
       onOpenNotificationDrawer={() => setIsNotificationDrawerOpen(true)}
       onOpenTourModal={() => setIsTourModalOpen(true)}
-      onOpenReferralModal={() => setIsReferralModalOpen(true)}
-      onOpenSupportModal={() => setIsSupportModalOpen(true)}
+      onOpenReferralModal={() => navigateTo('referral')}
+      onOpenSupportModal={() => navigateTo('help-support')}
       businessName={business?.businessName}
       businessType={business?.businessType}
       currency={currency}
@@ -651,62 +708,6 @@ function AppContent() {
         isOpen={isNotificationDrawerOpen}
         onClose={() => setIsNotificationDrawerOpen(false)}
         onNavigate={(view) => setCurrentView(view)}
-      />
-      <RecordSaleModal
-        isOpen={isAddSaleOpen}
-        onClose={() => setIsAddSaleOpen(false)}
-      />
-      <RecordExpenseModal
-        isOpen={isAddExpenseOpen}
-        onClose={() => setIsAddExpenseOpen(false)}
-      />
-      <PricingCalculatorModal
-        isOpen={isPricingCalcOpen}
-        onClose={() => setIsPricingCalcOpen(false)}
-        onUpgrade={() => setIsSubscribeModalOpen(true)}
-      />
-      <ProfitSimulatorModal
-        isOpen={isProfitSimOpen}
-        onClose={() => setIsProfitSimOpen(false)}
-        onUpgrade={() => setIsSubscribeModalOpen(true)}
-      />
-      <FinancialGoalsModal
-        isOpen={isGoalsModalOpen}
-        onClose={() => setIsGoalsModalOpen(false)}
-        onUpgrade={() => setIsSubscribeModalOpen(true)}
-      />
-      <BackupDataModal
-        isOpen={isBackupModalOpen}
-        onClose={() => setIsBackupModalOpen(false)}
-        onUpgrade={() => setIsSubscribeModalOpen(true)}
-      />
-      <MultiCurrencyCalculatorModal
-        isOpen={isFxModalOpen}
-        onClose={() => setIsFxModalOpen(false)}
-        onUpgrade={() => setIsSubscribeModalOpen(true)}
-      />
-      <StaffManagementModal
-        isOpen={isStaffModalOpen}
-        onClose={() => setIsStaffModalOpen(false)}
-        onUpgrade={() => setIsSubscribeModalOpen(true)}
-        onNavigateToFullView={() => setCurrentView('staff')}
-      />
-      <LogoExportModal
-        isOpen={isLogoExportOpen}
-        onClose={() => setIsLogoExportOpen(false)}
-      />
-      <ReferralModal
-        isOpen={isReferralModalOpen}
-        onClose={() => setIsReferralModalOpen(false)}
-      />
-      <SubscribeModal
-        isOpen={isSubscribeModalOpen}
-        onClose={() => setIsSubscribeModalOpen(false)}
-      />
-      <HelpSupportModal
-        isOpen={isSupportModalOpen}
-        onClose={() => setIsSupportModalOpen(false)}
-        businessName={business?.businessName}
       />
     </Shell>
   );

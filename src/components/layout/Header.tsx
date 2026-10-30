@@ -120,6 +120,15 @@ export const Header: React.FC<HeaderProps> = ({
     'create-invoice': { title: 'Create Invoice & Quote', subtitle: 'Issue professional branded invoices with line items & payment terms' },
     'record-debt': { title: 'Record Customer Debt', subtitle: 'Track customer balances, payment due dates & credit ledgers' },
     'create-contact': { title: 'Add Contact', subtitle: 'Register customer or wholesale supplier profile and contact info' },
+    'create-product': { title: 'Add Catalog Product', subtitle: 'Set unit cost, default selling price, stock levels & profit margins' },
+    'financial-goals': { title: 'Financial Goals & Targets', subtitle: 'Set monthly revenue & net profit benchmarks with live daily run-rates' },
+    'backup-vault': { title: 'Backup & Restore Vault', subtitle: 'Download encrypted offline JSON snapshots and restore business ledgers' },
+    referral: { title: 'Refer & Earn 5% Off', subtitle: 'Invite fellow retail merchants and unlock subscription discounts' },
+    'help-support': { title: 'Help & Support Hub', subtitle: 'Direct WhatsApp admin chat, in-app support tickets & official channels' },
+    'logo-export': { title: 'Official Brand Assets', subtitle: 'Download vector SVG emblems, high-res PNG logos & PWA icons' },
+    subscribe: { title: 'Subscribe to MarketMate Pro', subtitle: 'Direct bank transfer & instant admin verification' },
+    'bulk-import': { title: 'Bulk Product Import', subtitle: 'Upload CSV or Excel spreadsheets to populate your inventory in seconds' },
+    legal: { title: 'Legal & Compliance Center', subtitle: 'Official Terms of Service, Legal Disclaimers & NDPA Privacy Notices' },
   };
 
   const viewMeta = titles[currentView] || { title: 'Dashboard', subtitle: '' };

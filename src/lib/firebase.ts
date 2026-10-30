@@ -31,6 +31,7 @@ import {
   Timestamp,
   serverTimestamp,
   writeBatch,
+  runTransaction,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -168,5 +169,6 @@ export {
   Timestamp,
   serverTimestamp,
   writeBatch,
+  runTransaction,
 };
 export type { FirebaseUser };

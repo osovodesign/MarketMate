@@ -106,6 +106,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       ? metrics.thisWeek
       : metrics.thisMonth;
 
+  // Day-over-day performance comparison deltas for Today
+  const yesterdayTrend =
+    metrics.salesTrend && metrics.salesTrend.length >= 2
+      ? metrics.salesTrend[metrics.salesTrend.length - 2]
+      : null;
+  const yesterdayRevenue = yesterdayTrend?.revenue || 0;
+  const salesDeltaPercent =
+    yesterdayRevenue > 0 && activePeriod === 'today'
+      ? Math.round(((currentSummary.revenue - yesterdayRevenue) / yesterdayRevenue) * 100)
+      : null;
+
+  const yesterdayProfit = yesterdayTrend?.profit || 0;
+  const profitDeltaPercent =
+    yesterdayProfit > 0 && activePeriod === 'today'
+      ? Math.round(((currentSummary.operatingProfit - yesterdayProfit) / yesterdayProfit) * 100)
+      : null;
+
   const periodLabels: Record<PeriodTab, string> = {
     today: "Today's Performance",
     thisWeek: 'This Week (Mon - Sun)',
@@ -188,9 +205,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <Card padding="md" className="relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {activePeriod === 'today' ? "Today's Sales" : activePeriod === 'thisWeek' ? "This Week's Sales" : "This Month's Sales"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  {activePeriod === 'today' ? "Today's Sales" : activePeriod === 'thisWeek' ? "This Week's Sales" : "This Month's Sales"}
+                </p>
+                {salesDeltaPercent !== null && (
+                  <span
+                    className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      salesDeltaPercent >= 0
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                        : 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300'
+                    }`}
+                  >
+                    {salesDeltaPercent >= 0 ? `+${salesDeltaPercent}%` : `${salesDeltaPercent}%`} vs yest
+                  </span>
+                )}
+              </div>
               <p className="text-2xl sm:text-3xl font-extrabold text-[#001A35] dark:text-[#FEFEFE] mt-1 tracking-tight">
                 {formatCurrency(currentSummary.revenue, currency)}
               </p>
@@ -283,11 +313,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <Card padding="md" className="bg-[#ECFDF5] dark:bg-[#064E3B]/30 border-[#059669]/30 dark:border-[#059669]/40 relative overflow-hidden">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold text-[#047857] dark:text-[#34D399] uppercase tracking-wider">
-                {canViewProfit
-                  ? (activePeriod === 'today' ? "Today's Take-Home Profit" : activePeriod === 'thisWeek' ? "This Week's Profit" : "This Month's Profit")
-                  : 'Gross Profit & Margins'}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold text-[#047857] dark:text-[#34D399] uppercase tracking-wider">
+                  {canViewProfit
+                    ? (activePeriod === 'today' ? "Today's Take-Home Profit" : activePeriod === 'thisWeek' ? "This Week's Profit" : "This Month's Profit")
+                    : 'Gross Profit & Margins'}
+                </p>
+                {canViewProfit && profitDeltaPercent !== null && (
+                  <span
+                    className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      profitDeltaPercent >= 0
+                        ? 'bg-emerald-200/90 text-emerald-950 dark:bg-emerald-900/70 dark:text-emerald-200'
+                        : 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200'
+                    }`}
+                  >
+                    {profitDeltaPercent >= 0 ? `+${profitDeltaPercent}%` : `${profitDeltaPercent}%`} vs yest
+                  </span>
+                )}
+              </div>
               <div className="mt-1">
                 {canViewProfit ? (
                   <p className="text-2xl sm:text-3xl font-extrabold text-[#047857] dark:text-[#34D399] tracking-tight">

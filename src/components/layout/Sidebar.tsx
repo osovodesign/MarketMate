@@ -165,7 +165,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               (item.id === 'expenses' && currentView === 'record-expense') ||
               (item.id === 'invoices' && currentView === 'create-invoice') ||
               (item.id === 'debts' && currentView === 'record-debt') ||
-              (item.id === 'contacts' && currentView === 'create-contact');
+              (item.id === 'contacts' && currentView === 'create-contact') ||
+              (item.id === 'products' && (currentView === 'create-product' || currentView === 'bulk-import'));
             return (
               <button
                 key={item.id}
@@ -252,7 +253,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenGoalsModal && (
           <button
             onClick={onOpenGoalsModal}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
+              currentView === 'financial-goals'
+                ? 'bg-[#059669]/20 text-[#34D399] font-bold border border-[#059669]/60 shadow-[0_0_12px_rgba(5,150,105,0.25)]'
+                : 'text-slate-200 hover:text-white hover:bg-white/5'
+            }`}
           >
             <div className="flex items-center gap-2.5">
               <Target className="w-4 h-4 text-[#34D399]" />
@@ -311,10 +316,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onOpenBackupModal && (
           <button
             onClick={onOpenBackupModal}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white hover:bg-white/5 transition-colors cursor-pointer group"
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer group ${
+              currentView === 'backup-vault'
+                ? 'bg-[#059669]/20 text-[#34D399] font-bold border border-[#059669]/60 shadow-[0_0_12px_rgba(5,150,105,0.25)]'
+                : 'text-slate-200 hover:text-white hover:bg-white/5'
+            }`}
           >
             <div className="flex items-center gap-2.5">
-              <Database className="w-4 h-4 text-slate-400" />
+              <Database className={`w-4 h-4 ${currentView === 'backup-vault' ? 'text-[#34D399]' : 'text-slate-400'}`} />
               <span>Backup & Restore Vault</span>
             </div>
             {!isSubscribed && (

@@ -124,6 +124,15 @@ export interface BankDetails {
   accountName: string;
 }
 
+export type SubscriptionStatus =
+  | 'free'
+  | 'pending'
+  | 'active'
+  | 'expiring_soon'
+  | 'expired'
+  | 'rejected'
+  | 'cancelled';
+
 export interface BusinessProfile {
   id: string;
   userId: string;
@@ -140,9 +149,17 @@ export interface BusinessProfile {
   bankDetails?: BankDetails;
   invoiceTerms?: string;
   isSubscribed?: boolean;
+  subscriptionStatus?: 'free' | 'active' | 'expired' | 'cancelled';
   subscriptionPlan?: string;
+  subscriptionPlanId?: 'monthly' | 'q4_pass' | string;
   subscribedAt?: string;
+  subscriptionStartsAt?: string;
+  subscriptionExpiresAt?: string;
+  lastSubscriptionRequestId?: string;
+  subscriptionUpdatedAt?: string;
+  subscriptionUpdatedBy?: string;
   subscriptionDiscountPercent?: number;
+  sentExpiryReminders?: string[];
   hasDismissedGuide?: boolean;
   hasCompletedTour?: boolean;
   createdAt: string;
@@ -414,9 +431,12 @@ export interface PlatformBankConfig {
   accountNumber: string;
   accountName: string;
   instructions?: string;
-  monthlyPlanPrice: number; // in NGN (₦1,000 promo through Dec 31, 2026)
-  annualPlanPrice: number;  // in NGN (₦3,000 for Q4 3-Month Pass)
-  q4PassPrice?: number;     // ₦3,000 flat (Oct, Nov, Dec 2026)
+  monthlyPlanPrice: number; // in NGN (₦1,000 monthly launch rate)
+  q4PassPrice: number;      // in NGN (₦3,000 promotional October–December 2026 Q4 package)
+  q4PromoEnabled?: boolean; // Whether the Q4 package is active/selectable
+  expiryReminderDays?: number; // Window for 'expiring_soon' status (default 7 days)
+  futureMonthlyPrice?: number; // Configurable future monthly plan price (admin-managed, not hardcoded)
+  annualPlanPrice?: number; // Legacy field kept optional for backward compatibility only
   supportPhone?: string;
   supportEmail?: string;
   updatedAt?: string;
@@ -430,23 +450,64 @@ export interface SubscriptionRequest {
   userEmail: string;
   ownerName?: string;
   phone?: string;
-  planId: 'monthly' | 'annual' | 'q4_pass' | 'pioneer_launch';
+  planId: 'monthly' | 'q4_pass' | 'annual' | 'pioneer_launch';
   planName: string;
   planOriginalPrice: number;
   discountPercent: number;
   finalAmount: number;
+  amount?: number; // Standardized amount field matching finalAmount
   currency: string;
   senderBank: string;
   senderAccountName: string;
   paymentReference: string;
+  transferReference?: string; // Standardized alias matching paymentReference
   proofNote?: string;
+  paymentNote?: string; // Standardized alias matching proofNote
   proofImageUrl?: string;
   status: 'pending' | 'approved' | 'rejected';
   rejectionReason?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  grantedStartsAt?: string;
+  grantedExpiresAt?: string;
+  submittedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type SubscriptionAuditAction =
+  | 'subscription_request_submitted'
+  | 'subscription_payment_approved'
+  | 'subscription_payment_rejected'
+  | 'subscription_renewed'
+  | 'subscription_extended'
+  | 'subscription_cancelled'
+  | 'subscription_expired';
+
+export interface SubscriptionAuditEvent {
+  id: string;
+  businessId: string;
+  businessName: string;
+  requestId?: string;
+  actorId: string;
+  actorEmail: string;
+  action: SubscriptionAuditAction;
+  timestamp: string;
+  metadata?: Record<string, any>;
+}
+
+export interface SubscriptionEntitlement {
+  hasPaidAccess: boolean;
+  effectiveStatus: SubscriptionStatus;
+  daysRemaining: number | null;
+  isExpiringSoon: boolean;
+  isExpired: boolean;
+  startsAt: string | null;
+  expiresAt: string | null;
+  planId: string | null;
+  planName: string | null;
+  pendingRequest?: SubscriptionRequest | null;
+  latestRejectedRequest?: SubscriptionRequest | null;
 }
 
 export type SupportTicketCategory =
@@ -507,6 +568,16 @@ export type AppView =
   | 'fx-calc'
   | 'create-invoice'
   | 'record-debt'
-  | 'create-contact';
+  | 'create-contact'
+  | 'create-product'
+  | 'financial-goals'
+  | 'backup-vault'
+  | 'referral'
+  | 'help-support'
+  | 'logo-export'
+  | 'subscribe'
+  | 'bulk-import'
+  | 'legal';
+
 
 

@@ -1,15 +1,41 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 1. Global Default-Deny Safety Net
-    match /{document=**} {
-      allow read, write: if false;
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Helper functions
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Super Admin helper for MarketMate Founder & Platform Admin Portal
+    function isSuperAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email != null &&
+        request.auth.token.email.lower() in [
+          'getmarketmate@gmail.com',
+          'osovoyoronogheneovo@gmail.com'
+        ];
+    }
+
+    function isOwnerOfBusiness(businessId) {
+      return isSignedIn() && (
+        isSuperAdmin() ||
+        request.auth.uid == businessId ||
+        (
+          exists(/databases/$(database)/documents/businesses/$(businessId)) &&
+          (
+            get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid ||
+            get(/databases/$(database)/documents/businesses/$(businessId)).data.userId == request.auth.uid
+          )
+        )
+      );
     }
 
     function incoming() {
@@ -20,197 +46,248 @@ service cloud.firestore {
       return resource.data;
     }
 
-    function isSignedIn() {
-      return request.auth != null;
+    // Checks that non-admin merchants do not modify privileged subscription entitlement fields
+    function doesNotModifySubscriptionFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'isSubscribed',
+        'subscriptionStatus',
+        'subscriptionPlan',
+        'subscriptionPlanId',
+        'subscribedAt',
+        'subscriptionStartsAt',
+        'subscriptionExpiresAt',
+        'lastSubscriptionRequestId',
+        'subscriptionUpdatedAt',
+        'subscriptionUpdatedBy'
+      ]);
     }
 
-    function isSuperAdmin() {
-      return isSignedIn() &&
-        request.auth.token.email != null && (
-          request.auth.token.email.lower() == 'getmarketmate@gmail.com' ||
-          request.auth.token.email.lower() == 'osovoyoronogheneovo@gmail.com'
-        );
-    }
-
-    function isOwnerOfBusiness(businessId) {
-      return isSignedIn() && (
-        isSuperAdmin() || (
-          exists(/databases/$(database)/documents/businesses/$(businessId)) &&
-          get(/databases/$(database)/documents/businesses/$(businessId)).data.ownerId == request.auth.uid
-        )
+    // Checks that newly created business profiles by merchants do not self-grant paid subscriptions
+    function hasSafeInitialSubscriptionState() {
+      return (
+        (!('isSubscribed' in incoming()) || incoming().isSubscribed == false) &&
+        (!('subscriptionStatus' in incoming()) || incoming().subscriptionStatus == 'free') &&
+        !('subscriptionExpiresAt' in incoming()) &&
+        !('subscriptionStartsAt' in incoming())
       );
     }
 
-    function isValidUser(data) {
-      return data.id is string && data.id.size() <= 128 &&
-             data.email is string && data.email.size() <= 256 &&
-             data.fullName is string && data.fullName.size() <= 128;
-    }
-
-    function isValidBusiness(data) {
-      return data.id is string && data.id.size() <= 128 &&
-             data.ownerId is string && data.ownerId.size() <= 128 &&
-             data.businessName is string && data.businessName.size() <= 128 &&
-             data.businessType is string && data.businessType.size() <= 64 &&
-             data.currency is string && data.currency.size() <= 8;
-    }
-
-    // 2. Users Collection
+    // ===============================================================
+    // User Profiles (/users/{userId})
+    // ===============================================================
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
-      allow list: if isSuperAdmin(); // Super Admin can retrieve merchant emails for direct communication
-      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
-      allow update: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && incoming().id == existing().id;
-      allow delete: if isSignedIn() && request.auth.uid == userId;
+      allow get: if isOwner(userId) || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isOwner(userId) && incoming().uid == request.auth.uid;
+      allow update: if (isOwner(userId) && incoming().uid == existing().uid) || isSuperAdmin();
+      allow delete: if isOwner(userId) || isSuperAdmin();
     }
 
-    // Health check endpoint
-    match /test/{testId} {
-      allow get: if true;
-    }
-
-    // Platform Announcements & Broadcast Messages
-    match /platform_announcements/{messageId} {
+    // ===============================================================
+    // Platform Announcements & Broadcasts (/platform_announcements/{announcementId})
+    // ===============================================================
+    match /platform_announcements/{announcementId} {
       allow get, list: if isSignedIn();
-      allow create, delete: if isSuperAdmin();
-      allow update: if isSuperAdmin() || isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() || isSuperAdmin();
+      allow delete: if isSuperAdmin();
     }
 
-    // Platform Configuration (e.g. Official Receiving Bank Details)
+    // ===============================================================
+    // Referral Campaign & Reward Ledger (/referrals/{referralId})
+    // ===============================================================
+    match /referrals/{referralId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ===============================================================
+    // Platform Configuration (/platform_config/{configId})
+    // ===============================================================
     match /platform_config/{configId} {
-      allow get, list: if isSignedIn();
+      allow get, list: if true;
       allow create, update, delete: if isSuperAdmin();
     }
 
-    // Subscription Payment Requests & Approvals
+    // ===============================================================
+    // Subscription Bank Transfer Requests (/subscription_requests/{requestId})
+    // ===============================================================
     match /subscription_requests/{requestId} {
-      allow get: if isSignedIn() && (isSuperAdmin() || resource.data.userId == request.auth.uid);
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow get, list: if isSignedIn() && (
+        isSuperAdmin() ||
+        resource.data.userId == request.auth.uid ||
+        isOwnerOfBusiness(resource.data.businessId)
+      );
+      allow create: if isSignedIn() &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'pending' &&
+        !('reviewedBy' in incoming()) &&
+        !('reviewedAt' in incoming()) &&
+        !('grantedStartsAt' in incoming()) &&
+        !('grantedExpiresAt' in incoming());
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // ===============================================================
+    // Subscription Audit Trail (/subscription_audit_logs/{logId})
+    // ===============================================================
+    match /subscription_audit_logs/{logId} {
+      allow get, list: if isSignedIn() && (
+        isSuperAdmin() ||
+        resource.data.actorId == request.auth.uid ||
+        isOwnerOfBusiness(resource.data.businessId)
+      );
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        (
+          incoming().actorId == request.auth.uid &&
+          incoming().action == 'subscription_request_submitted'
+        )
+      );
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // ===============================================================
+    // User Support & Inquiries (/support_tickets/{ticketId})
+    // ===============================================================
+    match /support_tickets/{ticketId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
       allow update: if isSignedIn() && (isSuperAdmin() || resource.data.userId == request.auth.uid);
       allow delete: if isSuperAdmin();
     }
 
-    // Referrals & Growth Rewards
-    match /referrals/{referralId} {
+    // ===============================================================
+    // Businesses (/businesses/{businessId})
+    // ===============================================================
+    match /businesses/{businessId} {
       allow get: if isSignedIn() && (
-        isSuperAdmin() ||
-        resource.data.referrerUserId == request.auth.uid ||
-        resource.data.referredUserId == request.auth.uid
+        isOwnerOfBusiness(businessId) ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.userId == request.auth.uid ||
+        isSuperAdmin()
       );
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
+      allow list: if isSignedIn() && (
+        isSuperAdmin() ||
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      );
+      allow create: if isSignedIn() && (
+        isSuperAdmin() ||
+        (
+          (incoming().ownerId == request.auth.uid || incoming().userId == request.auth.uid) &&
+          hasSafeInitialSubscriptionState()
+        )
+      );
       allow update: if isSignedIn() && (
         isSuperAdmin() ||
-        resource.data.referrerUserId == request.auth.uid ||
-        resource.data.referredUserId == request.auth.uid
+        (
+          (isOwnerOfBusiness(businessId) || existing().ownerId == request.auth.uid || existing().userId == request.auth.uid) &&
+          doesNotModifySubscriptionFields()
+        )
       );
-      allow delete: if isSuperAdmin();
-    }
+      allow delete: if isOwnerOfBusiness(businessId) || isSuperAdmin();
 
-    // Support & Assistance Inquiries
-    match /support_tickets/{ticketId} {
-      allow get: if isSignedIn() && (isSuperAdmin() || resource.data.userId == request.auth.uid);
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && (isSuperAdmin() || resource.data.userId == request.auth.uid);
-      allow delete: if isSuperAdmin();
-    }
-
-    // 3. Businesses Collection (Master Root)
-    match /businesses/{businessId} {
-      allow get: if isSignedIn() && (isSuperAdmin() || resource.data.ownerId == request.auth.uid);
-      allow list: if isSignedIn() && (isSuperAdmin() || resource.data.ownerId == request.auth.uid);
-      allow create: if isSignedIn() && isValidId(businessId) && incoming().ownerId == request.auth.uid && isValidBusiness(incoming());
-      allow update: if isSignedIn() && isValidId(businessId) && (isSuperAdmin() || resource.data.ownerId == request.auth.uid) && incoming().ownerId == existing().ownerId && isValidBusiness(incoming());
-      allow delete: if isSignedIn() && isValidId(businessId) && (isSuperAdmin() || resource.data.ownerId == request.auth.uid);
-
-      // 4. Products Subcollection
+      // ===============================================================
+      // Products Subcollection (/businesses/{businessId}/products/{productId})
+      // ===============================================================
       match /products/{productId} {
         allow get, list: if isOwnerOfBusiness(businessId);
-        allow create: if isOwnerOfBusiness(businessId) && isValidId(productId) && incoming().businessId == businessId;
-        allow update: if isOwnerOfBusiness(businessId) && isValidId(productId) && incoming().businessId == existing().businessId;
-        allow delete: if isOwnerOfBusiness(businessId) && isValidId(productId);
+        allow create: if isOwnerOfBusiness(businessId) && incoming().name is string && incoming().name.size() > 0;
+        allow update: if isOwnerOfBusiness(businessId) && incoming().name is string && incoming().name.size() > 0;
+        allow delete: if isOwnerOfBusiness(businessId);
       }
 
-      // 5. Sales Subcollection
+      // ===============================================================
+      // Sales Subcollection (/businesses/{businessId}/sales/{saleId})
+      // ===============================================================
       match /sales/{saleId} {
         allow get, list: if isOwnerOfBusiness(businessId);
-        allow create: if isOwnerOfBusiness(businessId) && isValidId(saleId) && incoming().businessId == businessId;
-        allow update: if isOwnerOfBusiness(businessId) && isValidId(saleId) && incoming().businessId == existing().businessId;
-        allow delete: if isOwnerOfBusiness(businessId) && isValidId(saleId);
+        allow create: if isOwnerOfBusiness(businessId);
+        allow update: if isOwnerOfBusiness(businessId);
+        allow delete: if isOwnerOfBusiness(businessId);
       }
 
-      // 6. Expenses Subcollection
+      // ===============================================================
+      // Expenses Subcollection (/businesses/{businessId}/expenses/{expenseId})
+      // ===============================================================
       match /expenses/{expenseId} {
         allow get, list: if isOwnerOfBusiness(businessId);
-        allow create: if isOwnerOfBusiness(businessId) && isValidId(expenseId) && incoming().businessId == businessId;
-        allow update: if isOwnerOfBusiness(businessId) && isValidId(expenseId) && incoming().businessId == existing().businessId;
-        allow delete: if isOwnerOfBusiness(businessId) && isValidId(expenseId);
+        allow create: if isOwnerOfBusiness(businessId);
+        allow update: if isOwnerOfBusiness(businessId);
+        allow delete: if isOwnerOfBusiness(businessId);
       }
 
-      // 7. Debts Subcollection
-      match /debts/{debtId} {
-        allow get, list: if isOwnerOfBusiness(businessId);
-        allow create: if isOwnerOfBusiness(businessId) && isValidId(debtId) && incoming().businessId == businessId;
-        allow update: if isOwnerOfBusiness(businessId) && isValidId(debtId) && incoming().businessId == existing().businessId;
-        allow delete: if isOwnerOfBusiness(businessId) && isValidId(debtId);
-      }
-
-      // 8. Invoices Subcollection
+      // ===============================================================
+      // Invoices Subcollection (/businesses/{businessId}/invoices/{invoiceId})
+      // ===============================================================
       match /invoices/{invoiceId} {
         allow get, list: if isOwnerOfBusiness(businessId);
-        allow create: if isOwnerOfBusiness(businessId) && isValidId(invoiceId) && incoming().businessId == businessId;
-        allow update: if isOwnerOfBusiness(businessId) && isValidId(invoiceId) && incoming().businessId == existing().businessId;
-        allow delete: if isOwnerOfBusiness(businessId) && isValidId(invoiceId);
+        allow create: if isOwnerOfBusiness(businessId);
+        allow update: if isOwnerOfBusiness(businessId);
+        allow delete: if isOwnerOfBusiness(businessId);
       }
 
-      // 9. Customers Subcollection
-      match /customers/{customerId} {
+      // ===============================================================
+      // Contacts Subcollection (/businesses/{businessId}/contacts/{contactId})
+      // ===============================================================
+      match /contacts/{contactId} {
         allow get, list: if isOwnerOfBusiness(businessId);
-        allow create: if isOwnerOfBusiness(businessId) && isValidId(customerId) && incoming().businessId == businessId;
-        allow update: if isOwnerOfBusiness(businessId) && isValidId(customerId) && incoming().businessId == existing().businessId;
-        allow delete: if isOwnerOfBusiness(businessId) && isValidId(customerId);
+        allow create: if isOwnerOfBusiness(businessId) && incoming().name is string && incoming().name.size() > 0;
+        allow update: if isOwnerOfBusiness(businessId) && incoming().name is string && incoming().name.size() > 0;
+        allow delete: if isOwnerOfBusiness(businessId);
       }
 
-      // 10. Suppliers Subcollection
-      match /suppliers/{supplierId} {
+      // ===============================================================
+      // Debts Subcollection (/businesses/{businessId}/debts/{debtId})
+      // ===============================================================
+      match /debts/{debtId} {
         allow get, list: if isOwnerOfBusiness(businessId);
-        allow create: if isOwnerOfBusiness(businessId) && isValidId(supplierId) && incoming().businessId == businessId;
-        allow update: if isOwnerOfBusiness(businessId) && isValidId(supplierId) && incoming().businessId == existing().businessId;
-        allow delete: if isOwnerOfBusiness(businessId) && isValidId(supplierId);
+        allow create: if isOwnerOfBusiness(businessId);
+        allow update: if isOwnerOfBusiness(businessId);
+        allow delete: if isOwnerOfBusiness(businessId);
       }
 
-      // 11. Staff Subcollection
+      // ===============================================================
+      // Goals Subcollection (/businesses/{businessId}/goals/{goalId})
+      // ===============================================================
+      match /goals/{goalId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId);
+        allow update: if isOwnerOfBusiness(businessId);
+        allow delete: if isOwnerOfBusiness(businessId);
+      }
+
+      // ===============================================================
+      // Backups Subcollection (/businesses/{businessId}/backups/{backupId})
+      // ===============================================================
+      match /backups/{backupId} {
+        allow get, list: if isOwnerOfBusiness(businessId);
+        allow create: if isOwnerOfBusiness(businessId);
+        allow update: if isOwnerOfBusiness(businessId);
+        allow delete: if isOwnerOfBusiness(businessId);
+      }
+
+      // ===============================================================
+      // Staff Accounts Subcollection (/businesses/{businessId}/staff/{staffId})
+      // ===============================================================
       match /staff/{staffId} {
         allow get, list: if isOwnerOfBusiness(businessId);
-        allow create: if isOwnerOfBusiness(businessId) && isValidId(staffId) && incoming().businessId == businessId;
-        allow update: if isOwnerOfBusiness(businessId) && isValidId(staffId) && incoming().businessId == existing().businessId;
-        allow delete: if isOwnerOfBusiness(businessId) && isValidId(staffId);
+        allow create: if isOwnerOfBusiness(businessId);
+        allow update: if isOwnerOfBusiness(businessId);
+        allow delete: if isOwnerOfBusiness(businessId);
       }
 
-      // 12. Shifts Subcollection
+      // ===============================================================
+      // Staff Shift Logs Subcollection (/businesses/{businessId}/shifts/{shiftId})
+      // ===============================================================
       match /shifts/{shiftId} {
         allow get, list: if isOwnerOfBusiness(businessId);
-        allow create: if isOwnerOfBusiness(businessId) && isValidId(shiftId) && incoming().businessId == businessId;
-        allow update: if isOwnerOfBusiness(businessId) && isValidId(shiftId) && incoming().businessId == existing().businessId;
-        allow delete: if isOwnerOfBusiness(businessId) && isValidId(shiftId);
-      }
-
-      // 12. Targets Subcollection
-      match /targets/{targetId} {
-        allow get, list: if isOwnerOfBusiness(businessId);
-        allow create: if isOwnerOfBusiness(businessId) && isValidId(targetId) && incoming().businessId == businessId;
-        allow update: if isOwnerOfBusiness(businessId) && isValidId(targetId) && incoming().businessId == existing().businessId;
-        allow delete: if isOwnerOfBusiness(businessId) && isValidId(targetId);
-      }
-
-      // 13. FX Subcollection
-      match /fx/{fxId} {
-        allow get, list: if isOwnerOfBusiness(businessId);
-        allow create: if isOwnerOfBusiness(businessId) && isValidId(fxId) && incoming().businessId == businessId;
-        allow update: if isOwnerOfBusiness(businessId) && isValidId(fxId) && incoming().businessId == existing().businessId;
-        allow delete: if isOwnerOfBusiness(businessId) && isValidId(fxId);
+        allow create: if isOwnerOfBusiness(businessId);
+        allow update: if isOwnerOfBusiness(businessId);
+        allow delete: if isOwnerOfBusiness(businessId);
       }
     }
   }

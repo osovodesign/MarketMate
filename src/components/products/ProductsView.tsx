@@ -35,9 +35,15 @@ import { hasPermission } from '../../lib/staffPermissions';
 
 interface ProductsViewProps {
   onOpenAddSaleWithProduct?: (product: Product) => void;
+  onOpenCreateProduct?: (productToEdit?: Product | null) => void;
+  onOpenBulkImport?: () => void;
 }
 
-export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithProduct }) => {
+export const ProductsView: React.FC<ProductsViewProps> = ({
+  onOpenAddSaleWithProduct,
+  onOpenCreateProduct,
+  onOpenBulkImport,
+}) => {
   const { products, sales, deleteProduct, addProduct, updateProduct, currentSession } = useBusinessData();
   const { business } = useAuth();
   const currency = business?.currency || 'NGN';
@@ -121,6 +127,10 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
   }, [products, search]);
 
   const handleOpenAdd = () => {
+    if (onOpenCreateProduct) {
+      onOpenCreateProduct(null);
+      return;
+    }
     setEditingProduct(null);
     setName('');
     setSku('');
@@ -137,6 +147,10 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
   };
 
   const handleOpenEdit = (p: Product) => {
+    if (onOpenCreateProduct) {
+      onOpenCreateProduct(p);
+      return;
+    }
     setEditingProduct(p);
     setName(p.name);
     setSku(p.sku || '');
@@ -230,7 +244,13 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
               type="button"
               variant="outline"
               size="md"
-              onClick={() => setIsBulkImportOpen(true)}
+              onClick={() => {
+                if (onOpenBulkImport) {
+                  onOpenBulkImport();
+                } else {
+                  setIsBulkImportOpen(true);
+                }
+              }}
               leftIcon={<FileSpreadsheet className="w-4 h-4 text-emerald-600" />}
               className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900 text-xs font-bold"
             >
@@ -661,7 +681,13 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onOpenAddSaleWithPro
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsBulkImportOpen(true)}
+                onClick={() => {
+                  if (onOpenBulkImport) {
+                    onOpenBulkImport();
+                  } else {
+                    setIsBulkImportOpen(true);
+                  }
+                }}
                 leftIcon={<FileSpreadsheet className="w-4 h-4 text-emerald-600" />}
               >
                 Upload Excel / CSV (Bulk)

@@ -1,0 +1,35 @@
+{
+  "id": "/",
+  "name": "MarketMate™ - Know Your Numbers, Grow Your Business",
+  "short_name": "MarketMate",
+  "description": "Business management, POS register, and financial intelligence application for Nigerian merchants.",
+  "theme_color": "#059669",
+  "background_color": "#042f2e",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "start_url": "/",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

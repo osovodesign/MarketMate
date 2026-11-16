@@ -44,6 +44,7 @@ import { NotificationDrawer } from './components/notifications/NotificationDrawe
 import { NotificationProvider } from './context/NotificationContext';
 import { ProFeatureGate } from './components/subscription/ProFeatureGate';
 import { OfflineIndicator } from './components/common/OfflineIndicator';
+import { MobileInstallBanner } from './components/common/MobileInstallBanner';
 import { AppView, Product, Invoice, InvoiceType, Customer, Supplier } from './types';
 import {
   Sparkles,
@@ -721,6 +722,7 @@ export default function App() {
           <NotificationProvider>
             <AppContent />
             <OfflineIndicator />
+            <MobileInstallBanner />
           </NotificationProvider>
         </BusinessDataProvider>
       </AuthProvider>

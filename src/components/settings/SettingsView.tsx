@@ -1090,7 +1090,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             <PWAInstallButton
               variant="primary"
-              label="Install App / Get Instructions"
+              label="Install App to Phone"
               className="self-start sm:self-auto shrink-0 shadow-md"
             />
           </div>

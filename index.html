@@ -75,6 +75,24 @@
             if (e.preventDefault) e.preventDefault();
           }
         }, true);
+
+        // Capture native PWA install prompt immediately at page boot before React mounts
+        window.__deferredPWAInstallPrompt = null;
+        window.__pwaIsInstalled = false;
+        window.addEventListener('beforeinstallprompt', function(e) {
+          e.preventDefault();
+          window.__deferredPWAInstallPrompt = e;
+          try {
+            window.dispatchEvent(new CustomEvent('marketmate:pwa-installable', { detail: e }));
+          } catch (_) {}
+        });
+        window.addEventListener('appinstalled', function() {
+          window.__deferredPWAInstallPrompt = null;
+          window.__pwaIsInstalled = true;
+          try {
+            window.dispatchEvent(new CustomEvent('marketmate:pwa-installed'));
+          } catch (_) {}
+        });
       })();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -94,6 +112,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="MarketMate" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

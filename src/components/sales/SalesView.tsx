@@ -24,6 +24,7 @@ import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { ReceiptModal } from './ReceiptModal';
 import { formatCurrency, formatPercent, formatDateFriendly } from '../../lib/formatters';
+import { getSaleItems } from '../../lib/math';
 import { PaymentMethod, Sale } from '../../types';
 import { hasPermission } from '../../lib/staffPermissions';
 
@@ -45,13 +46,17 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
   const [selectedSaleForReceipt, setSelectedSaleForReceipt] = useState<Sale | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  // Filtered sales list
+  // Filtered sales list (searches top-level productName, customerName, receiptNumber, and all multi-product line items)
   const filteredSales = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return sales.filter((s) => {
+      const items = getSaleItems(s);
       const matchSearch =
-        search === '' ||
-        s.productName.toLowerCase().includes(search.toLowerCase()) ||
-        (s.customerName && s.customerName.toLowerCase().includes(search.toLowerCase()));
+        q === '' ||
+        s.productName.toLowerCase().includes(q) ||
+        (s.customerName && s.customerName.toLowerCase().includes(q)) ||
+        (s.receiptNumber && s.receiptNumber.toLowerCase().includes(q)) ||
+        items.some((item) => item.productName.toLowerCase().includes(q));
 
       const matchPayment = paymentFilter === 'all' || s.paymentMethod === paymentFilter;
 
@@ -153,7 +158,7 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search by product or customer..."
+            placeholder="Search by product, receipt #, or customer..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9.5 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#059669]/20 focus:border-[#059669] transition-all"
@@ -186,9 +191,9 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
               <thead>
                 <tr className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Product / Item</th>
-                  <th className="py-3 px-4 text-center">Qty</th>
-                  <th className="py-3 px-4 text-right">Selling Price</th>
+                  <th className="py-3 px-4">Product(s) Sold</th>
+                  <th className="py-3 px-4 text-center">Units</th>
+                  <th className="py-3 px-4 text-right">Unit Price</th>
                   <th className="py-3 px-4 text-right">Total Revenue</th>
                   <th className="py-3 px-4 text-right">{canShowCost ? 'Cost Price' : 'Cost'}</th>
                   <th className="py-3 px-4 text-right">{canShowMargin ? 'Profit' : 'Profit'}</th>
@@ -197,29 +202,47 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                {filteredSales.map((sale) => (
-                  <tr key={sale.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                      {formatDateFriendly(sale.saleDate)}
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="font-bold text-slate-900 dark:text-white">{sale.productName}</p>
-                      {sale.customerName && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
-                          <User className="w-3 h-3 text-slate-400" />
-                          <span>{sale.customerName}</span>
-                        </p>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-center font-bold text-slate-800 dark:text-slate-200">
-                      {sale.quantity}
-                    </td>
-                    <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300">
-                      {formatCurrency(sale.sellingPrice, currency)}
-                    </td>
-                    <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                      {formatCurrency(sale.revenue, currency)}
-                    </td>
+                {filteredSales.map((sale) => {
+                  const items = getSaleItems(sale);
+                  const isMultiItem = items.length > 1;
+
+                  return (
+                    <tr key={sale.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="py-3 px-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        {formatDateFriendly(sale.saleDate)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-slate-900 dark:text-white">{sale.productName}</p>
+                          {isMultiItem && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-[#059669] dark:text-[#34D399] text-[10px] font-bold">
+                              {items.length} products
+                            </span>
+                          )}
+                        </div>
+                        {isMultiItem && (
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {items.map((i) => `${i.quantity}× ${i.productName}`).join(' • ')}
+                          </p>
+                        )}
+                        {sale.customerName && (
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                            <User className="w-3 h-3 text-slate-400" />
+                            <span>{sale.customerName}</span>
+                          </p>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center font-bold text-slate-800 dark:text-slate-200">
+                        {sale.quantity}
+                      </td>
+                      <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        {isMultiItem
+                          ? `${items.length} items`
+                          : formatCurrency(items[0]?.unitPrice ?? sale.sellingPrice, currency)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                        {formatCurrency(sale.revenue, currency)}
+                      </td>
                     <td className="py-3 px-4 text-right text-slate-500 dark:text-slate-400 whitespace-nowrap">
                       {canShowCost ? (
                         formatCurrency(sale.cost, currency)
@@ -294,7 +317,8 @@ export const SalesView: React.FC<SalesViewProps> = ({ onOpenAddSale }) => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

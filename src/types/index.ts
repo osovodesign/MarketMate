@@ -184,19 +184,36 @@ export interface Product {
   createdAt: string;
 }
 
+export interface SaleItem {
+  productId?: string;
+  productName: string;
+  barcode?: string;
+  quantity: number;
+  unitPrice: number;
+  costPrice: number;
+  discount?: number;
+  subtotal: number; // Net line total after line discount: (quantity * unitPrice) - (discount || 0)
+  cost: number;     // Total line cost: quantity * costPrice
+  profit: number;   // Line profit: subtotal - cost
+}
+
 export interface Sale {
   id: string;
   businessId: string;
+  receiptNumber?: string;
   productId?: string;
   productName: string;
   barcode?: string;
   quantity: number;
   sellingPrice: number;
   costPrice: number;
+  subtotal?: number;
+  discount?: number;
   revenue: number;
   cost: number;
   profit: number;
   paymentMethod: PaymentMethod;
+  customerId?: string;
   customerName?: string;
   notes?: string;
   saleDate: string; // YYYY-MM-DD
@@ -205,6 +222,7 @@ export interface Sale {
   currency?: CurrencyCode;
   foreignAmount?: number;
   exchangeRate?: number;
+  items?: SaleItem[];
   createdAt: string;
 }
 

@@ -104,7 +104,9 @@ export const ContactsView: React.FC<ContactsViewProps> = ({
   // Helper to get customer analytics
   const getCustomerMetrics = (cust: Customer) => {
     const custSales = sales.filter(
-      (s) => s.customerName && s.customerName.toLowerCase() === cust.name.toLowerCase()
+      (s) =>
+        (s.customerId && s.customerId === cust.id) ||
+        (s.customerName && s.customerName.toLowerCase() === cust.name.toLowerCase())
     );
     const custInvoices = invoices.filter(
       (i) => i.customerName.toLowerCase() === cust.name.toLowerCase()

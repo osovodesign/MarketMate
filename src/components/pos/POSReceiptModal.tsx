@@ -2,16 +2,14 @@ import React from 'react';
 import {
   X,
   Printer,
-  Share2,
   CheckCircle2,
-  Receipt,
   MessageCircle,
   Copy,
   Check,
 } from 'lucide-react';
 import { Sale, CurrencyCode } from '../../types';
-import { formatMoney } from '../../lib/calculations';
 import { CURRENCIES } from '../../lib/currencies';
+import { getSaleItems, roundMoney } from '../../lib/math';
 import { useAuth } from '../../context/AuthContext';
 import { MarketMateLogo } from '../common/MarketMateLogo';
 import { printThermalReceipt } from '../../lib/printUtils';
@@ -45,8 +43,14 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
 
   if (!isOpen || sales.length === 0) return null;
 
-  const totalRevenue = sales.reduce((sum, s) => sum + s.revenue, 0);
-  const totalItems = sales.reduce((sum, s) => sum + s.quantity, 0);
+  // Flatten all line items across provided sale record(s)
+  const lineItems = sales.flatMap((s) => getSaleItems(s));
+  const totalRevenue = roundMoney(sales.reduce((sum, s) => sum + s.revenue, 0));
+  const grossSubtotal = roundMoney(
+    lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+  );
+  const totalDiscount = roundMoney(Math.max(0, grossSubtotal - totalRevenue));
+  const totalItems = lineItems.reduce((sum, item) => sum + item.quantity, 0);
   const saleDate = sales[0]?.saleDate || new Date().toISOString().split('T')[0];
   const cashierName = sales[0]?.staffName || 'Cashier';
   const currMeta = CURRENCIES[currency] || CURRENCIES.NGN;
@@ -72,12 +76,21 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
       `----------------------------`,
     ];
 
-    sales.forEach((s, idx) => {
-      lines.push(`${idx + 1}. ${s.productName}`);
-      lines.push(`   ${s.quantity} x ${currMeta.symbol}${s.sellingPrice.toLocaleString()} = ${currMeta.symbol}${s.revenue.toLocaleString()}`);
+    lineItems.forEach((item, idx) => {
+      lines.push(`${idx + 1}. ${item.productName}`);
+      lines.push(
+        `   ${item.quantity} x ${currMeta.symbol}${item.unitPrice.toLocaleString()} = ${currMeta.symbol}${item.subtotal.toLocaleString()}`
+      );
+      if ((item.discount || 0) > 0) {
+        lines.push(`   (Discount: -${currMeta.symbol}${(item.discount || 0).toLocaleString()})`);
+      }
     });
 
     lines.push(`----------------------------`);
+    if (totalDiscount > 0) {
+      lines.push(`Subtotal: ${currMeta.symbol}${grossSubtotal.toLocaleString()}`);
+      lines.push(`Discount: -${currMeta.symbol}${totalDiscount.toLocaleString()}`);
+    }
     lines.push(`*TOTAL: ${currMeta.symbol}${totalRevenue.toLocaleString()}*`);
     if (amountTendered > 0) {
       lines.push(`Amount Tendered: ${currMeta.symbol}${amountTendered.toLocaleString()}`);
@@ -143,11 +156,15 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
                 </div>
               )}
               <h3 className="font-extrabold text-sm tracking-tight text-slate-950 uppercase">
-                {business?.businessName || 'Ada Fashion & Fabrics'}
+                {business?.businessName || 'MarketMate Store'}
               </h3>
-              <p className="text-[11px] text-slate-600 font-sans font-medium">{business?.businessType || 'Retail & Wholesale'}</p>
+              <p className="text-[11px] text-slate-600 font-sans font-medium">
+                {business?.businessType || 'Retail & Wholesale'}
+              </p>
               {business?.cacNumber && (
-                <p className="text-[10px] text-emerald-800 font-sans font-bold">CAC Reg No: {business.cacNumber}</p>
+                <p className="text-[10px] text-emerald-800 font-sans font-bold">
+                  CAC Reg No: {business.cacNumber}
+                </p>
               )}
               {business?.phone && (
                 <p className="text-[10px] text-slate-600 font-sans">Tel: {business.phone}</p>
@@ -159,11 +176,15 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
 
             {/* Receipt Meta */}
             <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-700 py-1 border-b border-dashed border-slate-300">
-              <span>Receipt: <strong className="text-slate-950 font-bold">{receiptNumber}</strong></span>
+              <span>
+                Receipt: <strong className="text-slate-950 font-bold">{receiptNumber}</strong>
+              </span>
               <span className="text-right">Date: {saleDate}</span>
               <span>Cashier: {cashierName}</span>
               <span className="text-right">Method: {paymentMethod}</span>
-              <span className="col-span-2 text-slate-800 pt-0.5">Customer: <strong>{customerName}</strong></span>
+              <span className="col-span-2 text-slate-800 pt-0.5">
+                Customer: <strong>{customerName}</strong>
+              </span>
             </div>
 
             {/* Items List */}
@@ -172,14 +193,31 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
                 <span className="text-left">ITEM / QTY</span>
                 <span className="text-right">AMOUNT</span>
               </div>
-              {sales.map((s, idx) => (
-                <div key={s.id || idx} className="space-y-0.5 pb-1 border-b border-dotted border-slate-200">
+              {lineItems.map((item, idx) => (
+                <div
+                  key={`${item.productName}_${idx}`}
+                  className="space-y-0.5 pb-1 border-b border-dotted border-slate-200"
+                >
                   <div className="flex justify-between text-slate-950 font-bold">
-                    <span className="truncate pr-2">{idx + 1}. {s.productName}</span>
-                    <span className="tabular-nums shrink-0">{currMeta.symbol}{s.revenue.toLocaleString()}</span>
+                    <span className="truncate pr-2">
+                      {idx + 1}. {item.productName}
+                    </span>
+                    <span className="tabular-nums shrink-0">
+                      {currMeta.symbol}
+                      {item.subtotal.toLocaleString()}
+                    </span>
                   </div>
                   <div className="text-[10px] text-slate-500 flex justify-between">
-                    <span>{s.quantity} @ {currMeta.symbol}{s.sellingPrice.toLocaleString()}</span>
+                    <span>
+                      {item.quantity} @ {currMeta.symbol}
+                      {item.unitPrice.toLocaleString()}
+                    </span>
+                    {(item.discount || 0) > 0 && (
+                      <span className="text-amber-700">
+                        Disc: -{currMeta.symbol}
+                        {(item.discount || 0).toLocaleString()}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -188,22 +226,51 @@ export const POSReceiptModal: React.FC<POSReceiptModalProps> = ({
             {/* Calculations & Totals */}
             <div className="space-y-1.5 pt-1 text-xs border-t border-dashed border-slate-400">
               <div className="flex justify-between text-slate-700">
-                <span>Total Items:</span>
-                <span className="font-bold tabular-nums">{totalItems}</span>
+                <span>Total Items / Units:</span>
+                <span className="font-bold tabular-nums">
+                  {lineItems.length} ({totalItems} units)
+                </span>
               </div>
+              {totalDiscount > 0 && (
+                <>
+                  <div className="flex justify-between text-slate-600 text-[11px]">
+                    <span>Subtotal:</span>
+                    <span className="tabular-nums">
+                      {currMeta.symbol}
+                      {grossSubtotal.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-amber-700 text-[11px] font-semibold">
+                    <span>Total Discount:</span>
+                    <span className="tabular-nums">
+                      -{currMeta.symbol}
+                      {totalDiscount.toLocaleString()}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between font-black text-sm text-slate-950 pt-1 border-t border-slate-400">
                 <span>TOTAL AMOUNT:</span>
-                <span className="tabular-nums">{currMeta.symbol}{totalRevenue.toLocaleString()}</span>
+                <span className="tabular-nums">
+                  {currMeta.symbol}
+                  {totalRevenue.toLocaleString()}
+                </span>
               </div>
               {amountTendered > 0 && (
                 <>
                   <div className="flex justify-between text-[11px] text-slate-700">
                     <span>Amount Tendered:</span>
-                    <span className="tabular-nums">{currMeta.symbol}{amountTendered.toLocaleString()}</span>
+                    <span className="tabular-nums">
+                      {currMeta.symbol}
+                      {amountTendered.toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex justify-between text-[11px] font-bold text-emerald-800">
                     <span>Change Returned:</span>
-                    <span className="tabular-nums">{currMeta.symbol}{change.toLocaleString()}</span>
+                    <span className="tabular-nums">
+                      {currMeta.symbol}
+                      {change.toLocaleString()}
+                    </span>
                   </div>
                 </>
               )}

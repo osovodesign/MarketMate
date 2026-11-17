@@ -16,6 +16,7 @@ import { Card, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { formatCurrency, formatPercent, formatDateFriendly, getTodayDateString } from '../../lib/formatters';
+import { getSaleItems, roundMoney } from '../../lib/math';
 
 export const ReportsView: React.FC = () => {
   const { sales, expenses, getSummaryForRange } = useBusinessData();
@@ -34,6 +35,34 @@ export const ReportsView: React.FC = () => {
   const summary = useMemo(() => {
     return getSummaryForRange(startDate, endDate);
   }, [startDate, endDate, getSummaryForRange]);
+
+  // Product-level sales breakdown for the selected period (iterates through getSaleItems)
+  const productBreakdown = useMemo(() => {
+    const periodSales = sales.filter((s) => s.saleDate >= startDate && s.saleDate <= endDate);
+    const map: Record<
+      string,
+      { productName: string; unitsSold: number; revenue: number; cost: number; profit: number }
+    > = {};
+    let totalUnitsInPeriod = 0;
+
+    for (const sale of periodSales) {
+      const items = getSaleItems(sale);
+      for (const item of items) {
+        const key = item.productName.trim() || 'Item';
+        if (!map[key]) {
+          map[key] = { productName: key, unitsSold: 0, revenue: 0, cost: 0, profit: 0 };
+        }
+        map[key].unitsSold += item.quantity;
+        map[key].revenue = roundMoney(map[key].revenue + item.subtotal);
+        map[key].cost = roundMoney(map[key].cost + item.cost);
+        map[key].profit = roundMoney(map[key].profit + item.profit);
+        totalUnitsInPeriod += item.quantity;
+      }
+    }
+
+    const rows = Object.values(map).sort((a, b) => b.revenue - a.revenue);
+    return { rows, totalUnitsInPeriod };
+  }, [sales, startDate, endDate]);
 
   // Breakdown of expenses in period
   const expenseBreakdown = useMemo(() => {
@@ -187,7 +216,11 @@ export const ReportsView: React.FC = () => {
               <span className="text-emerald-700">{formatCurrency(summary.revenue, currency)}</span>
             </div>
             <div className="pl-4 text-xs text-slate-500 flex items-center justify-between">
-              <span>Total customer sales recorded in period ({summary.salesCount} orders)</span>
+              <span>
+                Total customer sales recorded in period ({summary.salesCount}{' '}
+                {summary.salesCount === 1 ? 'checkout' : 'checkouts'} • {productBreakdown.totalUnitsInPeriod}{' '}
+                {productBreakdown.totalUnitsInPeriod === 1 ? 'unit' : 'units'} sold)
+              </span>
               <span>+{formatCurrency(summary.revenue, currency)}</span>
             </div>
           </div>
@@ -196,11 +229,11 @@ export const ReportsView: React.FC = () => {
           <div className="space-y-2 pt-2 border-t border-slate-100">
             <div className="flex items-center justify-between font-bold text-slate-900">
               <span>2. Less: Cost of Goods Sold (COGS)</span>
-              <span className="text-slate-600">-{formatCurrency(summary.costOfGoodsSold, currency)}</span>
+              <span className="text-slate-600">-{formatCurrency(summary.productCosts, currency)}</span>
             </div>
             <div className="pl-4 text-xs text-slate-500 flex items-center justify-between">
               <span>Direct inventory purchase and manufacturing item costs</span>
-              <span>-{formatCurrency(summary.costOfGoodsSold, currency)}</span>
+              <span>-{formatCurrency(summary.productCosts, currency)}</span>
             </div>
           </div>
 
@@ -249,6 +282,53 @@ export const ReportsView: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {/* Product-Level Sales Performance Breakdown */}
+        {productBreakdown.rows.length > 0 && (
+          <div className="mt-8 pt-6 border-t border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                Product-Level Sales Breakdown ({productBreakdown.rows.length}{' '}
+                {productBreakdown.rows.length === 1 ? 'Product' : 'Products'})
+              </h4>
+              <span className="text-xs font-semibold text-slate-500">
+                {productBreakdown.totalUnitsInPeriod} total units sold
+              </span>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold uppercase text-slate-500">
+                    <th className="py-2.5 px-3">Product</th>
+                    <th className="py-2.5 px-3 text-center">Units Sold</th>
+                    <th className="py-2.5 px-3 text-right">Revenue</th>
+                    <th className="py-2.5 px-3 text-right">COGS</th>
+                    <th className="py-2.5 px-3 text-right">Gross Profit</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {productBreakdown.rows.map((row) => (
+                    <tr key={row.productName} className="hover:bg-slate-50/70">
+                      <td className="py-2 px-3 font-bold text-slate-900">{row.productName}</td>
+                      <td className="py-2 px-3 text-center font-semibold text-slate-700 tabular-nums">
+                        {row.unitsSold}
+                      </td>
+                      <td className="py-2 px-3 text-right font-bold text-slate-900 tabular-nums">
+                        {formatCurrency(row.revenue, currency)}
+                      </td>
+                      <td className="py-2 px-3 text-right text-slate-600 tabular-nums">
+                        {formatCurrency(row.cost, currency)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-bold text-emerald-700 tabular-nums">
+                        +{formatCurrency(row.profit, currency)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Mathematical Integrity Footer */}
         <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">

@@ -65,16 +65,19 @@ export const TransactionsView: React.FC = () => {
   }, [recentTransactions, canViewExpenses, isCashier, cashierScope, activeShift, currentSession.staffId, today]);
 
   const filteredTransactions = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return sanitizedList.filter((t) => {
       const matchType = !canViewExpenses
         ? t.type === 'sale'
         : typeFilter === 'all' || t.type === typeFilter;
       const matchPayment = paymentFilter === 'all' || t.paymentMethod === paymentFilter;
       const matchSearch =
-        search === '' ||
-        t.title.toLowerCase().includes(search.toLowerCase()) ||
-        (t.subtitle && t.subtitle.toLowerCase().includes(search.toLowerCase())) ||
-        (t.category && t.category.toLowerCase().includes(search.toLowerCase()));
+        q === '' ||
+        t.title.toLowerCase().includes(q) ||
+        (t.subtitle && t.subtitle.toLowerCase().includes(q)) ||
+        (t.category && t.category.toLowerCase().includes(q)) ||
+        (t.rawSale?.receiptNumber && t.rawSale.receiptNumber.toLowerCase().includes(q)) ||
+        (t.rawSale?.items && t.rawSale.items.some((item) => item.productName.toLowerCase().includes(q)));
 
       return matchType && matchPayment && matchSearch;
     });

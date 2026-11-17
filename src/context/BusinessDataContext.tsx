@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import {
   Sale,
+  SaleItem,
   Expense,
   Product,
   CustomerDebt,
@@ -31,6 +32,8 @@ import {
 } from '../lib/staffPermissions';
 import {
   calculateSaleMetrics,
+  calculateMultiItemSaleMetrics,
+  getSaleItems,
   calculatePeriodSummary,
   computeDashboardMetrics,
   buildUnifiedTransactions,
@@ -98,21 +101,35 @@ interface BusinessDataContextType {
     paymentMethod: PaymentMethod;
     amountTendered: number;
     change: number;
+    customerId?: string;
     customerName?: string;
     notes?: string;
     currency?: CurrencyCode;
   }) => Promise<{ sales: Sale[]; receiptNumber: string }>;
   addSale: (saleData: {
+    productId?: string;
     productName: string;
     quantity: number;
     sellingPrice: number;
     costPrice: number;
     paymentMethod: PaymentMethod;
+    customerId?: string;
     customerName?: string;
     notes?: string;
     saleDate?: string;
     barcode?: string;
     currency?: CurrencyCode;
+    discount?: number;
+    receiptNumber?: string;
+    items?: Array<{
+      productId?: string;
+      productName: string;
+      barcode?: string;
+      quantity: number;
+      unitPrice: number;
+      costPrice: number;
+      discount?: number;
+    }>;
   }) => Promise<Sale>;
   addExpense: (expenseData: {
     description: string;
@@ -1434,120 +1451,213 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return closedShift;
   };
 
-  // High-Speed POS Checkout
+  // High-Speed POS Checkout (Single Atomic Multi-Item Sale Transaction)
   const recordPosCheckout = async (data: {
     items: CartItem[];
     paymentMethod: PaymentMethod;
     amountTendered: number;
     change: number;
+    customerId?: string;
     customerName?: string;
     notes?: string;
     currency?: CurrencyCode;
   }): Promise<{ sales: Sale[]; receiptNumber: string }> => {
     const today = getTodayDateString();
     const receiptNumber = `RCP-${Date.now().toString().slice(-6)}`;
-    const createdSales: Sale[] = [];
-    let updatedProducts = [...products];
 
-    for (const item of data.items) {
-      const metrics = calculateSaleMetrics(item.quantity, item.unitPrice, item.product.defaultCostPrice);
-      const saleId = `sale_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const rawItems = data.items.map((item) => ({
+      productId: item.product.id,
+      productName: item.product.name,
+      barcode: item.product.barcode,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      costPrice: item.product.defaultCostPrice,
+      discount: item.discount || 0,
+    }));
 
-      const newSale: Sale = {
-        id: saleId,
-        businessId,
-        productId: item.product.id,
-        productName: item.product.name,
-        barcode: item.product.barcode,
-        quantity: item.quantity,
-        sellingPrice: item.unitPrice,
-        costPrice: item.product.defaultCostPrice,
-        revenue: metrics.revenue,
-        cost: metrics.cost,
-        profit: metrics.profit,
-        paymentMethod: data.paymentMethod,
-        customerName: data.customerName || 'POS Walk-in Customer',
-        notes: data.notes ? `${data.notes} (Receipt: ${receiptNumber})` : `Receipt #${receiptNumber}`,
-        saleDate: today,
-        staffId: currentSession.staffId,
-        staffName: currentSession.staffName,
-        currency: data.currency || 'NGN',
-        createdAt: new Date().toISOString(),
-      };
+    const createdSale = await addSale({
+      productName: rawItems[0]?.productName || 'POS Sale',
+      quantity: rawItems.reduce((sum, i) => sum + i.quantity, 0),
+      sellingPrice: rawItems[0]?.unitPrice || 0,
+      costPrice: rawItems[0]?.costPrice || 0,
+      paymentMethod: data.paymentMethod,
+      customerId: data.customerId,
+      customerName: data.customerName || 'POS Walk-in Customer',
+      notes: data.notes ? `${data.notes} (Receipt: ${receiptNumber})` : `Receipt #${receiptNumber}`,
+      saleDate: today,
+      currency: data.currency || 'NGN',
+      receiptNumber,
+      items: rawItems,
+    });
 
-      createdSales.push(newSale);
+    return { sales: [createdSale], receiptNumber };
+  };
 
-      // Decrement inventory stock
-      updatedProducts = updatedProducts.map((p) => {
-        if (p.id === item.product.id && p.stockQuantity !== undefined) {
-          return {
+  // Add Sale (Supports Single-Product & Multi-Product Atomic Transactions)
+  const addSale = async (saleData: {
+    productId?: string;
+    productName: string;
+    quantity: number;
+    sellingPrice: number;
+    costPrice: number;
+    paymentMethod: PaymentMethod;
+    customerId?: string;
+    customerName?: string;
+    notes?: string;
+    saleDate?: string;
+    barcode?: string;
+    currency?: CurrencyCode;
+    discount?: number;
+    receiptNumber?: string;
+    items?: Array<{
+      productId?: string;
+      productName: string;
+      barcode?: string;
+      quantity: number;
+      unitPrice: number;
+      costPrice: number;
+      discount?: number;
+    }>;
+  }): Promise<Sale> => {
+    const saleDate = saleData.saleDate || getTodayDateString();
+    const saleId = `sale_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const receiptNumber = saleData.receiptNumber || `RCP-${Date.now().toString().slice(-6)}`;
+
+    // 1. Normalize line items (support both multi-item array and single-item payload)
+    const rawLineItems =
+      saleData.items && saleData.items.length > 0
+        ? saleData.items
+        : [
+            {
+              productId: saleData.productId,
+              productName: saleData.productName,
+              barcode: saleData.barcode,
+              quantity: saleData.quantity,
+              unitPrice: saleData.sellingPrice,
+              costPrice: saleData.costPrice,
+              discount: 0,
+            },
+          ];
+
+    // 2. Match inventory products and aggregate stock deductions per productId
+    const stockDeductions = new Map<string, number>();
+    const resolvedItems = rawLineItems
+      .filter((item) => (Number(item.quantity) || 0) > 0 && item.productName?.trim())
+      .map((item) => {
+        const cleanName = item.productName.trim();
+        const matchingProduct = products.find(
+          (p) =>
+            (item.productId && p.id === item.productId) ||
+            (item.barcode && p.barcode && p.barcode === item.barcode) ||
+            p.name.toLowerCase() === cleanName.toLowerCase()
+        );
+
+        const resolvedProductId = matchingProduct?.id || item.productId;
+        const resolvedBarcode = item.barcode || matchingProduct?.barcode;
+        const resolvedCostPrice =
+          item.costPrice !== undefined && item.costPrice >= 0
+            ? item.costPrice
+            : matchingProduct?.defaultCostPrice || 0;
+
+        if (matchingProduct && matchingProduct.stockQuantity !== undefined) {
+          const prevDeduction = stockDeductions.get(matchingProduct.id) || 0;
+          stockDeductions.set(matchingProduct.id, prevDeduction + Number(item.quantity));
+        }
+
+        return {
+          productId: resolvedProductId,
+          productName: matchingProduct?.name || cleanName,
+          barcode: resolvedBarcode,
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unitPrice),
+          costPrice: Number(resolvedCostPrice),
+          discount: Number(item.discount) || 0,
+        };
+      });
+
+    if (resolvedItems.length === 0) {
+      throw new Error('At least one valid product item with quantity > 0 is required to record a sale.');
+    }
+
+    // 3. Calculate deterministic line-item and transaction-level metrics
+    const metrics = calculateMultiItemSaleMetrics(resolvedItems, saleData.discount || 0);
+
+    // 4. Update local product stock state once per affected product
+    const updatedProductDocs: Product[] = [];
+    if (stockDeductions.size > 0) {
+      const updatedProducts = products.map((p) => {
+        const deductQty = stockDeductions.get(p.id);
+        if (deductQty !== undefined && p.stockQuantity !== undefined) {
+          const updatedProd: Product = {
             ...p,
-            stockQuantity: Math.max(0, p.stockQuantity - item.quantity),
+            stockQuantity: Math.max(0, p.stockQuantity - deductQty),
           };
+          updatedProductDocs.push(updatedProd);
+          return updatedProd;
         }
         return p;
       });
+      persistProducts(updatedProducts);
+    }
 
-      // Write to cloud
-      if (user?.id && business?.id && !isDemoMode) {
-        try {
-          await setDoc(doc(db, 'businesses', business.id, 'sales', saleId), cleanFirestoreData(newSale));
-        } catch (e) {
-          console.warn('POS sale cloud save fallback:', e);
-        }
+    // 5. Resolve customer ID if customerName matches a saved customer
+    let resolvedCustomerId = saleData.customerId;
+    const cleanCustomerName = saleData.customerName?.trim();
+    if (!resolvedCustomerId && cleanCustomerName) {
+      const matchedCust = customers.find(
+        (c) => c.name.toLowerCase() === cleanCustomerName.toLowerCase()
+      );
+      if (matchedCust) {
+        resolvedCustomerId = matchedCust.id;
       }
     }
 
-    // Update store activity & transaction heartbeat for Super Admin portal
-    if (user?.id && business?.id && !isDemoMode) {
-      try {
-        const nowIso = new Date().toISOString();
-        setDoc(
-          doc(db, 'businesses', business.id),
-          {
-            ...business,
-            lastSaleAt: nowIso,
-            lastActiveAt: nowIso,
-          },
-          { merge: true }
-        ).catch(() => {});
-      } catch (_) {}
-    }
+    const newSale: Sale = {
+      id: saleId,
+      businessId,
+      receiptNumber,
+      productId: metrics.items.length === 1 ? metrics.items[0].productId : undefined,
+      productName: metrics.summaryProductName,
+      barcode: metrics.items.length === 1 ? metrics.items[0].barcode : undefined,
+      quantity: metrics.totalQuantity,
+      sellingPrice: metrics.primarySellingPrice,
+      costPrice: metrics.primaryCostPrice,
+      subtotal: metrics.grossSubtotal,
+      discount: metrics.totalDiscount,
+      revenue: metrics.revenue,
+      cost: metrics.cost,
+      profit: metrics.profit,
+      paymentMethod: saleData.paymentMethod,
+      customerId: resolvedCustomerId,
+      customerName: cleanCustomerName,
+      notes: saleData.notes?.trim(),
+      saleDate,
+      staffId: currentSession.staffId,
+      staffName: currentSession.staffName,
+      currency: saleData.currency || 'NGN',
+      items: metrics.items,
+      createdAt: new Date().toISOString(),
+    };
 
-    const newSalesList = [...createdSales, ...sales];
-    persistSales(newSalesList);
-    persistProducts(updatedProducts);
+    const updatedSalesList = [newSale, ...sales];
+    persistSales(updatedSalesList);
 
-    // Auto-update matching product cloud docs
-    if (user?.id && business?.id && !isDemoMode) {
-      for (const item of data.items) {
-        const prod = updatedProducts.find((p) => p.id === item.product.id);
-        if (prod) {
-          try {
-            await setDoc(doc(db, 'businesses', business.id, 'products', prod.id), cleanFirestoreData(prod), { merge: true });
-          } catch (e) {
-            console.warn('Product stock cloud update notice:', e);
-          }
-        }
-      }
-    }
-
-    // Update shift metrics if a shift is active
-    const checkoutTotal = createdSales.reduce((sum, s) => sum + s.revenue, 0);
+    // 6. Update active cashier shift metrics if a shift is active
     if (activeShift) {
-      const isCash = data.paymentMethod === 'Cash';
-      const isTransfer = data.paymentMethod === 'Transfer';
-      const isPos = data.paymentMethod === 'POS';
+      const checkoutTotal = newSale.revenue;
+      const isCash = saleData.paymentMethod === 'Cash';
+      const isTransfer = saleData.paymentMethod === 'Transfer';
+      const isPos = saleData.paymentMethod === 'POS';
       const updatedShifts = shifts.map((sh) => {
         if (sh.id === activeShift.id) {
           return {
             ...sh,
             totalSalesCount: sh.totalSalesCount + 1,
-            totalSalesAmount: sh.totalSalesAmount + checkoutTotal,
-            cashSalesAmount: isCash ? sh.cashSalesAmount + checkoutTotal : sh.cashSalesAmount,
-            expectedCash: isCash ? sh.expectedCash + checkoutTotal : sh.expectedCash,
-            transferSalesAmount: isTransfer ? sh.transferSalesAmount + checkoutTotal : sh.transferSalesAmount,
-            posCardSalesAmount: isPos ? sh.posCardSalesAmount + checkoutTotal : sh.posCardSalesAmount,
+            totalSalesAmount: roundMoney(sh.totalSalesAmount + checkoutTotal),
+            cashSalesAmount: isCash ? roundMoney(sh.cashSalesAmount + checkoutTotal) : sh.cashSalesAmount,
+            expectedCash: isCash ? roundMoney(sh.expectedCash + checkoutTotal) : sh.expectedCash,
+            transferSalesAmount: isTransfer ? roundMoney(sh.transferSalesAmount + checkoutTotal) : sh.transferSalesAmount,
+            posCardSalesAmount: isPos ? roundMoney(sh.posCardSalesAmount + checkoutTotal) : sh.posCardSalesAmount,
           };
         }
         return sh;
@@ -1555,102 +1665,36 @@ export const BusinessDataProvider: React.FC<{ children: React.ReactNode }> = ({ 
       persistShifts(updatedShifts);
     }
 
-    return { sales: createdSales, receiptNumber };
-  };
-
-  // Add Sale
-  const addSale = async (saleData: {
-    productName: string;
-    quantity: number;
-    sellingPrice: number;
-    costPrice: number;
-    paymentMethod: PaymentMethod;
-    customerName?: string;
-    notes?: string;
-    saleDate?: string;
-    barcode?: string;
-    currency?: CurrencyCode;
-  }): Promise<Sale> => {
-    const saleDate = saleData.saleDate || getTodayDateString();
-    const metrics = calculateSaleMetrics(saleData.quantity, saleData.sellingPrice, saleData.costPrice);
-    const saleId = `sale_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-
-    // Match inventory product
-    let matchedProductId: string | undefined;
-    const matchingProduct = products.find(
-      (p) =>
-        p.name.toLowerCase() === saleData.productName.toLowerCase() ||
-        (saleData.barcode && p.barcode === saleData.barcode)
-    );
-
-    if (matchingProduct) {
-      matchedProductId = matchingProduct.id;
-      // Auto decrement stock
-      const updatedProducts = products.map((p) => {
-        if (p.id === matchingProduct.id && p.stockQuantity !== undefined) {
-          return {
-            ...p,
-            stockQuantity: Math.max(0, p.stockQuantity - saleData.quantity),
-          };
-        }
-        return p;
-      });
-      persistProducts(updatedProducts);
-
-      if (user?.id && business?.id && !isDemoMode) {
-        const pDoc = updatedProducts.find((p) => p.id === matchingProduct.id);
-        if (pDoc) {
-          try {
-            await setDoc(doc(db, 'businesses', business.id, 'products', pDoc.id), pDoc, { merge: true });
-          } catch (e) {
-            console.warn('Product cloud sync notice:', e);
-          }
-        }
-      }
-    }
-
-    const newSale: Sale = {
-      id: saleId,
-      businessId,
-      productId: matchedProductId,
-      productName: saleData.productName.trim(),
-      barcode: saleData.barcode,
-      quantity: saleData.quantity,
-      sellingPrice: saleData.sellingPrice,
-      costPrice: saleData.costPrice,
-      revenue: metrics.revenue,
-      cost: metrics.cost,
-      profit: metrics.profit,
-      paymentMethod: saleData.paymentMethod,
-      customerName: saleData.customerName?.trim(),
-      notes: saleData.notes?.trim(),
-      saleDate,
-      staffId: currentSession.staffId,
-      staffName: currentSession.staffName,
-      currency: saleData.currency || 'NGN',
-      createdAt: new Date().toISOString(),
-    };
-
-    const updated = [newSale, ...sales];
-    persistSales(updated);
-
+    // 7. Atomic Firestore writeBatch for Sale + Product Stock Deductions + Business Heartbeat
     if (user?.id && business?.id && !isDemoMode) {
       try {
-        await setDoc(doc(db, 'businesses', business.id, 'sales', saleId), cleanFirestoreData(newSale));
+        const batch = writeBatch(db);
+        const saleRef = doc(db, 'businesses', business.id, 'sales', saleId);
+        batch.set(saleRef, cleanFirestoreData(newSale));
+
+        for (const updatedProd of updatedProductDocs) {
+          const prodRef = doc(db, 'businesses', business.id, 'products', updatedProd.id);
+          batch.set(prodRef, cleanFirestoreData(updatedProd), { merge: true });
+        }
+
         const nowIso = new Date().toISOString();
-        setDoc(
-          doc(db, 'businesses', business.id),
-          {
+        const bizRef = doc(db, 'businesses', business.id);
+        batch.set(
+          bizRef,
+          cleanFirestoreData({
             ...business,
             lastSaleAt: nowIso,
             lastActiveAt: nowIso,
-          },
+          }),
           { merge: true }
-        ).catch(() => {});
+        );
+
+        await batch.commit();
       } catch (err) {
-        console.warn('Cloud sale write notice:', err);
+        console.warn('Cloud atomic sale write notice:', err);
       }
     }
+
     return newSale;
   };
 

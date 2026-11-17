@@ -1,11 +1,165 @@
 import {
   Sale,
+  SaleItem,
   Expense,
   FinancialPeriodSummary,
   DashboardMetrics,
   UnifiedTransaction,
   ExpenseCategory,
 } from '../types';
+
+/**
+ * Normalizes any Sale record (legacy single-product or multi-product) into an array of SaleItem objects.
+ */
+export function getSaleItems(sale: Sale): SaleItem[] {
+  if (sale.items && Array.isArray(sale.items) && sale.items.length > 0) {
+    return sale.items;
+  }
+  const qty = Math.max(1, Number(sale.quantity) || 1);
+  const unitPrice = Number(sale.sellingPrice) || roundMoney((Number(sale.revenue) || 0) / qty);
+  const costPrice = Number(sale.costPrice) || roundMoney((Number(sale.cost) || 0) / qty);
+  const discount = Number(sale.discount) || 0;
+  const subtotal = roundMoney(Number(sale.revenue) || Math.max(0, qty * unitPrice - discount));
+  const cost = roundMoney(Number(sale.cost) || qty * costPrice);
+  const profit = roundMoney(Number(sale.profit) ?? subtotal - cost);
+
+  return [
+    {
+      productId: sale.productId,
+      productName: sale.productName || 'Item',
+      barcode: sale.barcode,
+      quantity: qty,
+      unitPrice: roundMoney(unitPrice),
+      costPrice: roundMoney(costPrice),
+      discount: roundMoney(discount),
+      subtotal,
+      cost,
+      profit,
+    },
+  ];
+}
+
+/**
+ * Calculates deterministic line-item and transaction-level financial metrics for one or more sale items.
+ */
+export function calculateMultiItemSaleMetrics(
+  rawItems: Array<{
+    productId?: string;
+    productName: string;
+    barcode?: string;
+    quantity: number;
+    unitPrice: number;
+    costPrice: number;
+    discount?: number;
+  }>,
+  orderDiscount: number = 0
+): {
+  items: SaleItem[];
+  totalQuantity: number;
+  grossSubtotal: number;
+  totalDiscount: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  profitMargin: number;
+  summaryProductName: string;
+  primarySellingPrice: number;
+  primaryCostPrice: number;
+} {
+  let totalQuantity = 0;
+  let grossSubtotal = 0;
+  let lineDiscountsTotal = 0;
+  let totalCost = 0;
+
+  const computedItems: SaleItem[] = rawItems.map((raw) => {
+    const qty = Math.max(0, Number(raw.quantity) || 0);
+    const unitPrice = Math.max(0, Number(raw.unitPrice) || 0);
+    const costPrice = Math.max(0, Number(raw.costPrice) || 0);
+    const lineGross = roundMoney(qty * unitPrice);
+    const lineDisc = Math.min(lineGross, Math.max(0, Number(raw.discount) || 0));
+    const lineSubtotal = roundMoney(Math.max(0, lineGross - lineDisc));
+    const lineCost = roundMoney(qty * costPrice);
+    const lineProfit = roundMoney(lineSubtotal - lineCost);
+
+    totalQuantity += qty;
+    grossSubtotal += lineGross;
+    lineDiscountsTotal += lineDisc;
+    totalCost += lineCost;
+
+    return {
+      productId: raw.productId,
+      productName: (raw.productName || 'Item').trim(),
+      barcode: raw.barcode,
+      quantity: qty,
+      unitPrice: roundMoney(unitPrice),
+      costPrice: roundMoney(costPrice),
+      discount: roundMoney(lineDisc),
+      subtotal: lineSubtotal,
+      cost: lineCost,
+      profit: lineProfit,
+    };
+  });
+
+  grossSubtotal = roundMoney(grossSubtotal);
+  lineDiscountsTotal = roundMoney(lineDiscountsTotal);
+  totalCost = roundMoney(totalCost);
+
+  const safeOrderDiscount = Math.max(0, Number(orderDiscount) || 0);
+  const netAfterLineDiscounts = Math.max(0, grossSubtotal - lineDiscountsTotal);
+  const appliedOrderDiscount = Math.min(netAfterLineDiscounts, safeOrderDiscount);
+
+  // If an order-level discount was provided on top of line items, distribute it proportionally so sum(item.subtotal) === revenue
+  if (appliedOrderDiscount > 0 && computedItems.length > 0 && netAfterLineDiscounts > 0) {
+    let remainingOrderDisc = roundMoney(appliedOrderDiscount);
+    for (let i = 0; i < computedItems.length; i++) {
+      const item = computedItems[i];
+      const share =
+        i === computedItems.length - 1
+          ? remainingOrderDisc
+          : roundMoney((item.subtotal / netAfterLineDiscounts) * appliedOrderDiscount);
+      remainingOrderDisc = roundMoney(Math.max(0, remainingOrderDisc - share));
+      item.discount = roundMoney((item.discount || 0) + share);
+      item.subtotal = roundMoney(Math.max(0, item.subtotal - share));
+      item.profit = roundMoney(item.subtotal - item.cost);
+    }
+  }
+
+  const totalDiscount = roundMoney(lineDiscountsTotal + appliedOrderDiscount);
+  const revenue = roundMoney(Math.max(0, grossSubtotal - totalDiscount));
+  const profit = roundMoney(revenue - totalCost);
+  const profitMargin = revenue > 0 ? roundMoney((profit / revenue) * 100) : 0;
+
+  let summaryProductName = 'Sale Transaction';
+  if (computedItems.length === 1) {
+    summaryProductName = computedItems[0].productName;
+  } else if (computedItems.length > 1) {
+    const first = computedItems[0].productName;
+    const extraCount = computedItems.length - 1;
+    summaryProductName = `${first} + ${extraCount} more ${extraCount === 1 ? 'item' : 'items'}`;
+  }
+  if (summaryProductName.length > 180) {
+    summaryProductName = summaryProductName.slice(0, 177) + '...';
+  }
+
+  const primarySellingPrice =
+    computedItems.length === 1 ? computedItems[0].unitPrice : revenue;
+  const primaryCostPrice =
+    computedItems.length === 1 ? computedItems[0].costPrice : totalCost;
+
+  return {
+    items: computedItems,
+    totalQuantity,
+    grossSubtotal,
+    totalDiscount,
+    revenue,
+    cost: totalCost,
+    profit,
+    profitMargin,
+    summaryProductName,
+    primarySellingPrice: roundMoney(primarySellingPrice),
+    primaryCostPrice: roundMoney(primaryCostPrice),
+  };
+}
 
 /**
  * Calculates deterministic line-item financial metrics for a single sale.
@@ -109,19 +263,25 @@ export function buildUnifiedTransactions(
   sales: Sale[],
   expenses: Expense[]
 ): UnifiedTransaction[] {
-  const unifiedSales: UnifiedTransaction[] = sales.map((s) => ({
-    id: s.id,
-    type: 'sale',
-    title: s.productName,
-    subtitle: s.customerName ? `Customer: ${s.customerName} (${s.quantity} units)` : `${s.quantity} units sold`,
-    amount: s.revenue,
-    cost: s.cost,
-    profit: s.profit,
-    paymentMethod: s.paymentMethod,
-    date: s.saleDate,
-    createdAt: s.createdAt,
-    rawSale: s,
-  }));
+  const unifiedSales: UnifiedTransaction[] = sales.map((s) => {
+    const items = getSaleItems(s);
+    const unitsLabel = `${s.quantity} ${s.quantity === 1 ? 'unit' : 'units'}`;
+    const countLabel = items.length > 1 ? `${items.length} products • ${unitsLabel}` : `${unitsLabel} sold`;
+
+    return {
+      id: s.id,
+      type: 'sale',
+      title: s.productName,
+      subtitle: s.customerName ? `Customer: ${s.customerName} (${countLabel})` : countLabel,
+      amount: s.revenue,
+      cost: s.cost,
+      profit: s.profit,
+      paymentMethod: s.paymentMethod,
+      date: s.saleDate,
+      createdAt: s.createdAt,
+      rawSale: s,
+    };
+  });
 
   const unifiedExpenses: UnifiedTransaction[] = expenses.map((e) => ({
     id: e.id,
@@ -220,16 +380,19 @@ export function computeDashboardMetrics(
     }))
     .sort((a, b) => b.amount - a.amount);
 
-  // Top Selling Products (This Month)
+  // Top Selling Products (This Month) — Aggregates across all SaleItem lines
   const productPerformanceMap: Record<string, { quantity: number; revenue: number; profit: number }> = {};
   for (const sale of monthSales) {
-    const pName = sale.productName || 'Unnamed Item';
-    if (!productPerformanceMap[pName]) {
-      productPerformanceMap[pName] = { quantity: 0, revenue: 0, profit: 0 };
+    const items = getSaleItems(sale);
+    for (const item of items) {
+      const pName = item.productName || 'Unnamed Item';
+      if (!productPerformanceMap[pName]) {
+        productPerformanceMap[pName] = { quantity: 0, revenue: 0, profit: 0 };
+      }
+      productPerformanceMap[pName].quantity += item.quantity;
+      productPerformanceMap[pName].revenue += item.subtotal;
+      productPerformanceMap[pName].profit += item.profit;
     }
-    productPerformanceMap[pName].quantity += sale.quantity;
-    productPerformanceMap[pName].revenue += sale.revenue;
-    productPerformanceMap[pName].profit += sale.profit;
   }
 
   const topSellingProducts = Object.entries(productPerformanceMap)
